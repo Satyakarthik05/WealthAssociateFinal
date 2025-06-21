@@ -11,15 +11,17 @@ import {
   Text,
   Animated,
   Image,
+  Modal
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import Carousel from "react-native-reanimated-carousel";
 import LazyImage from "../../components/home/LazyImage";
+import {API_URL} from "../../../data/ApiUrl"
 
 const { width } = Dimensions.get("window");
-const API_URL = "https://your-api-url.com"; // Replace with your actual API URL
+
 
 const RegularPropertiesScreen = () => {
   const [properties, setProperties] = useState([]);
