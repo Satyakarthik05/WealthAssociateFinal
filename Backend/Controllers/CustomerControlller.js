@@ -163,6 +163,9 @@ const fetchReferredCustomers = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
+
 const fetchReferredcusCustomers = async (req, res) => {
   try {
     const authenticatedAgent = await CustomerSchema.findById(req.CustomerId);

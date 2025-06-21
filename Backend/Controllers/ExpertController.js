@@ -139,7 +139,6 @@ const registerExpert = async (req, res) => {
     const photoPath = `/ExpertMembers/${req.file.filename}`;
 
     const expertData = {
-      // Common fields
       name,
       expertType,
       qualification,
@@ -338,100 +337,173 @@ const getExpertsByType = async (req, res) => {
 };
 
 const modifyExpert = async (req, res) => {
-  const { id } = req.params; // Get the expert ID from the URL params
+  const { id } = req.params;
   const {
-    Name,
-    Experttype,
-    Qualification,
-    Experience,
-    Locations,
-    Mobile,
-    specialization, // For LEGAL, REVENUE, BANKING, AUDITING, REGISTRATION & DOCUMENTATION
-    barCouncilId, // For LEGAL
-    courtAffiliation, // For LEGAL
-    lawFirm, // For LEGAL
-    landTypeExpertise, // For REVENUE
-    govtApproval, // For REVENUE, BANKING, AUDITING, REGISTRATION & DOCUMENTATION
-    certificationNumber, // For REVENUE, ENGINEERS, AUDITING, LIAISONING
-    organization, // For REVENUE, ENGINEERS, SURVEY, VAASTU PANDITS, LAND VALUERS, AGRICULTURE, AUDITING, LIAISONING
-    servicesProvided, // For REVENUE, AGRICULTURE, LIAISONING
-    engineeringField, // For ENGINEERS
-    certifications, // For ENGINEERS, VAASTU PANDITS, AGRICULTURE
-    projectsHandled, // For ENGINEERS
-    specializedSkills, // For ENGINEERS
-    majorProjects, // For ENGINEERS, ARCHITECTS, SURVEY
-    govtLicensed, // For ENGINEERS
-    architectureType, // For ARCHITECTS (using 'specialisation' in frontend)
-    softwareUsed, // For ARCHITECTS
-    licenseNumber, // For ARCHITECTS, SURVEY, LAND VALUERS, LIAISONING
-    firmName, // For ARCHITECTS
-    surveyType, // For SURVEY
-    govtCertified, // For SURVEY, REGISTRATION & DOCUMENTATION, AUDITING
-    vaastuSpecialization, // For VAASTU PANDITS
-    remediesProvided, // For VAASTU PANDITS
-    consultationMode, // For VAASTU PANDITS
-    valuationType, // For LAND VALUERS
-    govtApproved, // For LAND VALUERS, BANKING
-    valuationMethods, // For LAND VALUERS
-    bankingService, // For BANKING
-    registeredWith, // For BANKING
-    institutionName, // For BANKING
-    agricultureType, // For AGRICULTURE
-    cropTypes, // For AGRICULTURE
-    documentType, // For REGISTRATION & DOCUMENTATION
-    processingTime, // For REGISTRATION & DOCUMENTATION
-    additionalServices, // For REGISTRATION & DOCUMENTATION
-    auditType, // For AUDITING
-    auditServices, // For AUDITING
-    specialisations, // For LIAISONING (using 'specialisations' in frontend)
-    // Add more fields as needed for other expert types
-  } = req.body; // Get updated data from the request body
-
-  const updateData = {
-    Name,
-    Experttype,
-    Qualification,
-    Experience,
-    Locations,
-    Mobile,
+    name,
+    expertType,
+    qualification,
+    experience,
+    location,
+    mobile,
+    officeAddress,
+    CallExecutiveCall,
+    // LEGAL fields
     specialization,
     barCouncilId,
     courtAffiliation,
-    lawFirm,
+    lawFirmOrganisation,
+    // REVENUE fields
     landTypeExpertise,
+    revenueSpecialisation,
     govtApproval,
-    certificationNumber,
-    organization,
-    servicesProvided,
+    certificationLicenseNumber,
+    revenueOrganisation,
+    keyServicesProvided,
+    // ENGINEERS fields
     engineeringField,
     certifications,
     projectsHandled,
-    specializedSkills,
-    majorProjects,
+    engineerOrganisation,
+    specializedSkillsTechnologies,
+    majorProjectsWorkedOn,
     govtLicensed,
+    // ARCHITECTS fields
     architectureType,
     softwareUsed,
-    licenseNumber,
-    firmName,
-    surveyType,
-    govtCertified,
+    architectLicenseNumber,
+    architectFirm,
+    architectMajorProjects,
+    // PLANS & APPROVALS fields
+    approvalType,
+    govtDepartment,
+    processingTime,
+    approvalOrganisation,
+    servicesProvided,
+    // VAASTU PANDITS fields
     vaastuSpecialization,
+    vaastuOrganisation,
+    vaastuCertifications,
     remediesProvided,
     consultationMode,
+    // LAND SURVEY & VALUERS fields
+    surveyType,
     valuationType,
     govtApproved,
-    valuationMethods,
+    surveyLicenseNumber,
+    valuerLicenseNumber,
+    surveyOrganisation,
+    valuerOrganisation,
+    // BANKING fields
+    bankingSpecialisation,
     bankingService,
     registeredWith,
-    institutionName,
+    bankName,
+    bankingGovtApproved,
+    // AGRICULTURE fields
     agricultureType,
-    cropTypes,
+    agricultureCertifications,
+    agricultureOrganisation,
+    typesOfCrops,
+    // REGISTRATION & DOCUMENTATION fields
+    registrationSpecialisation,
     documentType,
-    processingTime,
+    registrationGovtCertified,
     additionalServices,
+    // AUDITING fields
+    auditingSpecialisation,
     auditType,
+    auditCertificationNumber,
+    auditOrganisation,
     auditServices,
-    specialisations,
+    auditGovtCertified,
+    // LIAISONING fields
+    liaisoningSpecialisations,
+    govtDepartments,
+    liaisoningOrganisation
+  } = req.body;
+
+  const updateData = {
+    name,
+    expertType,
+    qualification,
+    experience,
+    location,
+    mobile,
+    officeAddress,
+    CallExecutiveCall,
+    // LEGAL fields
+    specialization,
+    barCouncilId,
+    courtAffiliation,
+    lawFirmOrganisation,
+    // REVENUE fields
+    landTypeExpertise,
+    revenueSpecialisation,
+    govtApproval,
+    certificationLicenseNumber,
+    revenueOrganisation,
+    keyServicesProvided,
+    // ENGINEERS fields
+    engineeringField,
+    certifications,
+    projectsHandled,
+    engineerOrganisation,
+    specializedSkillsTechnologies,
+    majorProjectsWorkedOn,
+    govtLicensed,
+    // ARCHITECTS fields
+    architectureType,
+    softwareUsed,
+    architectLicenseNumber,
+    architectFirm,
+    architectMajorProjects,
+    // PLANS & APPROVALS fields
+    approvalType,
+    govtDepartment,
+    processingTime,
+    approvalOrganisation,
+    servicesProvided,
+    // VAASTU PANDITS fields
+    vaastuSpecialization,
+    vaastuOrganisation,
+    vaastuCertifications,
+    remediesProvided,
+    consultationMode,
+    // LAND SURVEY & VALUERS fields
+    surveyType,
+    valuationType,
+    govtApproved,
+    surveyLicenseNumber,
+    valuerLicenseNumber,
+    surveyOrganisation,
+    valuerOrganisation,
+    // BANKING fields
+    bankingSpecialisation,
+    bankingService,
+    registeredWith,
+    bankName,
+    bankingGovtApproved,
+    // AGRICULTURE fields
+    agricultureType,
+    agricultureCertifications,
+    agricultureOrganisation,
+    typesOfCrops,
+    // REGISTRATION & DOCUMENTATION fields
+    registrationSpecialisation,
+    documentType,
+    registrationGovtCertified,
+    additionalServices,
+    // AUDITING fields
+    auditingSpecialisation,
+    auditType,
+    auditCertificationNumber,
+    auditOrganisation,
+    auditServices,
+    auditGovtCertified,
+    // LIAISONING fields
+    liaisoningSpecialisations,
+    govtDepartments,
+    liaisoningOrganisation
   };
 
   // Handle photo update if a new file is provided
@@ -440,10 +512,10 @@ const modifyExpert = async (req, res) => {
   }
 
   try {
-    const updatedExpert = await Expert.findByIdAndUpdate(
+    const updatedExpert = await expertModel.findByIdAndUpdate(
       id,
       updateData,
-      { new: true, runValidators: true } // Return the updated document and run schema validators
+      { new: true, runValidators: true }
     );
 
     if (updatedExpert) {

@@ -12,18 +12,16 @@ import {
   Keyboard,
   ActivityIndicator,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
   Modal,
   FlatList,
-  Pressable,
 } from "react-native";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
 
-const screenHeight = Dimensions.get("window").height;
-const { width } = Dimensions.get("window");
-const isSmallScreen = width < 600;
+const { width, height } = Dimensions.get("window");
+const isSmallScreen = width < 450;
 
 const skilledCategories = [
   { id: 1, name: "Drilling & Boring", category: "Heavy Equipment" },
@@ -169,18 +167,21 @@ const Rskill = ({ closeModal }) => {
     Keyboard.dismiss();
     setBottomSheetType(type);
     setSearchTerm("");
-    
+
     switch (type) {
       case "skill":
         setFilteredData(skilledCategories);
         break;
       case "location":
-        setFilteredData(constituencies.flatMap(item => item.assemblies));
+        const assemblies = constituencies.flatMap(
+          (district) => district.assemblies
+        );
+        setFilteredData(assemblies);
         break;
       default:
         setFilteredData([]);
     }
-    
+
     setBottomSheetVisible(true);
     setTimeout(() => {
       searchInputRef.current?.focus();
@@ -189,22 +190,24 @@ const Rskill = ({ closeModal }) => {
 
   const handleSearch = (text) => {
     setSearchTerm(text);
-    
+
     switch (bottomSheetType) {
       case "skill":
         setFilteredData(
-          skilledCategories.filter(item =>
-            item.name.toLowerCase().includes(text.toLowerCase()) ||
-            item.category.toLowerCase().includes(text.toLowerCase())
+          skilledCategories.filter(
+            (item) =>
+              item.name.toLowerCase().includes(text.toLowerCase()) ||
+              item.category.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
       case "location":
+        const assemblies = constituencies.flatMap(
+          (district) => district.assemblies
+        );
         setFilteredData(
-          constituencies.flatMap(item => 
-            item.assemblies.filter(assembly =>
-              assembly.name.toLowerCase().includes(text.toLowerCase())
-            )
+          assemblies.filter((item) =>
+            item.name.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
@@ -237,14 +240,12 @@ const Rskill = ({ closeModal }) => {
     setErrorMessage("");
 
     try {
-      // Determine the AddedBy value with fallbacks
       const addedByValue =
         userDetails?.MobileNumber ||
         userDetails?.MobileIN ||
         userDetails?.Number ||
         "Wealthassociate";
 
-      // Use the actual userType or default to "WealthAssociate" if not available
       const registeredByValue = userType || "WealthAssociate";
 
       const response = await fetch(`${API_URL}/skillLabour/register`, {
@@ -301,7 +302,7 @@ const Rskill = ({ closeModal }) => {
         title = "Select Skill";
         break;
       case "location":
-        title = "Select Location";
+        title = "Select Location in India";
         break;
       default:
         title = "Select";
@@ -314,43 +315,56 @@ const Rskill = ({ closeModal }) => {
         transparent={true}
         onRequestClose={() => setBottomSheetVisible(false)}
       >
-        <Pressable 
-          style={styles.bottomSheetOverlay}
-          onPress={() => setBottomSheetVisible(false)}
-        >
-          <Pressable style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheet}>
-              <Text style={styles.bottomSheetTitle}>{title}</Text>
-              
-              <View style={styles.searchContainer}>
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.searchInput}
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChangeText={handleSearch}
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{title}</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    ref={searchInputRef}
+                    style={styles.searchInput}
+                    placeholder="Search..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={handleSearch}
+                    value={searchTerm}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#3E5C76"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredData}
+                  renderItem={renderItem}
+                  keyExtractor={(item, index) =>
+                    bottomSheetType === "skill"
+                      ? `${item.id}`
+                      : `${item.code}-${index}`
+                  }
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
                 />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setBottomSheetVisible(false);
+                    setSearchTerm("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
               </View>
-              
-              <FlatList
-                data={filteredData}
-                renderItem={renderItem}
-                keyExtractor={(item, index) => 
-                  bottomSheetType === "skill" ? `${item.id}` : `${item.name}-${index}`
-                }
-                keyboardShouldPersistTaps="handled"
-                style={styles.listContainer}
-              />
-              
-              <TouchableOpacity
-                style={styles.bottomSheetCloseButton}
-                onPress={() => setBottomSheetVisible(false)}
-              >
-                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     );
   };
@@ -365,6 +379,8 @@ const Rskill = ({ closeModal }) => {
         ref={scrollViewRef}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
       >
         <View style={styles.container}>
           <Text style={styles.title}>Register Skilled Resource</Text>
@@ -378,53 +394,87 @@ const Rskill = ({ closeModal }) => {
             <View style={styles.row}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Full Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. John Doe"
-                  value={formData.fullName}
-                  onChangeText={(text) => handleInputChange("fullName", text)}
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. John Doe"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={formData.fullName}
+                    onChangeText={(text) => handleInputChange("fullName", text)}
+                  />
+                  <FontAwesome
+                    name="user"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Mobile Number</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. 9063 392872"
-                  keyboardType="phone-pad"
-                  value={formData.mobileNumber}
-                  onChangeText={(text) => handleInputChange("mobileNumber", text)}
-                  maxLength={10}
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. 9063 392872"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    keyboardType="phone-pad"
+                    value={formData.mobileNumber}
+                    onChangeText={(text) =>
+                      handleInputChange("mobileNumber", text)
+                    }
+                    maxLength={10}
+                  />
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
               </View>
             </View>
 
             <View style={styles.row}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Skill</Text>
-                <TouchableOpacity
-                  onPress={() => openBottomSheet("skill")}
-                >
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Select Skill"
-                    value={formData.skill}
-                    editable={false}
-                    pointerEvents="none"
-                  />
+                <TouchableOpacity onPress={() => openBottomSheet("skill")}>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Skill"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={formData.skill}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.dropdownIcon}
+                    />
+                  </View>
                 </TouchableOpacity>
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Location</Text>
-                <TouchableOpacity
-                  onPress={() => openBottomSheet("location")}
-                >
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Select Location"
-                    value={formData.location}
-                    editable={false}
-                    pointerEvents="none"
-                  />
+                <TouchableOpacity onPress={() => openBottomSheet("location")}>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Location"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={formData.location}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.dropdownIcon}
+                    />
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -461,9 +511,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D8E3E7",
-    padding: 20,
+    padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
   },
   card: {
     backgroundColor: "white",
@@ -473,30 +523,34 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    padding: 20,
-    marginBottom: 100,
-    width: Platform.OS === "web" ? "80%" : "95%"
+    padding: isSmallScreen ? 15 : 20,
+    marginBottom: isSmallScreen ? 150 : 100,
+    width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
+    maxWidth: 800,
   },
   title: {
-    fontSize: 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: "bold",
     fontFamily: "OpenSanssemibold",
     color: "Black",
     textAlign: "center",
-    padding: 15,
+    padding: isSmallScreen ? 10 : 15,
   },
   row: {
-    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    flexDirection: isSmallScreen ? "column" : "row",
     justifyContent: "space-between",
     flexWrap: "wrap",
-    marginBottom: 15,
+    marginBottom: isSmallScreen ? 10 : 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
-    marginBottom: 15,
+    width: isSmallScreen ? "100%" : "48%",
+    marginBottom: isSmallScreen ? 10 : 15,
+  },
+  inputWrapper: {
+    position: "relative",
   },
   label: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 13 : 14,
     fontWeight: "bold",
     marginBottom: 5,
     color: "#555",
@@ -506,30 +560,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 25,
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
+    paddingRight: 40,
     backgroundColor: "#f9f9f9",
     fontFamily: "OpenSanssemibold",
+    fontSize: isSmallScreen ? 14 : 16,
   },
-  disabledInput: {
-    backgroundColor: "#eee",
-    color: "#999",
+  inputIcon: {
+    position: "absolute",
+    right: 15,
+    top: isSmallScreen ? 10 : 12,
+  },
+  dropdownIcon: {
+    position: "absolute",
+    right: 15,
+    top: isSmallScreen ? 10 : 12,
   },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 20,
+    marginTop: isSmallScreen ? 15 : 20,
   },
   registerButton: {
     backgroundColor: "#3E5C76",
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
     borderRadius: 30,
-    marginRight: 25,
+    marginRight: isSmallScreen ? 15 : 25,
     minWidth: 120,
     alignItems: "center",
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
     borderRadius: 30,
     minWidth: 120,
     alignItems: "center",
@@ -537,7 +599,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     fontFamily: "OpenSanssemibold",
   },
   errorContainer: {
@@ -552,71 +614,87 @@ const styles = StyleSheet.create({
     color: "#ff4444",
     textAlign: "center",
     fontFamily: "OpenSanssemibold",
+    fontSize: isSmallScreen ? 13 : 14,
   },
-  // Bottom sheet styles
-  bottomSheetOverlay: {
+  // Bottom sheet styles (same as AddNRIMember)
+  modalOuterContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  bottomSheetContent: {
-    width: '100%',
-    backgroundColor: 'transparent',
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
   },
-  bottomSheet: {
-    backgroundColor: 'white',
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: Dimensions.get('window').height * 0.7,
+    maxHeight: height * 0.7,
+    marginTop: Platform.OS === "ios" ? 200 : 0,
+    marginBottom: Platform.OS === "ios" ? "-14%" : "",
   },
-  bottomSheetTitle: {
+  modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    textAlign: 'center',
+    textAlign: "center",
+    color: "#2B2D42",
     fontFamily: "OpenSanssemibold",
   },
   searchContainer: {
+    position: "relative",
     marginBottom: 15,
   },
   searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 25,
-    padding: 12,
-    backgroundColor: '#f9f9f9',
+    borderColor: "#ccc",
     fontFamily: "OpenSanssemibold",
   },
-  listContainer: {
-    maxHeight: Dimensions.get('window').height * 0.5,
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
   },
   listItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   listItemText: {
     fontSize: 16,
     fontFamily: "OpenSanssemibold",
   },
   listItemCategory: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: isSmallScreen ? 12 : 12,
+    color: "#666",
     marginTop: 4,
     fontFamily: "OpenSanssemibold",
   },
-  bottomSheetCloseButton: {
-    backgroundColor: '#3E5C76',
+  closeButton: {
+    backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 30,
-    marginTop: 15,
-    alignItems: 'center',
+    borderRadius: 10,
+    alignItems: "center",
   },
-  bottomSheetCloseButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  closeButtonText: {
+    color: "#FFF",
     fontSize: 16,
+    fontWeight: "bold",
     fontFamily: "OpenSanssemibold",
   },
 });

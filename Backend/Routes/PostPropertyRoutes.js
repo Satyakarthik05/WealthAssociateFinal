@@ -11,26 +11,57 @@ const ApprovedProperty = require("../Controllers/ApprovedProprerty");
 const router = express.Router();
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./uploads");
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
+const AWS = require("aws-sdk");
+
+// Configure AWS S3
+const s3 = new AWS.S3({
+  accessKeyId: "AKIAWX2IFPZYF2O4O3FG",
+  secretAccessKey: "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",
+  region: "us-east-1",
 });
 
+
+// Configure multer for memory storage
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB file size limit
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB per file
+    files: 6, // Maximum 6 files
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.match(/image\/(jpeg|jpg|png|gif)$/)) {
+      return cb(
+        new Error("Only image files (jpeg, jpg, png, gif) are allowed!"),
+        false
+      );
+    }
+    cb(null, true);
+  },
 });
 
-// ✅ **Add Property**
+// Upload file to S3 helper function - matches your migration pattern
+const uploadToS3 = async (file) => {
+  const fileName = `Approved_Properties/${Date.now()}-${file.originalname}`;
+
+  const params = {
+    Bucket: process.env.S3_BUCKET_NAME || "wealthpropertyimages",
+    Key: fileName,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+    ACL: "public-read",
+  };
+
+  const result = await s3.upload(params).promise();
+  return result.Location;
+};
+
+// ✅ Add Property with Multiple Photos (direct to S3)
 router.post(
   "/addProperty",
-  upload.single("photo"),
+  upload.any(),
   PostPropertyController.createProperty
 );
+
 router.post(
   "/addcoreclient",
   upload.single("photo"),
@@ -58,10 +89,19 @@ router.put(
 router.put("/update/:id", PostPropertyController.updatePropertyAdmin);
 router.put("/approveupdate/:id", ApprovedProperty.updatePropertyAdmin);
 router.get("/getApproveProperty", ApprovedProperty.GetAllApprovdPropertys);
+router.post("/getlikedproperties", ApprovedProperty.GetlikedPropertys);
+router.get("/getalllikedproperties", ApprovedProperty.GetAlllikedPropertys);
+router.put("/callDone/:id", ApprovedProperty.callDoneforliked);
+router.delete("/likeddelete/:id", ApprovedProperty.LikedDelete);
 router.get("/getsoldProperty", ApprovedProperty.GetAllSoldedPropertys);
 router.post("/approve/:id", ApprovedProperty.approveProperty);
+router.post("/like", ApprovedProperty.LikeProperty);
 router.post("/sold/:id", ApprovedProperty.SoldProperty);
 router.get("/nearby/:constituency", PostPropertyController.getNearbyProperties);
+router.post(
+  "/get-referral-data",
+  PostPropertyController.getReferralAndPostedData
+);
 router.post(
   "/getPropertyreffered",
   PostPropertyController.getReferredByDetails

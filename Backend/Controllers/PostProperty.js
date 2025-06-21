@@ -12,6 +12,216 @@ const axios = require("axios");
 const getNearbyProperty = require("../Models/ApprovedPropertys");
 const CallExecutive = require("../Models/CallExecutiveModel");
 const ApprovedProperty = require("../Models/ApprovedPropertys");
+const cron = require("node-cron");
+const AWS = require("aws-sdk");
+
+// The actual function (extracted so it can be called manually or via cron)
+const updateReferralAndPostedData = async () => {
+  try {
+    // Fetch all agents
+    const allAgents = await AgentSchema.find({});
+
+    // Process each agent
+    for (const agent of allAgents) {
+      const { MobileNumber, MyRefferalCode } = agent;
+
+      if (!MobileNumber || !MyRefferalCode) {
+        console.warn(
+          `Skipping agent with missing mobileNumber or referralCode: ${agent._id}`
+        );
+        continue;
+      }
+
+      try {
+        // Fetch data for the current agent
+        const [
+          agentData,
+          customerData,
+          investorData,
+          skilledData,
+          nrisData,
+          propertyData,
+          approvedData,
+        ] = await Promise.all([
+          AgentSchema.find({ ReferredBy: MyRefferalCode }).catch(() => []),
+          CustomerSchema.find({ ReferredBy: MyRefferalCode }).catch(() => []),
+          investorSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          skillSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          nriSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          Property.find({ PostedBy: MobileNumber }).catch(() => []),
+          ApprovedProperty.find({ PostedBy: MobileNumber }).catch(() => []),
+        ]);
+
+        // Prepare counts object
+        const referralStats = {
+          referredAgents: agentData?.length || 0,
+          referredCustomers: customerData?.length || 0,
+          addedInvestors: investorData?.length || 0,
+          addedSkilled: skilledData?.length || 0,
+          addedNRIs: nrisData?.length || 0,
+          postedProperties: propertyData?.length || 0,
+          approvedProperties: approvedData?.length || 0,
+          lastUpdated: new Date(),
+        };
+
+        // Update the agent with counts
+        await AgentSchema.findByIdAndUpdate(
+          agent._id,
+          { $set: { referralStats } },
+          { new: true }
+        );
+      } catch (agentError) {
+        console.error(`Error processing agent ${agent._id}:`, agentError);
+        continue;
+      }
+    }
+
+    console.log(
+      `Successfully updated referral and posted counts for ${
+        allAgents.length
+      } agents at ${new Date()}`
+    );
+  } catch (error) {
+    console.error(
+      "Error processing referral and posted data for agents:",
+      error
+    );
+  }
+};
+
+cron.schedule("0 8 * * *", () => {
+  console.log("Running scheduled referral stats update at 2 AM");
+  updateReferralAndPostedData();
+});
+
+const getReferralAndPostedDatas = async (req, res) => {
+  try {
+    // Fetch all agents
+    const allAgents = await AgentSchema.find({});
+
+    // Process each agent
+    for (const agent of allAgents) {
+      const { MobileNumber, MyRefferalCode } = agent;
+
+      if (!MobileNumber || !MyRefferalCode) {
+        console.warn(
+          `Skipping agent with missing mobileNumber or referralCode: ${agent._id}`
+        );
+        continue;
+      }
+
+      try {
+        // Fetch data for the current agent
+        const [
+          agentData,
+          customerData,
+          investorData,
+          skilledData,
+          nrisData,
+          propertyData,
+          approvedData,
+        ] = await Promise.all([
+          AgentSchema.find({ ReferredBy: MyRefferalCode }).catch(() => []),
+          CustomerSchema.find({ ReferredBy: MyRefferalCode }).catch(() => []),
+          investorSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          skillSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          nriSchema.find({ AddedBy: MobileNumber }).catch(() => []),
+          Property.find({ PostedBy: MobileNumber }).catch(() => []),
+          ApprovedProperty.find({ PostedBy: MobileNumber }).catch(() => []),
+        ]);
+
+        // Prepare counts object
+        const referralStats = {
+          referredAgents: agentData?.length || 0,
+          referredCustomers: customerData?.length || 0,
+          addedInvestors: investorData?.length || 0,
+          addedSkilled: skilledData?.length || 0,
+          addedNRIs: nrisData?.length || 0,
+          postedProperties: propertyData?.length || 0,
+          approvedProperties: approvedData?.length || 0,
+          lastUpdated: new Date(),
+        };
+
+        // Update the agent with counts
+        await AgentSchema.findByIdAndUpdate(
+          agent._id,
+          { $set: { referralStats } },
+          { new: true }
+        );
+      } catch (agentError) {
+        console.error(`Error processing agent ${agent._id}:`, agentError);
+        continue;
+      }
+    }
+
+    return res.status(200).json({
+      message: "Successfully updated referral and posted counts for all agents",
+      totalAgentsProcessed: allAgents.length,
+    });
+  } catch (error) {
+    console.error(
+      "Error processing referral and posted data for agents:",
+      error
+    );
+    return res.status(500).json({
+      message: "Internal server error.",
+      error: error.message,
+    });
+  }
+};
+
+const getReferralAndPostedData = async (req, res) => {
+  try {
+    const { mobileNumber, myReferralCode } = req.body;
+
+    if (!mobileNumber || !myReferralCode) {
+      return res
+        .status(400)
+        .json({ message: "Mobile number and referral code are required." });
+    }
+
+    // Fetch data
+    const agentData = await AgentSchema.find({ ReferredBy: myReferralCode });
+    const customerData = await CustomerSchema.find({
+      ReferredBy: myReferralCode,
+    });
+    const investorData = await investorSchema.find({ AddedBy: mobileNumber });
+    const skilledData = await skillSchema.find({ AddedBy: mobileNumber });
+    const nrisData = await nriSchema.find({ AddedBy: mobileNumber });
+    const propertyData = await Property.find({ PostedBy: mobileNumber });
+    const approvedData = await ApprovedProperty.find({
+      PostedBy: mobileNumber,
+    });
+
+    // Calculate counts
+    const counts = {
+      agentCount: agentData.length,
+      customerCount: customerData.length,
+      investorCount: investorData.length,
+      skilledCount: skilledData.length,
+      nrisCount: nrisData.length,
+      propertyCount: propertyData.length,
+      approvedCount: approvedData.length,
+    };
+
+    // Respond with data and counts
+    return res.status(200).json({
+      data: {
+        agentData,
+        customerData,
+        investorData,
+        skilledData,
+        nrisData,
+        propertyData,
+        approvedData,
+      },
+      counts,
+    });
+  } catch (error) {
+    console.error("Error fetching referral and posted data:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
 
 const getReferrerDetails = async (req, res) => {
   const { PostedBy } = req.params;
@@ -97,47 +307,93 @@ const getReferrerDetails = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
-
-// Create a new property
 const createProperty = async (req, res) => {
+  const s3 = new AWS.S3({
+    accessKeyId: "AKIAWX2IFPZYF2O4O3FG",
+    secretAccessKey: "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",
+    region: "us-east-1",
+  });
+
+  const uploadToS3 = async (file) => {
+    const s3 = new AWS.S3({
+      accessKeyId: "AKIAWX2IFPZYF2O4O3FG",
+      secretAccessKey: "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",
+      region: "us-east-1",
+    });
+
+    const fileName = `Approved_Properties/${Date.now()}-${file.originalname}`;
+
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME || "wealthpropertyimages",
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+
+    const result = await s3.upload(params).promise();
+    
+    // Convert S3 URL to CloudFront URL
+    const cloudFrontDomain = "d2xj2qzllg3mnf.cloudfront.net";
+    const s3Url = new URL(result.Location);
+    const cloudFrontUrl = `https://${cloudFrontDomain}/Approved_Properties/${s3Url.pathname.split('/').slice(2).join('/')}`;
+    
+    return cloudFrontUrl;
+  };
+
   try {
     let {
       propertyType,
       location,
       price,
       PostedBy,
+      fullName,
+      mobile,
       Constituency,
       propertyDetails,
     } = req.body;
 
-    // Validate PostedBy
     if (!PostedBy) {
       return res
         .status(400)
         .json({ message: "PostedBy (MobileNumber) is required." });
     }
 
-    // Validate photo
-    let photoPath = null;
-    if (req.file) {
-      photoPath = `/uploads/${req.file.filename}`;
-    } else {
-      return res.status(400).json({ message: "Photo is required." });
+    if (!req.files || req.files.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "At least one photo is required." });
     }
+
+    if (req.files.length > 6) {
+      return res.status(400).json({ message: "Maximum 6 photos allowed." });
+    }
+
+    // Upload all files to S3 and get CloudFront URLs
+    const uploadPromises = req.files.map((file) => uploadToS3(file));
+    const cloudFrontUrls = await Promise.all(uploadPromises);
+
+    // Format the URLs exactly like your migration script
+    const newImageUrls = cloudFrontUrls.length === 1 ? cloudFrontUrls[0] : cloudFrontUrls;
+
+    // For backward compatibility, we'll also store in photo field
+    const photo = newImageUrls;
 
     const newProperty = new Property({
       propertyType,
       location,
       price,
-      photo: photoPath,
+      photo, // maintaining backward compatibility
+      newImageUrls, // storing in the new field with CloudFront URLs
       PostedBy,
+      fullName,
+      mobile,
       propertyDetails,
       Constituency,
     });
 
     await newProperty.save();
 
-    // Assign property to call executive (round-robin)
+    // Executive assignment logic remains the same
     const callExecutives = await CallExecutive.find({
       assignedType: "Property",
     })
@@ -146,7 +402,6 @@ const createProperty = async (req, res) => {
 
     if (callExecutives.length > 0) {
       const assignedExecutive = callExecutives[0];
-
       assignedExecutive.assignedUsers.push({
         userType: "Property",
         userId: newProperty._id,
@@ -154,8 +409,6 @@ const createProperty = async (req, res) => {
       assignedExecutive.lastAssignedAt = new Date();
       await assignedExecutive.save();
     }
-
-    // Optional: Send data to call center API
 
     return res.status(200).json({
       message: "Property added and assigned successfully",
@@ -174,9 +427,6 @@ const createProperty = async (req, res) => {
   }
 };
 
-// module.exports = { createProperty };
-
-// Get all properties
 const GetAllPropertys = async (req, res) => {
   try {
     const properties = await Property.find();
@@ -466,4 +716,5 @@ module.exports = {
   getReferredByDetails,
   updateDynamicData,
   getReferrerDetails,
+  getReferralAndPostedData,
 };
