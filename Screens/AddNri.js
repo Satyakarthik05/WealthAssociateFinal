@@ -41,7 +41,7 @@ const AddNRIMember = () => {
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryModal, setShowCountryModal] = useState(false);
   const navigation = useNavigation();
-  
+
   const countries = [
     { label: "United Arab Emirates", value: "uae" },
     { label: "United States of America", value: "usa" },
@@ -184,13 +184,17 @@ const AddNRIMember = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
-            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+            (width < 450 || Platform.OS === "android") &&
+              styles.smallScreenScrollContainer,
           ]}
           style={styles.scrollView}
           nestedScrollEnabled={true}
         >
           <View style={styles.headerContainer}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
               <Ionicons name="arrow-back" size={24} color="#2B2D42" />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
@@ -337,8 +341,15 @@ const AddNRIMember = () => {
 
             {/* Row 4 - Single field */}
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { width: width < 450 ? '100%' : '48%' }]}>
-                <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { width: width < 450 ? "100%" : "48%" },
+                ]}
+              >
+                <Text style={styles.label}>
+                  Mobile Country No (WhatsApp No.)
+                </Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
@@ -499,7 +510,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -510,7 +521,7 @@ const styles = StyleSheet.create({
   smallScreenScrollContainer: {
     paddingHorizontal: 10,
     paddingTop: width < 450 && Platform.OS === "web" ? 280 : 0,
-    height: "100vh"
+    height: "100vh",
   },
   headerContainer: {
     flexDirection: "row",
@@ -526,7 +537,14 @@ const styles = StyleSheet.create({
   card: {
     display: "flex",
     justifyContent: "center",
-    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width:
+      width < 450
+        ? "90%"
+        : Platform.OS === "web"
+        ? width > 1024
+          ? "60%"
+          : "80%"
+        : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -544,7 +562,7 @@ const styles = StyleSheet.create({
     flexDirection: width < 450 ? "column" : "row",
     justifyContent: "space-between",
     gap: 15,
-    width: '100%',
+    width: "100%",
   },
   inputContainer: {
     width: width < 450 ? "100%" : "48%",
@@ -627,7 +645,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
     color: "#2B2D42",
-    top: 40,  
+    top: 40,
     left: 50,
     textAlign: "center",
     marginTop: Platform.OS === "ios" ? "18%" : "",
@@ -649,14 +667,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom:Platform.OS==="ios" ? "-30%":"10%",
+    marginBottom: Platform.OS === "ios" ? "-30%" : "10%",
     textAlign: "center",
     color: "#2B2D42",
     fontFamily: "Roboto-Bold",
   },
   searchContainer: {
     position: "relative",
-    marginTop:Platform.OS==="ios"?"40%":"",
+    marginTop: Platform.OS === "ios" ? "40%" : "",
   },
   searchInput: {
     width: "100%",

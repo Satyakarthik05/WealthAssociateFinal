@@ -3,8 +3,9 @@ const Customers = require("../Models/Customer");
 const Properties = require("../Models/Property");
 const Experts = require("../Models/ExpertModel");
 const skilledLabours = require("../Models/SkillModel");
+const Investors =require("../Models/InvestorModel")
 const express = require("express");
-
+const ApprovedPropertys=require("../Models/ApprovedPropertys")
 const app = express.Router();
 
 app.get("/total-agents", async (req, res) => {
@@ -32,6 +33,14 @@ app.get("/total-properties", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch agent count" });
   }
 });
+app.get("/total-approvedproperties", async (req, res) => {
+  try {
+    const count = await ApprovedPropertys.countDocuments();
+    res.json({ totalAgents: count });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch agent count" });
+  }
+});
 app.get("/total-experts", async (req, res) => {
   try {
     const count = await Experts.countDocuments();
@@ -43,6 +52,14 @@ app.get("/total-experts", async (req, res) => {
 app.get("/total-skilledlabours", async (req, res) => {
   try {
     const count = await skilledLabours.countDocuments();
+    res.json({ totalAgents: count });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch agent count" });
+  }
+});
+app.get("/total-Investors", async (req, res) => {
+  try {
+    const count = await Investors.countDocuments();
     res.json({ totalAgents: count });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch agent count" });

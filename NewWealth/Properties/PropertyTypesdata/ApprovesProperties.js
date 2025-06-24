@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -9,45 +15,49 @@ import {
   TouchableOpacity,
   Text,
   Animated,
-  ScrollView,
   TextInput,
   Modal,
-  FlatList,
-  Image,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottieView from "lottie-react-native";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import RNPickerSelect from "react-native-picker-select";
+
 import { API_URL } from "../../../data/ApiUrl";
+import { getCategorizedProperties } from "../../MainScreen/PropertyStock";
 import PropertyCard from "../../components/home/PropertyCard";
+import PropertyModal from "../../components/home/PropertyModal";
+import SectionHeader from "../../components/home/SectionHeader";
 
 const { width, height } = Dimensions.get("window");
 const PROPERTIES_PER_PAGE = 20;
 const IS_WEB = Platform.OS === "web";
-const ITEMS_PER_ROW = IS_WEB ? 3 : 1;
+const IS_SMALL_SCREEN = width < 450;
 
 const ApprovedPropertiesScreen = () => {
-  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState({});
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
-  const [referredInfo, setReferredInfo] = useState(null);
+  const [referredInfo, setReferredInfo] = useState({
+    name: "",
+    mobileNumber: "",
+  });
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState({
     propertyType: "",
     location: "",
-    price: "",
+    minPrice: "",
+    maxPrice: "",
   });
-  const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] =
-    useState(false);
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [likedProperties, setLikedProperties] = useState([]);
+  const [approvedProperties, setApprovedProperties] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [details, setDetails] = useState({});
 
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -69,7 +79,7 @@ const ApprovedPropertiesScreen = () => {
         }),
       ]).start();
     }
-  }, [loading]);
+  }, [loading, fadeAnim, slideAnim]);
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -77,15 +87,44 @@ const ApprovedPropertiesScreen = () => {
     }
   }, [currentPage]);
 
-  const getDetails = async () => {
+  const getDetails = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
+      const type = await AsyncStorage.getItem("userType");
+
       const storedLikes = await AsyncStorage.getItem("likedProperties");
       if (storedLikes) {
         setLikedProperties(JSON.parse(storedLikes));
       }
 
-      const response = await fetch(`${API_URL}/customer/getcustomer`, {
+      let endpoint = "";
+      switch (type) {
+        case "WealthAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
@@ -101,100 +140,24 @@ const ApprovedPropertiesScreen = () => {
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
-  };
+  }, []);
 
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/properties/getApproveProperty`);
-      const data = await response.json();
-
-      if (data && Array.isArray(data)) {
-        const approvedProps = data.filter(
-          (property) =>
-            getPropertyTag(property.createdAt) === "Approved Property"
-        );
-
-        setProperties(approvedProps);
-        const total = Math.ceil(approvedProps.length / PROPERTIES_PER_PAGE);
-        setTotalPages(total);
-      } else {
-        console.warn("API returned empty data.");
-        setTotalPages(1);
-      }
+      const categories = await getCategorizedProperties();
+      setApprovedProperties(categories.approvedProperties);
+      setTotalPages(
+        Math.ceil(categories.approvedProperties.length / PROPERTIES_PER_PAGE)
+      );
     } catch (error) {
       console.error("Error fetching properties:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getPropertyTag = (createdAt) => {
-    if (!createdAt) return "Listed Property";
-
-    const currentDate = new Date();
-    const propertyDate = new Date(createdAt);
-    const timeDifference = currentDate - propertyDate;
-    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-
-    if (daysDifference <= 3) return "Regular Property";
-    if (daysDifference >= 4 && daysDifference <= 17) return "Approved Property";
-    if (daysDifference >= 18 && daysDifference <= 25) return "Wealth Property";
-    return "Listed Property";
-  };
-
-  const sortPropertiesByConstituency = (properties) => {
-    if (!details.Contituency) return properties;
-
-    return [...properties].sort((a, b) => {
-      const aInConstituency = a.location?.includes(details.Contituency);
-      const bInConstituency = b.location?.includes(details.Contituency);
-
-      if (aInConstituency && !bInConstituency) return -1;
-      if (!aInConstituency && bInConstituency) return 1;
-      return 0;
-    });
-  };
-
-  const handleEnquiryNow = (property) => {
-    setSelectedProperty(property);
-    setPropertyModalVisible(true);
-  };
-
-  const filterProperties = (properties) => {
-    let filtered = [...properties];
-
-    if (searchQuery) {
-      filtered = filtered.filter((property) => {
-        const propertyId = property._id
-          ? property._id.slice(-4).toLowerCase()
-          : "";
-        return propertyId.includes(searchQuery.toLowerCase());
-      });
-    }
-
-    if (filterCriteria.propertyType) {
-      filtered = filtered.filter(
-        (item) => item.propertyType === filterCriteria.propertyType
-      );
-    }
-
-    if (filterCriteria.location) {
-      filtered = filtered.filter(
-        (item) => item.location === filterCriteria.location
-      );
-    }
-
-    if (filterCriteria.price) {
-      filtered = filtered.filter(
-        (item) => Math.floor(item.price / 100000) === filterCriteria.price
-      );
-    }
-
-    return filtered;
-  };
-
-  const loadReferredInfoFromStorage = async () => {
+  const loadReferredInfoFromStorage = useCallback(async () => {
     try {
       const data = await AsyncStorage.getItem("referredAddedByInfo");
       if (data) {
@@ -203,39 +166,93 @@ const ApprovedPropertiesScreen = () => {
     } catch (error) {
       console.error("Failed to load referred info:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      await getDetails();
+      await fetchProperties();
+    };
+    loadData();
+  }, [getDetails, fetchProperties]);
 
   useEffect(() => {
     if (isPropertyModalVisible) {
       loadReferredInfoFromStorage();
     }
-  }, [isPropertyModalVisible]);
+  }, [isPropertyModalVisible, loadReferredInfoFromStorage]);
 
-  useEffect(() => {
-    getDetails();
-    fetchProperties();
+  const handlePropertyPress = useCallback(
+    (property) => {
+      if (!property?._id) {
+        console.error("Property ID is missing");
+        return;
+      }
+
+      const images = normalizeImageSources(property).map((uri) => ({
+        uri: uri,
+      }));
+
+      let formattedPrice = "Price not available";
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images:
+            images.length > 0 ? images : [require("../../../assets/logo.png")],
+        },
+      });
+    },
+    [navigation]
+  );
+
+  const handleShare = useCallback(
+    (property) => {
+      const images = normalizeImageSources(property);
+      let shareImage = images.length > 0 ? images[0] : null;
+
+      let formattedPrice = "Price not available";
+      if (property.price) {
+        try {
+          const priceValue = parseInt(property.price);
+          if (!isNaN(priceValue)) {
+            formattedPrice = `₹${priceValue.toLocaleString()}`;
+          }
+        } catch (e) {
+          console.error("Error formatting price:", e);
+        }
+      }
+
+      navigation.navigate("PropertyCard", {
+        property: {
+          photo: shareImage,
+          location: property.location || "Location not specified",
+          price: formattedPrice,
+          propertyType: property.propertyType || "Property",
+          PostedBy: property.PostedBy || details?.Number || "",
+          fullName: property.fullName || details?.name || "Wealth Associate",
+        },
+      });
+    },
+    [navigation, details]
+  );
+
+  const handleEnquiryNow = useCallback((property) => {
+    setSelectedProperty(property);
+    setPropertyModalVisible(true);
   }, []);
 
-  const uniquePropertyTypes = [
-    ...new Set(properties.map((item) => item.propertyType)),
-  ];
-  const uniqueLocations = [...new Set(properties.map((item) => item.location))];
-  const uniquePrices = [
-    ...new Set(properties.map((item) => Math.floor(item.price / 100000))),
-  ].sort((a, b) => a - b);
-
-  const applyFilters = () => {
-    setCurrentPage(1);
-    setFilterModalVisible(false);
-  };
-
-  const resetFilters = () => {
-    setFilterCriteria({ propertyType: "", location: "", price: "" });
-    setCurrentPage(1);
-    setFilterModalVisible(false);
-  };
-
-  const normalizeImageSources = (property) => {
+  const normalizeImageSources = useCallback((property) => {
     if (!property) return [];
 
     if (Array.isArray(property.newImageUrls)) {
@@ -256,126 +273,155 @@ const ApprovedPropertiesScreen = () => {
     }
 
     return [];
-  };
+  }, []);
 
-  const handlePropertyPress = (property) => {
-    if (!property?._id) {
-      console.error("Property ID is missing");
-      return;
-    }
-
-    const images = normalizeImageSources(property).map((uri) => ({
-      uri: uri,
-    }));
-
-    let formattedPrice = "Price not available";
-    try {
-      const priceValue = parseInt(property.price);
-      if (!isNaN(priceValue)) {
-        formattedPrice = `₹${priceValue.toLocaleString()}`;
-      }
-    } catch (e) {
-      console.error("Error formatting price:", e);
-    }
-
-    navigation.navigate("PropertyDetails", {
-      property: {
-        ...property,
-        id: property._id,
-        price: formattedPrice,
-        images:
-          images.length > 0 ? images : [require("../../../assets/logo.png")],
-      },
-    });
-  };
-
-  const handleShare = (property) => {
-    const images = normalizeImageSources(property);
-    let shareImage = images.length > 0 ? images[0] : null;
-
-    let formattedPrice = "Price not available";
-    if (property.price) {
+  const toggleLike = useCallback(
+    async (propertyId) => {
       try {
-        const priceValue = parseInt(property.price);
-        if (!isNaN(priceValue)) {
-          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !likedProperties.includes(propertyId);
+        let updatedLikes;
+
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, propertyId];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== propertyId);
         }
-      } catch (e) {
-        console.error("Error formatting price:", e);
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: propertyId,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || details?.FullName || "User",
+            mobileNumber:
+              userDetails?.MobileNumber || details?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
       }
-    }
+    },
+    [likedProperties, details]
+  );
 
-    navigation.navigate("PropertyCard", {
-      property: {
-        photo: shareImage,
-        location: property.location || "Location not specified",
-        price: formattedPrice,
-        propertyType: property.propertyType || "Property",
-        PostedBy: property.PostedBy || details?.Number || "",
-        fullName: property.fullName || details?.name || "Wealth Associate",
-      },
-    });
-  };
+  const filterProperties = useCallback(() => {
+    let filtered = [...approvedProperties];
 
-  const toggleLike = async (propertyId) => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
-
-      const newLikedStatus = !likedProperties.includes(propertyId);
-      let updatedLikes;
-
-      if (newLikedStatus) {
-        updatedLikes = [...likedProperties, propertyId];
-      } else {
-        updatedLikes = likedProperties.filter((id) => id !== propertyId);
-      }
-      setLikedProperties(updatedLikes);
-
-      await AsyncStorage.setItem(
-        "likedProperties",
-        JSON.stringify(updatedLikes)
-      );
-
-      await fetch(`${API_URL}/properties/like`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: token || "",
-        },
-        body: JSON.stringify({
-          propertyId: propertyId,
-          like: newLikedStatus,
-          userName: userDetails?.FullName || details?.FullName || "User",
-          mobileNumber:
-            userDetails?.MobileNumber || details?.MobileNumber || "",
-        }),
+    if (searchQuery) {
+      filtered = filtered.filter((property) => {
+        const propertyId = property._id
+          ? property._id.slice(-4).toLowerCase()
+          : "";
+        return (
+          propertyId.includes(searchQuery.toLowerCase()) ||
+          (property.location &&
+            property.location
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (property.propertyType &&
+            property.propertyType
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+        );
       });
-    } catch (error) {
-      console.error("Error toggling like:", error);
     }
-  };
 
-  const getPaginatedProperties = () => {
-    const filtered = sortPropertiesByConstituency(filterProperties(properties));
+    if (filterCriteria.propertyType) {
+      filtered = filtered.filter(
+        (property) => property.propertyType === filterCriteria.propertyType
+      );
+    }
+
+    if (filterCriteria.location) {
+      filtered = filtered.filter(
+        (property) => property.location === filterCriteria.location
+      );
+    }
+
+    if (filterCriteria.minPrice) {
+      const minPriceValue = parseFloat(filterCriteria.minPrice) * 100000;
+      filtered = filtered.filter((property) => property.price >= minPriceValue);
+    }
+
+    if (filterCriteria.maxPrice) {
+      const maxPriceValue = parseFloat(filterCriteria.maxPrice) * 100000;
+      filtered = filtered.filter((property) => property.price <= maxPriceValue);
+    }
+
+    const newTotalPages = Math.ceil(filtered.length / PROPERTIES_PER_PAGE);
+    if (newTotalPages !== totalPages) {
+      setTotalPages(newTotalPages);
+    }
+
+    if (currentPage > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(newTotalPages);
+    } else if (newTotalPages === 0) {
+      setCurrentPage(1);
+    }
+
+    return filtered;
+  }, [
+    approvedProperties,
+    searchQuery,
+    filterCriteria,
+    totalPages,
+    currentPage,
+  ]);
+
+  const paginatedProperties = useMemo(() => {
+    const filtered = filterProperties();
     const startIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
     const endIndex = startIndex + PROPERTIES_PER_PAGE;
     return filtered.slice(startIndex, endIndex);
-  };
+  }, [filterProperties, currentPage]);
 
-  const renderPagination = () => {
-    const filteredProperties = sortPropertiesByConstituency(
-      filterProperties(properties)
-    );
-    const totalFilteredPages = Math.ceil(
-      filteredProperties.length / PROPERTIES_PER_PAGE
-    );
+  const getUniqueValues = useCallback(
+    (key) => {
+      return [...new Set(approvedProperties.map((item) => item[key]))].filter(
+        Boolean
+      );
+    },
+    [approvedProperties]
+  );
 
-    if (totalFilteredPages <= 1) return null;
+  const resetFilters = useCallback(() => {
+    setFilterCriteria({
+      propertyType: "",
+      location: "",
+      minPrice: "",
+      maxPrice: "",
+    });
+    setSearchQuery("");
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const applyFilters = useCallback(() => {
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const renderPagination = useCallback(() => {
+    if (totalPages <= 1) return null;
 
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalFilteredPages, startPage + maxVisiblePages - 1);
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
@@ -427,39 +473,292 @@ const ApprovedPropertiesScreen = () => {
         <TouchableOpacity
           style={[
             styles.pageButton,
-            currentPage === totalFilteredPages && styles.disabledButton,
+            currentPage === totalPages && styles.disabledButton,
           ]}
-          onPress={() =>
-            setCurrentPage(Math.min(totalFilteredPages, currentPage + 1))
-          }
-          disabled={currentPage === totalFilteredPages}
+          onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
         >
           <Text style={styles.pageButtonText}>Next</Text>
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [currentPage, totalPages]);
+
+  const RenderPropertyCard = React.memo(({ property }) => {
+    const [isLiked, setIsLiked] = useState(
+      likedProperties.includes(property._id)
+    );
+
+    const handleToggleLike = useCallback(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !isLiked;
+        setIsLiked(newLikedStatus);
+
+        let updatedLikes;
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, property._id];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== property._id);
+        }
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: property._id,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || details?.FullName || "User",
+            mobileNumber:
+              userDetails?.MobileNumber || details?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
+      }
+    }, [isLiked, likedProperties, property._id, details]);
+
+    return (
+      <PropertyCard
+        property={property}
+        onPress={() => handlePropertyPress(property)}
+        onEnquiryPress={() => handleEnquiryNow(property)}
+        onSharePress={() => handleShare(property)}
+        isLiked={isLiked}
+        onLikePress={handleToggleLike}
+      />
+    );
+  });
+
+  const renderHeader = useCallback(
+    () => (
+      <>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Approved Properties</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchFilterContainer}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by Property ID, Location or Type..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+            <Ionicons
+              name="search"
+              size={20}
+              color="#999"
+              style={styles.searchIcon}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setFilterModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="filter" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+      </>
+    ),
+    [searchQuery, navigation]
+  );
+
+  const renderEmptyComponent = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No properties found</Text>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={resetFilters}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.resetButtonText}>Reset Filters</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [resetFilters]
+  );
+
+  const renderFilterModal = useCallback(
+    () => (
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View
+                style={[
+                  styles.filterModalContent,
+                  IS_SMALL_SCREEN
+                    ? styles.smallScreenModal
+                    : styles.largeScreenModal,
+                ]}
+              >
+                <View style={styles.modalHandle} />
+                <Text style={styles.filterHeader}>Filter Properties</Text>
+
+                <ScrollView
+                  style={styles.filterScrollContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Property Type</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          propertyType: value,
+                        })
+                      }
+                      items={getUniqueValues("propertyType").map((type) => ({
+                        label: type,
+                        value: type,
+                      }))}
+                      value={filterCriteria.propertyType}
+                      placeholder={{ label: "Select Property Type", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#E91E63"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Location</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          location: value,
+                        })
+                      }
+                      items={getUniqueValues("location").map((loc) => ({
+                        label: loc,
+                        value: loc,
+                      }))}
+                      value={filterCriteria.location}
+                      placeholder={{ label: "Select Location", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#E91E63"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>
+                      Price Range (in lakhs)
+                    </Text>
+                    <View style={styles.priceRangeContainer}>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Min"
+                          value={filterCriteria.minPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              minPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <Text style={styles.priceRangeSeparator}>to</Text>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Max"
+                          value={filterCriteria.maxPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              maxPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.filterButtonsContainer}>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.resetFilterButton]}
+                    onPress={resetFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.resetFilterButtonText}>Reset All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.applyFilterButton]}
+                    onPress={applyFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterButtonText}>Apply Filters</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    ),
+    [
+      isFilterModalVisible,
+      getUniqueValues,
+      filterCriteria,
+      resetFilters,
+      applyFilters,
+    ]
+  );
 
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <LottieView
-          source={require("../../../assets/animations/home[1].json")}
-          autoPlay
-          loop
-          style={{ width: 200, height: 200 }}
-        />
+        <ActivityIndicator size="large" color="#E91E63" />
       </View>
     );
   }
-
-  const chunkArray = (array, chunkSize) => {
-    const result = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      result.push(array.slice(i, i + chunkSize));
-    }
-    return result;
-  };
 
   return (
     <View style={styles.container}>
@@ -472,349 +771,85 @@ const ApprovedPropertiesScreen = () => {
           },
         ]}
       >
-        <View style={styles.searchFilterContainer}>
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by Property ID..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#999"
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setFilterModalVisible(true)}
-          >
-            <Ionicons name="filter" size={20} color="white" />
-          </TouchableOpacity>
-        </View>
-        {renderPagination()}
-
         <ScrollView
           ref={scrollViewRef}
           style={styles.propertyScrollView}
           contentContainerStyle={styles.propertyGridContainer}
         >
-          {getPaginatedProperties().length > 0 ? (
-            chunkArray(getPaginatedProperties(), ITEMS_PER_ROW).map(
-              (row, rowIndex) => (
-                <View key={`row-${rowIndex}`} style={styles.propertyRow}>
-                  {row.map((item) => (
-                    <View
-                      key={item._id}
-                      style={[
-                        styles.propertyItemContainer,
-                        IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
-                      ]}
-                    >
-                      <PropertyCard
-                        property={item}
-                        onPress={() => handlePropertyPress(item)}
-                        onEnquiryPress={() => handleEnquiryNow(item)}
-                        onSharePress={() => handleShare(item)}
-                        isLiked={likedProperties.includes(item._id)}
-                        onLikePress={() => toggleLike(item._id)}
-                      />
-                    </View>
-                  ))}
-                  {row.length < ITEMS_PER_ROW &&
-                    Array(ITEMS_PER_ROW - row.length)
-                      .fill()
-                      .map((_, index) => (
-                        <View
-                          key={`empty-${rowIndex}-${index}`}
-                          style={[
-                            styles.propertyItemContainer,
-                            IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
-                          ]}
-                        />
-                      ))}
+          {renderHeader()}
+          {renderPagination()}
+
+          {paginatedProperties.length > 0 ? (
+            <View style={styles.propertyListContainer}>
+              {paginatedProperties.map((item) => (
+                <View
+                  key={item._id}
+                  style={
+                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
+                  }
+                >
+                  <RenderPropertyCard property={item} />
                 </View>
-              )
-            )
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No approved properties found</Text>
+              ))}
             </View>
+          ) : (
+            renderEmptyComponent()
           )}
+
+          {renderPagination()}
         </ScrollView>
 
-        <Modal
-          visible={isFilterModalVisible}
-          transparent={true}
-          animationType="slide"
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalHeading}>Filter Properties</Text>
-
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Property Type</Text>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputWrapper}>
-                    <TouchableOpacity
-                      style={styles.filterButtonDropdown}
-                      onPress={() =>
-                        setShowPropertyTypeDropdown(!showPropertyTypeDropdown)
-                      }
-                    >
-                      <Text style={styles.filterButtonText}>
-                        {filterCriteria.propertyType ||
-                          "-- Select Property Type --"}
-                      </Text>
-                      <MaterialIcons
-                        name={
-                          showPropertyTypeDropdown
-                            ? "arrow-drop-up"
-                            : "arrow-drop-down"
-                        }
-                        size={24}
-                        color="#E82E5F"
-                        style={styles.icon}
-                      />
-                    </TouchableOpacity>
-                    {showPropertyTypeDropdown && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          <TouchableOpacity
-                            style={styles.listItem}
-                            onPress={() => {
-                              setFilterCriteria({
-                                ...filterCriteria,
-                                propertyType: "",
-                              });
-                              setShowPropertyTypeDropdown(false);
-                            }}
-                          >
-                            <Text>-- Select Property Type --</Text>
-                          </TouchableOpacity>
-                          {uniquePropertyTypes.map((type, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  propertyType: type,
-                                });
-                                setShowPropertyTypeDropdown(false);
-                              }}
-                            >
-                              <Text>{type}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Location</Text>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputWrapper}>
-                    <TouchableOpacity
-                      style={styles.filterButtonDropdown}
-                      onPress={() =>
-                        setShowLocationDropdown(!showLocationDropdown)
-                      }
-                    >
-                      <Text style={styles.filterButtonText}>
-                        {filterCriteria.location || "-- Select Location --"}
-                      </Text>
-                      <MaterialIcons
-                        name={
-                          showLocationDropdown
-                            ? "arrow-drop-up"
-                            : "arrow-drop-down"
-                        }
-                        size={24}
-                        color="#E82E5F"
-                        style={styles.icon}
-                      />
-                    </TouchableOpacity>
-                    {showLocationDropdown && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          <TouchableOpacity
-                            style={styles.listItem}
-                            onPress={() => {
-                              setFilterCriteria({
-                                ...filterCriteria,
-                                location: "",
-                              });
-                              setShowLocationDropdown(false);
-                            }}
-                          >
-                            <Text>-- Select Location --</Text>
-                          </TouchableOpacity>
-                          {uniqueLocations.map((location, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  location: location,
-                                });
-                                setShowLocationDropdown(false);
-                              }}
-                            >
-                              <Text>{location}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Price (in lakhs)</Text>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputWrapper}>
-                    <TouchableOpacity
-                      style={styles.filterButtonDropdown}
-                      onPress={() => setShowPriceDropdown(!showPriceDropdown)}
-                    >
-                      <Text style={styles.filterButtonText}>
-                        {filterCriteria.price
-                          ? `${filterCriteria.price} Lakh`
-                          : "-- Select Price --"}
-                      </Text>
-                      <MaterialIcons
-                        name={
-                          showPriceDropdown
-                            ? "arrow-drop-up"
-                            : "arrow-drop-down"
-                        }
-                        size={24}
-                        color="#E82E5F"
-                        style={styles.icon}
-                      />
-                    </TouchableOpacity>
-                    {showPriceDropdown && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          <TouchableOpacity
-                            style={styles.listItem}
-                            onPress={() => {
-                              setFilterCriteria({
-                                ...filterCriteria,
-                                price: "",
-                              });
-                              setShowPriceDropdown(false);
-                            }}
-                          >
-                            <Text>-- Select Price --</Text>
-                          </TouchableOpacity>
-                          {uniquePrices.map((price, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  price: price,
-                                });
-                                setShowPriceDropdown(false);
-                              }}
-                            >
-                              <Text>{price} Lakh</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.modalButtonContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.applyButton]}
-                  onPress={applyFilters}
-                >
-                  <Text style={styles.modalButtonText}>Apply</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.resetButton]}
-                  onPress={resetFilters}
-                >
-                  <Text style={styles.modalButtonText}>Reset</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
+        {renderFilterModal()}
+        <PropertyModal
           visible={isPropertyModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setPropertyModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              {!referredInfo ? (
-                <View style={styles.noReferredInfo}>
-                  <Text style={styles.noReferredInfoText}>
-                    No referral information available
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => setPropertyModalVisible(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <Image
-                    source={require("../../../assets/man.png")}
-                    style={styles.agentLogo}
-                  />
-                  <Text style={styles.modalTitle}>Referred By</Text>
-                  <Text style={styles.modalText}>
-                    Name: {referredInfo.name}
-                  </Text>
-                  <Text style={styles.modalText}>
-                    Mobile: {referredInfo.mobileNumber}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() =>
-                      Linking.openURL(`tel:${referredInfo.mobileNumber}`)
-                    }
-                  >
-                    <Ionicons name="call" size={20} color="white" />
-                    <Text style={styles.callButtonText}>Call Now</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => setPropertyModalVisible(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Close</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
+          onClose={() => setPropertyModalVisible(false)}
+          property={selectedProperty}
+          referredInfo={referredInfo}
+        />
       </Animated.View>
     </View>
   );
 };
 
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  iconContainer: {
+    top: 10,
+    right: 12,
+  },
+  placeholder: {
+    color: "#999",
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EEF2F3",
+    backgroundColor: "#f8f9fa",
     paddingBottom: Platform.OS === "web" ? "45%" : "20%",
-    paddingTop:20
   },
   contentContainer: {
     flex: 1,
@@ -824,7 +859,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#EEF2F3",
+    backgroundColor: "#f8f9fa",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginTop: "2%",
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 5,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
   },
   searchFilterContainer: {
     flexDirection: "row",
@@ -836,41 +894,41 @@ const styles = StyleSheet.create({
   searchContainer: {
     flex: 1,
     marginRight: 10,
+    position: "relative",
   },
   searchInput: {
     height: 40,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 40,
     backgroundColor: "#fff",
     width: "100%",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 15,
+    top: 10,
   },
   filterButton: {
     backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
-    width: 40,
-    height: 40,
     justifyContent: "center",
     alignItems: "center",
   },
-  propertyScrollView: {
+  propertyListContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  webPropertyItem: {
+    width: "32%",
+    marginRight: "1%",
+    marginBottom: 15,
+  },
+  mobilePropertyItem: {
     width: "100%",
-    marginBottom: 10,
-  },
-  propertyGridContainer: {
-    paddingHorizontal: Platform.OS === "web" ? 8 : 15,
-  },
-  propertyRow: {
-    flexDirection: "row",
-    justifyContent: Platform.OS === "web" ? "space-between" : "center",
-    marginBottom: 8,
-    flexWrap: "wrap",
-  },
-  propertyItemContainer: {
-    width: Platform.OS === "web" ? "32%" : "95%",
-    marginBottom: Platform.OS === "web" ? 0 : 15,
+    marginBottom: 15,
   },
   emptyContainer: {
     flex: 1,
@@ -881,124 +939,127 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#666",
+    marginBottom: 20,
+  },
+  resetButton: {
+    backgroundColor: "#E91E63",
+    padding: 12,
+    borderRadius: 5,
+  },
+  resetButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  filterModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 30,
+    maxHeight: height * 0.85,
+  },
+  smallScreenModal: {
     width: "100%",
   },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-    width: Platform.OS === "web" ? "50%" : "90%",
-    maxHeight: "80%",
+  largeScreenModal: {
+    width: Platform.OS === "web" ? "50%" : "100%",
+    alignSelf: "center",
   },
-  modalHeading: {
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#ccc",
+    borderRadius: 5,
+    alignSelf: "center",
+    marginBottom: 15,
+  },
+  filterHeader: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: "center",
+    color: "#333",
   },
-  filterGroup: {
-    marginBottom: 15,
-    width: "100%",
+  filterScrollContainer: {
+    maxHeight: height * 0.6,
+    paddingHorizontal: 5,
+  },
+  filterSection: {
+    marginBottom: 25,
   },
   filterLabel: {
     fontSize: 16,
-    marginBottom: 5,
-    fontWeight: "bold",
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#333",
   },
-  inputContainer: {
-    width: "100%",
-    position: "relative",
-  },
-  inputWrapper: {
-    position: "relative",
-    width: "100%",
-  },
-  filterButtonDropdown: {
-    width: "100%",
-    height: 47,
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 2,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: "#ccc",
+  priceRangeContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  filterButtonText: {
+  priceInputContainer: {
     flex: 1,
+    marginRight: 10,
   },
-  icon: {
-    right: 0,
-    top: 0,
-  },
-  dropdownContainer: {
-    position: "absolute",
-    top: 50,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    backgroundColor: "#FFF",
-    borderColor: "#ccc",
+  priceInput: {
+    height: 48,
+    borderColor: "#ddd",
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 5,
-    maxHeight: 200,
-    width: "100%",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    fontSize: 16,
   },
-  scrollView: {
-    maxHeight: 200,
-    width: "100%",
+  priceRangeSeparator: {
+    marginHorizontal: 8,
+    color: "#666",
   },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    width: "100%",
-  },
-  modalButtonContainer: {
+  filterButtonsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 20,
-    width: "100%",
+    paddingHorizontal: 10,
   },
-  modalButton: {
+  resetFilterButton: {
+    backgroundColor: "#f0f0f0",
+    flex: 1,
+    marginRight: 10,
     padding: 12,
-    borderRadius: 5,
-    width: "48%",
-    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
-  applyButton: {
-    backgroundColor: "#3E5C76",
+  applyFilterButton: {
+    backgroundColor: "#E91E63",
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
   },
-  resetButton: {
-    backgroundColor: "#666",
-  },
-  modalButtonText: {
+  filterButtonText: {
     color: "#fff",
-    fontSize: 16,
     fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
+  },
+  resetFilterButtonText: {
+    color: "#666",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
   },
   paginationContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
     backgroundColor: "#fff",
+    marginBottom: 10,
   },
   pageNumbersContainer: {
     flexDirection: "row",
@@ -1038,71 +1099,11 @@ const styles = StyleSheet.create({
   activePageText: {
     color: "#fff",
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+  propertyScrollView: {
+    width: "100%",
   },
-  modalContent: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
-  },
-  agentLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignSelf: "center",
-    marginBottom: 15,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-    color: "#333",
-  },
-  modalText: {
-    fontSize: 16,
-    marginVertical: 4,
-    color: "#555",
-  },
-  callButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#3E5C76",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 15,
-  },
-  callButtonText: {
-    color: "white",
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  closeButton: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#666",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  noReferredInfo: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  noReferredInfoText: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 20,
+  propertyGridContainer: {
+    paddingBottom: 20,
   },
 });
 

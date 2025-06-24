@@ -5,22 +5,20 @@ const CoreClientController = require("../Controllers/CoreClientsController");
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./coreClients");
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.match(/image\/(jpeg|jpg|png|gif)$/)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed!"), false);
+    }
+  },
 });
 
-// ✅ **Add Property**
 router.post(
   "/addCoreClient",
   upload.single("photo"),

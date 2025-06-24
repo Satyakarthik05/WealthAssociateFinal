@@ -34,9 +34,6 @@ import ViewNri from "./Screens/View/ViewNri";
 import ExpertPanel from "./ExpertPanel/ExpertRoute";
 
 const CallCenterDashboard = () => {
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(
-    Platform.OS !== "android"
-  );
   const [expandedItems, setExpandedItems] = useState({});
   const [isViewCustVisible, setIsViewCustVisible] = useState(false);
   const [isViewAgentVisible, setIsViewAgentVisible] = useState(false);
@@ -54,24 +51,54 @@ const CallCenterDashboard = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [isViewallagents, setViewallagents] = useState(false);
   const [isExpertPanel, setExpertPanel] = useState(false);
-  const [isNewExperts,setNewExperts]= useState(false)
+  const [isNewExperts, setNewExperts] = useState(false);
+  const [isActive, setIsActive] = useState(true);
 
-  const toggleSidebar = () => {
-    if (Platform.OS === "android") {
-      setIsSidebarExpanded((prev) => !prev);
+  // Toggle status function
+  const toggleStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(
+        `${API_URL}/callexe/${callexecutiveId}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            token: ` ${token}` || "",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setIsActive(result.status === "active");
+        await AsyncStorage.setItem("userStatus", result.status);
+      } else {
+        console.error("Failed to toggle status:", result.message);
+      }
+    } catch (error) {
+      console.error("Error toggling status:", error);
     }
   };
 
-  const toggleMenuItem = (title) => {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [title]: !prev[title],
-    }));
+  // Check initial status on component mount
+  useEffect(() => {
+    const checkInitialStatus = async () => {
+      try {
+        const status = await AsyncStorage.getItem("userStatus");
+        if (status) {
+          setIsActive(status === "active");
+        }
+      } catch (error) {
+        console.error("Error checking initial status:", error);
+      }
+    };
 
-    if (Platform.OS === "android" && !isSidebarExpanded) {
-      setIsSidebarExpanded(true);
-    }
-  };
+    checkInitialStatus();
+  }, []);
 
   const handleSubItemClick = (subItem) => {
     // Reset all views
@@ -88,15 +115,10 @@ const CallCenterDashboard = () => {
     setIsViewNriVisible(false);
     setViewallagents(false);
     setExpertPanel(false);
-    setNewExperts(false)
-
-    if (Platform.OS === "android") {
-      setIsSidebarExpanded(false);
-    }
+    setNewExperts(false);
 
     switch (subItem) {
       case "Dashboard":
-        // Already showing dashboard by default
         break;
       case "View Customers":
         setIsViewCustVisible(true);
@@ -157,7 +179,7 @@ const CallCenterDashboard = () => {
     setIsViewNriVisible(false);
     setViewallagents(false);
     setExpertPanel(false);
-    setNewExperts(false)
+    setNewExperts(false);
   };
 
   const renderContent = () => {
@@ -174,7 +196,7 @@ const CallCenterDashboard = () => {
     if (isViewApprovedProperties) return <ViewApprovedProperties />;
     if (isViewallagents) return <Viewallagents />;
     if (isExpertPanel) return <ExpertPanel />;
-    if(isNewExperts)return<NewExperts/>
+    if (isNewExperts) return <NewExperts />;
     return <Dashboard />;
   };
 
@@ -192,7 +214,7 @@ const CallCenterDashboard = () => {
     setIsViewNriVisible(false);
     setViewallagents(false);
     setExpertPanel(false);
-    setNewExperts(false)
+    setNewExperts(false);
   };
 
   const getDetails = async () => {
@@ -206,6 +228,7 @@ const CallCenterDashboard = () => {
       });
       const userDetails = await response.json();
       setDetails(userDetails);
+      AsyncStorage.setItem("callexecutiveId", userDetails._id);
 
       // Base menu items that everyone can see
       const baseMenuItems = [
@@ -243,7 +266,7 @@ const CallCenterDashboard = () => {
           baseMenuItems.push({
             title: "Expert Panel",
             icon: "cog-outline",
-            subItems: ["Expert Panel Requests", "ExpertPanel","NewExperts"],
+            subItems: ["Expert Panel Requests", "ExpertPanel", "NewExperts"],
           });
           break;
         default:
@@ -267,7 +290,7 @@ const CallCenterDashboard = () => {
             {
               title: "Expert Panel",
               icon: "cog-outline",
-              subItems: ["Expert Panel Requests", "ExpertPanel","NewExperts"],
+              subItems: ["Expert Panel Requests", "ExpertPanel", "NewExperts"],
             }
           );
       }
@@ -294,6 +317,9 @@ const CallCenterDashboard = () => {
     getDetails();
   }, []);
 
+  // Flatten all subItems for the bottom navigation
+  const allSubItems = menuItems.flatMap(item => item.subItems);
+
   return (
     <View style={styles.container}>
       {/* Status Bar Adjustment for Android */}
@@ -319,6 +345,30 @@ const CallCenterDashboard = () => {
             <Ionicons name="moon-outline" size={24} color="#000" />
             <Ionicons name="notifications-outline" size={24} color="#000" />
             <Ionicons name="person-circle-outline" size={30} color="#000" />
+
+            {/* Status Toggle Button */}
+            <TouchableOpacity
+              onPress={toggleStatus}
+              style={styles.toggleContainer}
+            >
+              <View
+                style={[
+                  styles.toggleTrack,
+                  isActive ? styles.toggleActive : styles.toggleInactive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    isActive ? styles.thumbActive : styles.thumbInactive,
+                  ]}
+                />
+              </View>
+              <Text style={styles.toggleText}>
+                {isActive ? "Active" : "Inactive"}
+              </Text>
+            </TouchableOpacity>
+
             {details && (
               <Text style={styles.userName}>{details.name || "User"}</Text>
             )}
@@ -326,116 +376,93 @@ const CallCenterDashboard = () => {
         </View>
       </View>
 
-      {/* Main Layout */}
-      <View style={styles.mainContent}>
-        {/* Sidebar */}
-        <View
-          style={[
-            styles.sidebar,
-            Platform.OS === "android" &&
-              (isSidebarExpanded
-                ? styles.expandedSidebar
-                : styles.collapsedSidebar),
-          ]}
-        >
-          <ScrollView style={{ maxHeight: 600, minHeight: 200 }}>
-            <FlatList
-              data={menuItems}
-              keyExtractor={(item) => item.title}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View>
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => toggleMenuItem(item.title)}
-                  >
-                    <Ionicons name={item.icon} size={24} color="#555" />
-                    {isSidebarExpanded && (
-                      <Text style={styles.menuText}>{item.title}</Text>
-                    )}
-                    {isSidebarExpanded &&
-                      item.subItems.length > 1 && ( // Only show chevron if there are subitems
-                        <Ionicons
-                          name={
-                            expandedItems[item.title]
-                              ? "chevron-up-outline"
-                              : "chevron-down-outline"
-                          }
-                          size={16}
-                          color="#555"
-                        />
-                      )}
-                  </TouchableOpacity>
-                  {isSidebarExpanded &&
-                    expandedItems[item.title] &&
-                    item.subItems &&
-                    item.subItems.map((sub, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.subMenuItem}
-                        onPress={() => handleSubItemClick(sub)}
-                      >
-                        <Text style={styles.subMenuText}>{sub}</Text>
-                      </TouchableOpacity>
-                    ))}
-                </View>
+      {/* Main Content Area */}
+      <View style={styles.contentArea}>
+        <View style={styles.container}>
+          <ScrollView>
+            <View style={styles.userContent}>
+              {details && (
+                <>
+                  <Text style={styles.usersContentText}>
+                    Welcome Back:{" "}
+                    <Text style={{ color: "#E82E5F" }}>
+                      {details.name || "User"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.usersContentText}>
+                    Phone number:{" "}
+                    <Text style={{ color: "#E82E5F" }}>
+                      {details.phone || "N/A"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.usersContentText}>
+                    Role:{" "}
+                    <Text style={{ color: "#E82E5F" }}>
+                      {details.assignedType || "N/A"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.usersContentText}>
+                    Status:{" "}
+                    <Text style={{ color: isActive ? "#4CAF50" : "#9E9E9E" }}>
+                      {isActive ? "Active" : "Inactive"}
+                    </Text>
+                  </Text>
+                </>
               )}
-            />
-            <Text style={styles.lastUpdated}>
-              Last Updated: {new Date().toLocaleDateString()}
-            </Text>
-          </ScrollView>
-        </View>
+              {(Platform.OS === "android" || Platform.OS === "ios") && (
+                <TouchableOpacity
+                  onPress={toggleStatus}
+                  style={styles.toggleContainer}
+                >
+                  <View
+                    style={[
+                      styles.toggleTrack,
+                      isActive ? styles.toggleActive : styles.toggleInactive,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.toggleThumb,
+                        isActive ? styles.thumbActive : styles.thumbInactive,
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.toggleText}>
+                    {isActive ? "Active" : "Inactive"}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-        {/* Main Content Area */}
-        <View style={styles.contentArea}>
-          <View style={styles.container}>
-            <ScrollView>
-              <View style={styles.userContent}>
-                {details && (
-                  <>
-                    <Text style={styles.usersContentText}>
-                      Welcome Back:{" "}
-                      <Text style={{ color: "#E82E5F" }}>
-                        {details.name || "User"}
-                      </Text>
-                    </Text>
-                    <Text style={styles.usersContentText}>
-                      Phone number:{" "}
-                      <Text style={{ color: "#E82E5F" }}>
-                        {details.phone || "N/A"}
-                      </Text>
-                    </Text>
-                    <Text style={styles.usersContentText}>
-                      Role:{" "}
-                      <Text style={{ color: "#E82E5F" }}>
-                        {details.assignedType || "N/A"}
-                      </Text>
-                    </Text>
-                  </>
-                )}
-                <ScrollView style={{ height: "auto" }}>
-                  {renderContent()}
-                </ScrollView>
-              </View>
-            </ScrollView>
-          </View>
+              <ScrollView style={{ height: "auto" }}>
+                {renderContent()}
+              </ScrollView>
+            </View>
+          </ScrollView>
         </View>
       </View>
 
-      {/* Toggle Button for Sidebar (Android Only) */}
-      {Platform.OS === "android" && (
-        <TouchableOpacity style={styles.toggleButton} onPress={toggleSidebar}>
-          <Ionicons
-            name={isSidebarExpanded ? "close-circle-outline" : "menu-outline"}
-            size={30}
-            color="#000"
-          />
-        </TouchableOpacity>
-      )}
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bottomNavContent}
+        >
+          {allSubItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.bottomNavItem}
+              onPress={() => handleSubItemClick(item)}
+            >
+              <Text style={styles.bottomNavText}>{item}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -483,72 +510,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#555",
   },
-  mainContent: {
-    flexDirection: "row",
-    flex: 1,
-  },
-  sidebar: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRightWidth: 1,
-    borderColor: "#ddd",
-    width: Platform.OS === "android" ? 300 : 250,
-    ...(Platform.OS === "web" && { minHeight: "100vh" }),
-  },
-  expandedSidebar: {
-    width: 250,
-  },
-  collapsedSidebar: {
-    width: 70,
-    alignItems: "center",
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    justifyContent: "space-between",
-  },
-  menuText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-    marginLeft: 10,
-  },
-  subMenuItem: {
-    paddingVertical: 8,
-  },
-  subMenuText: {
-    fontSize: 14,
-    color: "#FF4081",
-    paddingLeft: 35,
-    paddingVertical: 5,
-  },
-  lastUpdated: {
-    marginTop: 20,
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-  },
   contentArea: {
     flex: 1,
     backgroundColor: "#F0F5F5",
     ...(Platform.OS === "web" && { padding: 5 }),
-    height: "100vh",
-  },
-  toggleButton: {
-    position: "absolute",
-    top: 25,
-    left: 20,
-    zIndex: 1000,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 60, // Add margin to accommodate bottom nav
   },
   userContent: {
     backgroundColor: "#fff",
@@ -561,6 +527,70 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
+  },
+  // Toggle button styles
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  toggleTrack: {
+    width: 50,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  toggleActive: {
+    backgroundColor: "#4CAF50",
+  },
+  toggleInactive: {
+    backgroundColor: "#9E9E9E",
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "white",
+  },
+  thumbActive: {
+    alignSelf: "flex-end",
+  },
+  thumbInactive: {
+    alignSelf: "flex-start",
+  },
+  toggleText: {
+    marginLeft: 5,
+    color: "#555",
+    fontWeight: "bold",
+  },
+  // Bottom navigation styles
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    height: 60,
+    paddingVertical: 5,
+  },
+  bottomNavContent: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  bottomNavItem: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  bottomNavText: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500',
   },
 });
 

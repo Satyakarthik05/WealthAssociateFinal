@@ -29,7 +29,11 @@ const PostProperty = ({ closeModal }) => {
   const { width, height } = useWindowDimensions();
   const isMobileView = Platform.OS !== "web" || width < 450;
   const fontsLoaded = useFontsLoader();
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   // State declarations
   const [propertyType, setPropertyType] = useState("");
   const [location, setLocation] = useState("");
@@ -384,7 +388,11 @@ const PostProperty = ({ closeModal }) => {
             onChangeText={setPropertyTypeSearch}
             autoFocus={true}
           />
+<<<<<<< HEAD
           <ScrollView 
+=======
+          <ScrollView
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             style={styles.dropdownScrollView}
             keyboardShouldPersistTaps="always"
           >
@@ -412,7 +420,11 @@ const PostProperty = ({ closeModal }) => {
             onChangeText={setLocationSearch}
             autoFocus={true}
           />
+<<<<<<< HEAD
           <ScrollView 
+=======
+          <ScrollView
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             style={styles.dropdownScrollView}
             keyboardShouldPersistTaps="always"
           >
@@ -435,7 +447,11 @@ const PostProperty = ({ closeModal }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#D8E3E7" }}>
+<<<<<<< HEAD
       {Platform.OS === 'ios' ? (
+=======
+      {Platform.OS === "ios" ? (
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         <KeyboardAvoidingView
           style={styles.container}
           behavior="padding"
@@ -537,10 +553,17 @@ const PostProperty = ({ closeModal }) => {
               {/* Property Type Input */}
               <Text style={styles.label}>Property Type</Text>
               <View style={styles.inputWrapper}>
+<<<<<<< HEAD
                 <TouchableOpacity 
                   onPress={handlePropertyTypePress}
                   activeOpacity={0.8}
                   style={{ width: '100%' }}
+=======
+                <TouchableOpacity
+                  onPress={handlePropertyTypePress}
+                  activeOpacity={0.8}
+                  style={{ width: "100%" }}
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                 >
                   <View style={styles.inputContainer}>
                     <TextInput
@@ -573,10 +596,17 @@ const PostProperty = ({ closeModal }) => {
               {/* Location Input */}
               <Text style={styles.label}>Location</Text>
               <View style={styles.inputWrapper}>
+<<<<<<< HEAD
                 <TouchableOpacity 
                   onPress={handleLocationPress}
                   activeOpacity={0.8}
                   style={{ width: '100%' }}
+=======
+                <TouchableOpacity
+                  onPress={handleLocationPress}
+                  activeOpacity={0.8}
+                  style={{ width: "100%" }}
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                 >
                   <View style={styles.inputContainer}>
                     <TextInput
@@ -739,10 +769,17 @@ const PostProperty = ({ closeModal }) => {
             {/* Property Type Input */}
             <Text style={styles.label}>Property Type</Text>
             <View style={styles.inputWrapper}>
+<<<<<<< HEAD
               <TouchableOpacity 
                 onPress={handlePropertyTypePress}
                 activeOpacity={0.8}
                 style={{ width: '100%' }}
+=======
+              <TouchableOpacity
+                onPress={handlePropertyTypePress}
+                activeOpacity={0.8}
+                style={{ width: "100%" }}
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               >
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -775,10 +812,17 @@ const PostProperty = ({ closeModal }) => {
             {/* Location Input */}
             <Text style={styles.label}>Location</Text>
             <View style={styles.inputWrapper}>
+<<<<<<< HEAD
               <TouchableOpacity 
                 onPress={handleLocationPress}
                 activeOpacity={0.8}
                 style={{ width: '100%' }}
+=======
+              <TouchableOpacity
+                onPress={handleLocationPress}
+                activeOpacity={0.8}
+                style={{ width: "100%" }}
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               >
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -852,6 +896,7 @@ const PostProperty = ({ closeModal }) => {
         animationType="slide"
         onRequestClose={handleDropdownClose}
       >
+<<<<<<< HEAD
         {Platform.OS === 'ios' ? (
           <KeyboardAvoidingView 
             style={styles.modalOverlay} 
@@ -867,6 +912,22 @@ const PostProperty = ({ closeModal }) => {
               styles.dropdownModalContainer,
               { height: height * 0.6 }
             ]}>
+=======
+        {Platform.OS === "ios" ? (
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior="padding"
+            keyboardVerticalOffset={60}
+          >
+            <TouchableOpacity
+              style={styles.modalBackground}
+              activeOpacity={1}
+              onPress={handleDropdownClose}
+            />
+            <View
+              style={[styles.dropdownModalContainer, { height: height * 0.6 }]}
+            >
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               {renderDropdownContent()}
               <TouchableOpacity
                 style={styles.closeDropdownButton}
@@ -878,6 +939,7 @@ const PostProperty = ({ closeModal }) => {
           </KeyboardAvoidingView>
         ) : (
           <View style={styles.modalOverlay}>
+<<<<<<< HEAD
             <TouchableOpacity 
               style={styles.modalBackground} 
               activeOpacity={1}
@@ -887,6 +949,16 @@ const PostProperty = ({ closeModal }) => {
               styles.dropdownModalContainer,
               { height: height * 0.6 }
             ]}>
+=======
+            <TouchableOpacity
+              style={styles.modalBackground}
+              activeOpacity={1}
+              onPress={handleDropdownClose}
+            />
+            <View
+              style={[styles.dropdownModalContainer, { height: height * 0.6 }]}
+            >
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               {renderDropdownContent()}
               <TouchableOpacity
                 style={styles.closeDropdownButton}
@@ -1123,7 +1195,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: "80%",
+<<<<<<< HEAD
     marginBottom:Platform.OS==="ios" ? "-55%":"",
+=======
+    marginBottom: Platform.OS === "ios" ? "-55%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   dropdownContent: {
     flex: 1,
@@ -1141,14 +1217,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 15,
+<<<<<<< HEAD
      marginTop:Platform.OS==="ios" ? "5%": "",
+=======
+    marginTop: Platform.OS === "ios" ? "5%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     backgroundColor: "#fff",
   },
   dropdownScrollView: {
     flex: 1,
     width: "100%",
     // marginBottom: 15,
+<<<<<<< HEAD
     marginBottom:Platform.OS==="ios" ? "4%":"",
+=======
+    marginBottom: Platform.OS === "ios" ? "4%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   dropdownItem: {
     padding: 15,

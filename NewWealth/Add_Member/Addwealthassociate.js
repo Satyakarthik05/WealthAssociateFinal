@@ -75,9 +75,10 @@ const Add_Agent = ({ closeModal }) => {
 
       setUserType(storedUserType);
 
-      let endpoint = storedUserType === "CoreMember" 
-        ? `${API_URL}/core/getcore` 
-        : `${API_URL}/agent/AgentDetails`;
+      let endpoint =
+        storedUserType === "CoreMember"
+          ? `${API_URL}/core/getcore`
+          : `${API_URL}/agent/AgentDetails`;
 
       const response = await fetch(endpoint, {
         headers: { token },
@@ -134,13 +135,15 @@ const Add_Agent = ({ closeModal }) => {
     Keyboard.dismiss();
     setBottomSheetType(type);
     setSearchTerm("");
-    
+
     switch (type) {
       case "district":
         setFilteredData(districts);
         break;
       case "constituency":
-        const selectedDistrict = districts.find(d => d.parliament === formData.district);
+        const selectedDistrict = districts.find(
+          (d) => d.parliament === formData.district
+        );
         setFilteredData(selectedDistrict?.assemblies || []);
         break;
       case "expertise":
@@ -152,7 +155,7 @@ const Add_Agent = ({ closeModal }) => {
       default:
         setFilteredData([]);
     }
-    
+
     setBottomSheetVisible(true);
     setTimeout(() => {
       searchInputRef.current?.focus();
@@ -161,20 +164,22 @@ const Add_Agent = ({ closeModal }) => {
 
   const handleSearch = (text) => {
     setSearchTerm(text);
-    
+
     switch (bottomSheetType) {
       case "district":
         setFilteredData(
-          districts.filter(item =>
+          districts.filter((item) =>
             item.parliament.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
       case "constituency":
-        const selectedDistrict = districts.find(d => d.parliament === formData.district);
+        const selectedDistrict = districts.find(
+          (d) => d.parliament === formData.district
+        );
         if (selectedDistrict) {
           setFilteredData(
-            selectedDistrict.assemblies.filter(item =>
+            selectedDistrict.assemblies.filter((item) =>
               item.name.toLowerCase().includes(text.toLowerCase())
             )
           );
@@ -182,14 +187,14 @@ const Add_Agent = ({ closeModal }) => {
         break;
       case "expertise":
         setFilteredData(
-          expertiseOptions.filter(item =>
+          expertiseOptions.filter((item) =>
             item.name.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
       case "experience":
         setFilteredData(
-          experienceOptions.filter(item =>
+          experienceOptions.filter((item) =>
             item.name.toLowerCase().includes(text.toLowerCase())
           )
         );
@@ -218,9 +223,27 @@ const Add_Agent = ({ closeModal }) => {
   };
 
   const handleRegister = async () => {
-    const { fullname, mobile, email, district, constituency, location, expertise, experience } = formData;
+    const {
+      fullname,
+      mobile,
+      email,
+      district,
+      constituency,
+      location,
+      expertise,
+      experience,
+    } = formData;
 
-    if (!fullname || !mobile || !email || !district || !constituency || !location || !expertise || !experience) {
+    if (
+      !fullname ||
+      !mobile ||
+      !email ||
+      !district ||
+      !constituency ||
+      !location ||
+      !expertise ||
+      !experience
+    ) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
@@ -228,8 +251,10 @@ const Add_Agent = ({ closeModal }) => {
     setIsLoading(true);
     setErrorMessage("");
 
-    const selectedDistrict = districts.find(d => d.parliament === district);
-    const selectedAssembly = selectedDistrict?.assemblies.find(a => a.name === constituency);
+    const selectedDistrict = districts.find((d) => d.parliament === district);
+    const selectedAssembly = selectedDistrict?.assemblies.find(
+      (a) => a.name === constituency
+    );
 
     if (!selectedDistrict || !selectedAssembly) {
       Alert.alert("Error", "Invalid district or constituency selected.");
@@ -286,9 +311,11 @@ const Add_Agent = ({ closeModal }) => {
       onPress={() => handleSelectItem(item)}
     >
       <Text style={styles.listItemText}>
-        {bottomSheetType === "district" ? item.parliament : 
-         bottomSheetType === "constituency" ? item.name : 
-         item.name}
+        {bottomSheetType === "district"
+          ? item.parliament
+          : bottomSheetType === "constituency"
+          ? item.name
+          : item.name}
       </Text>
     </TouchableOpacity>
   );
@@ -348,10 +375,19 @@ const Add_Agent = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
+<<<<<<< HEAD
                   keyExtractor={(item, index) => 
                     bottomSheetType === "district" ? item.parliament : 
                     bottomSheetType === "constituency" ? `${item.name}-${index}` : 
                     item.code
+=======
+                  keyExtractor={(item, index) =>
+                    bottomSheetType === "district"
+                      ? item.parliament
+                      : bottomSheetType === "constituency"
+                      ? `${item.name}-${index}`
+                      : item.code
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   }
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
@@ -454,9 +490,7 @@ const Add_Agent = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Parliament</Text>
-                <TouchableOpacity
-                  onPress={() => openBottomSheet("district")}
-                >
+                <TouchableOpacity onPress={() => openBottomSheet("district")}>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -486,8 +520,15 @@ const Add_Agent = ({ closeModal }) => {
                 >
                   <View style={styles.inputWrapper}>
                     <TextInput
-                      style={[styles.input, !formData.district && styles.disabledInput]}
-                      placeholder={formData.district ? "Select Assembly" : "First select Parliament"}
+                      style={[
+                        styles.input,
+                        !formData.district && styles.disabledInput,
+                      ]}
+                      placeholder={
+                        formData.district
+                          ? "Select Assembly"
+                          : "First select Parliament"
+                      }
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       value={formData.constituency}
                       editable={false}
@@ -504,9 +545,7 @@ const Add_Agent = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Experience</Text>
-                <TouchableOpacity
-                  onPress={() => openBottomSheet("experience")}
-                >
+                <TouchableOpacity onPress={() => openBottomSheet("experience")}>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -530,9 +569,7 @@ const Add_Agent = ({ closeModal }) => {
             <View style={styles.row}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Expertise</Text>
-                <TouchableOpacity
-                  onPress={() => openBottomSheet("expertise")}
-                >
+                <TouchableOpacity onPress={() => openBottomSheet("expertise")}>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -627,7 +664,11 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
     alignItems: "center",
+<<<<<<< HEAD
     height:Platform.OS==="ios" ? "100%":"",
+=======
+    height: Platform.OS === "ios" ? "100%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   card: {
     backgroundColor: "#FDFDFD",
@@ -689,7 +730,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 15,
     top: isSmallScreen ? 10 : 12,
+<<<<<<< HEAD
     color:"#3E5C76",
+=======
+    color: "#3E5C76",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   disabledInput: {
     backgroundColor: "#eee",
@@ -754,9 +799,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+<<<<<<< HEAD
     maxHeight: Dimensions.get('window').height * 0.7,
     marginTop: Platform.OS === 'ios' ? 200 : 0,
     marginBottom:Platform.OS==="ios" ? "-14%":"",
+=======
+    maxHeight: Dimensions.get("window").height * 0.7,
+    marginTop: Platform.OS === "ios" ? 200 : 0,
+    marginBottom: Platform.OS === "ios" ? "-14%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   modalTitle: {
     fontSize: 18,

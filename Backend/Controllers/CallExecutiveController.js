@@ -137,6 +137,51 @@ const deleteCallExecutive = async (req, res) => {
     });
   }
 };
+
+
+
+
+const toggleStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const executive = await CallExecutive.findById(id);
+    
+    if (!executive) {
+      return res.status(404).json({ message: "Call executive not found" });
+    }
+
+    executive.status = executive.status === "active" ? "inactive" : "active";
+    await executive.save();
+
+    res.status(200).json({
+      message: "Status updated successfully",
+      status: executive.status
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get status controller
+const getStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const executive = await CallExecutive.findById(id).select("status");
+    
+    if (!executive) {
+      return res.status(404).json({ message: "Call executive not found" });
+    }
+
+    res.status(200).json({
+      status: executive.status
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
 const myagents = async (req, res) => {
   try {
     // 1. Validate and convert AgentId
@@ -155,7 +200,7 @@ const myagents = async (req, res) => {
       { _id: executiveId },
       { $pull: { assignedUsers: { userId: null } } }
     );
-    console.log(`Cleaned ${cleanupResult.modifiedCount} invalid assignments`);
+    // console.log(`Cleaned ${cleanupResult.modifiedCount} invalid assignments`);
 
     // 3. Get executive with valid agents
     const executive = await CallExecutive.aggregate([
@@ -225,6 +270,8 @@ const myagents = async (req, res) => {
     });
   }
 };
+
+
 const myCustomers = async (req, res) => {
   try {
     // 1. Validate and convert AgentId
@@ -462,4 +509,6 @@ module.exports = {
   myProperties,
   getCallExe,
   editExecutive,
+  toggleStatus,
+  getStatus
 };

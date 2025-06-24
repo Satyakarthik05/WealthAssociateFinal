@@ -248,7 +248,8 @@ const Register_screen = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
-            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+            (width < 450 || Platform.OS === "android") &&
+              styles.smallScreenScrollContainer,
           ]}
           style={styles.scrollView}
           nestedScrollEnabled={true}
@@ -749,7 +750,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -759,8 +760,8 @@ const styles = StyleSheet.create({
   },
   smallScreenScrollContainer: {
     paddingHorizontal: 10,
-    paddingTop:width<450 && Platform.OS==="web"?470:0,
-    height:"100vh"
+    paddingTop: width < 450 && Platform.OS === "web" ? 470 : 0,
+    height: "100vh",
   },
   headerContainer: {
     flexDirection: "row",
@@ -777,7 +778,14 @@ const styles = StyleSheet.create({
   card: {
     display: "flex",
     justifyContent: "center",
-    width: width < 450 ? "95%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width:
+      width < 450
+        ? "95%"
+        : Platform.OS === "web"
+        ? width > 1024
+          ? "60%"
+          : "80%"
+        : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -799,12 +807,12 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   inputRow: {
-    flexDirection: width < 450 || Platform.OS === 'android' ? "column" : "row",
+    flexDirection: width < 450 || Platform.OS === "android" ? "column" : "row",
     justifyContent: "space-between",
     gap: 15,
   },
   inputContainer: {
-    width: width < 450 || Platform.OS === 'android' ? "100%" : "30%",
+    width: width < 450 || Platform.OS === "android" ? "100%" : "30%",
     position: "relative",
     zIndex: 1,
   },
@@ -835,7 +843,12 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? "20%" : "undefined",
     marginRight: 7,
     marginBottom: Platform.OS === "ios" ? "30%" : 40,
-    left: Platform.OS === "ios" ? "-34%" : "undefined" && width < 450 ? -111 : "-45%",
+    left:
+      Platform.OS === "ios"
+        ? "-34%"
+        : "undefined" && width < 450
+        ? -111
+        : "-45%",
   },
   icon: {
     position: "absolute",
@@ -931,7 +944,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
-    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginTop: Platform.OS === "ios" ? 200 : 0,
   },
   modalTitle: {
     fontSize: 18,

@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,15 +27,15 @@ import AddNri from "./AddNri";
 import AddInvestor from "./AddInvestors";
 import Rskill from "./Rskill";
 import Add_Agent from "./Add_Agent";
-// import ViewSkilledLabours from "../MySkilled/ViewSkilledLabours";
 
 export default function Add_Member() {
   const navigation = useNavigation();
   const [userType, setUserType] = useState("");
   const [agentType, setAgentType] = useState("");
   const [loading, setLoading] = useState(true);
-
-  // Modals state
+  const [windowWidth, setWindowWidth] = useState(
+    Dimensions.get("window").width
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
   const [nriModalVisible, setNriModalVisible] = useState(false);
@@ -47,7 +48,15 @@ export default function Add_Member() {
 
   const tabsScrollRef = useRef(null);
   const actionButtonsScrollRef = useRef(null);
-  const { width } = Dimensions.get("window");
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setWindowWidth(Dimensions.get("window").width);
+    };
+
+    Dimensions.addEventListener("change", updateDimensions);
+    return () => Dimensions.removeEventListener("change", updateDimensions);
+  }, []);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -208,18 +217,26 @@ export default function Add_Member() {
     }
   };
 
+  const isMobile = windowWidth < 450;
+
   return (
     <View style={styles.container}>
-      {/* <UpperNavigation /> */}
-
       <ScrollView
         ref={actionButtonsScrollRef}
-        horizontal
+        horizontal={isMobile}
         showsHorizontalScrollIndicator={false}
         style={styles.actionButtonsContainer}
-        contentContainerStyle={styles.actionButtonsContentContainer}
+        contentContainerStyle={[
+          styles.actionButtonsContentContainer,
+          isMobile ? null : styles.webActionButtonsContentContainer,
+        ]}
       >
-        <View style={styles.actionButtons}>
+        <View
+          style={[
+            styles.actionButtons,
+            isMobile ? null : styles.webActionButtons,
+          ]}
+        >
           {renderAddAssociateButton()}
 
           <TouchableOpacity
@@ -266,12 +283,15 @@ export default function Add_Member() {
 
       <ScrollView
         ref={tabsScrollRef}
-        horizontal
+        horizontal={isMobile}
         showsHorizontalScrollIndicator={false}
         style={styles.tabsContainer}
-        contentContainerStyle={styles.tabsContentContainer}
+        contentContainerStyle={[
+          styles.tabsContentContainer,
+          isMobile ? null : styles.webTabsContentContainer,
+        ]}
       >
-        <View style={styles.tabs}>
+        <View style={[styles.tabs, isMobile ? null : styles.webTabs]}>
           {getVisibleTabs().map((tab) => (
             <TouchableOpacity
               key={tab.id}
@@ -299,6 +319,7 @@ export default function Add_Member() {
 
       {renderTabContent()}
 
+      {/* Modals remain the same as before */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -403,7 +424,6 @@ export default function Add_Member() {
         />
       </Modal>
 
-      {/* NRI Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -419,7 +439,6 @@ export default function Add_Member() {
         />
       </Modal>
 
-      {/* Skilled Resource Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -435,7 +454,6 @@ export default function Add_Member() {
         />
       </Modal>
 
-      {/* Investor Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -458,7 +476,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    top:15
+    paddingTop: 15,
   },
   loadingContainer: {
     flex: 1,
@@ -471,6 +489,10 @@ const styles = StyleSheet.create({
   actionButtonsContentContainer: {
     paddingHorizontal: 2,
   },
+  webActionButtonsContentContainer: {
+    justifyContent: "center",
+    width: "100%",
+  },
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-evenly",
@@ -479,12 +501,15 @@ const styles = StyleSheet.create({
     elevation: 2,
     gap: 20,
   },
+  webActionButtons: {
+    width: "100%",
+    maxWidth: 800,
+    alignSelf: "center",
+  },
   actionButton: {
     alignItems: "center",
-    // width: Dimensions.get("window").width * 0.45,
-    // minWidth: 120,
+    minWidth: 100,
     paddingHorizontal: 5,
-    // gap:5
   },
   circleIcon: {
     width: 50,
@@ -512,9 +537,19 @@ const styles = StyleSheet.create({
   tabsContentContainer: {
     paddingHorizontal: 5,
   },
+  webTabsContentContainer: {
+    justifyContent: "center",
+    width: "100%",
+  },
   tabs: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  webTabs: {
+    width: "100%",
+    maxWidth: 800,
+    alignSelf: "center",
+    justifyContent: "space-evenly",
   },
   tabButton: {
     paddingHorizontal: 15,

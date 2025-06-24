@@ -240,7 +240,8 @@ const RegisterCustomer = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
-            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+            (width < 450 || Platform.OS === "android") &&
+              styles.smallScreenScrollContainer,
           ]}
           style={styles.scrollView}
           nestedScrollEnabled={true}
@@ -621,7 +622,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -632,7 +633,7 @@ const styles = StyleSheet.create({
   smallScreenScrollContainer: {
     paddingHorizontal: 10,
     paddingTop: width < 450 && Platform.OS === "web" ? 310 : 0,
-    height: "100vh"
+    height: "100vh",
   },
   headerContainer: {
     flexDirection: "row",
@@ -648,7 +649,14 @@ const styles = StyleSheet.create({
   card: {
     display: "flex",
     justifyContent: "center",
-    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width:
+      width < 450
+        ? "90%"
+        : Platform.OS === "web"
+        ? width > 1024
+          ? "60%"
+          : "80%"
+        : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -706,7 +714,12 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? "20%" : "undefined",
     marginRight: 7,
     marginBottom: Platform.OS === "ios" ? "30%" : 40,
-    left: Platform.OS === "ios" ? "-34%" : "undefined" && width < 450 ? -111 : "-45%",
+    left:
+      Platform.OS === "ios"
+        ? "-34%"
+        : "undefined" && width < 450
+        ? -111
+        : "-45%",
   },
   icon: {
     position: "absolute",
@@ -795,7 +808,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: "relative",
     marginBottom: 15,
-    marginTop:Platform.OS==="ios"?"30%":"",
+    marginTop: Platform.OS === "ios" ? "30%" : "",
   },
   searchInput: {
     width: "100%",

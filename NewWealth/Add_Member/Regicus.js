@@ -167,13 +167,23 @@ const RegisterExecute = ({ closeModal }) => {
     Keyboard.dismiss();
     setBottomSheetType(type);
     setSearchTerm("");
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     switch (type) {
       case "district":
         setFilteredData(districts);
         break;
       case "constituency":
+<<<<<<< HEAD
         const selectedDistrict = districts.find(d => d.parliament === formData.district);
+=======
+        const selectedDistrict = districts.find(
+          (d) => d.parliament === formData.district
+        );
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         setFilteredData(selectedDistrict?.assemblies || []);
         break;
       case "occupation":
@@ -182,7 +192,11 @@ const RegisterExecute = ({ closeModal }) => {
       default:
         setFilteredData([]);
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     setBottomSheetVisible(true);
     setTimeout(() => {
       searchInputRef.current?.focus();
@@ -191,20 +205,37 @@ const RegisterExecute = ({ closeModal }) => {
 
   const handleSearch = (text) => {
     setSearchTerm(text);
+<<<<<<< HEAD
     
     switch (bottomSheetType) {
       case "district":
         setFilteredData(
           districts.filter(item =>
+=======
+
+    switch (bottomSheetType) {
+      case "district":
+        setFilteredData(
+          districts.filter((item) =>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             item.parliament.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
       case "constituency":
+<<<<<<< HEAD
         const selectedDistrict = districts.find(d => d.parliament === formData.district);
         if (selectedDistrict) {
           setFilteredData(
             selectedDistrict.assemblies.filter(item =>
+=======
+        const selectedDistrict = districts.find(
+          (d) => d.parliament === formData.district
+        );
+        if (selectedDistrict) {
+          setFilteredData(
+            selectedDistrict.assemblies.filter((item) =>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               item.name.toLowerCase().includes(text.toLowerCase())
             )
           );
@@ -212,7 +243,11 @@ const RegisterExecute = ({ closeModal }) => {
         break;
       case "occupation":
         setFilteredData(
+<<<<<<< HEAD
           occupationOptions.filter(item =>
+=======
+          occupationOptions.filter((item) =>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             item.name.toLowerCase().includes(text.toLowerCase())
           )
         );
@@ -335,9 +370,11 @@ const RegisterExecute = ({ closeModal }) => {
       onPress={() => handleSelectItem(item)}
     >
       <Text style={styles.listItemText}>
-        {bottomSheetType === "district" ? item.parliament : 
-         bottomSheetType === "constituency" ? item.name : 
-         item.name}
+        {bottomSheetType === "district"
+          ? item.parliament
+          : bottomSheetType === "constituency"
+          ? item.name
+          : item.name}
       </Text>
     </TouchableOpacity>
   );
@@ -394,10 +431,19 @@ const RegisterExecute = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
+<<<<<<< HEAD
                   keyExtractor={(item, index) => 
                     bottomSheetType === "district" ? item.parliament : 
                     bottomSheetType === "constituency" ? `${item.name}-${index}` : 
                     item.code
+=======
+                  keyExtractor={(item, index) =>
+                    bottomSheetType === "district"
+                      ? item.parliament
+                      : bottomSheetType === "constituency"
+                      ? `${item.name}-${index}`
+                      : item.code
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   }
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
@@ -504,9 +550,13 @@ const RegisterExecute = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Parliament</Text>
+<<<<<<< HEAD
                 <TouchableOpacity
                   onPress={() => openBottomSheet("district")}
                 >
+=======
+                <TouchableOpacity onPress={() => openBottomSheet("district")}>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -536,8 +586,20 @@ const RegisterExecute = ({ closeModal }) => {
                 >
                   <View style={styles.inputWrapper}>
                     <TextInput
+<<<<<<< HEAD
                       style={[styles.input, !formData.district && styles.disabledInput]}
                       placeholder={formData.district ? "Select Assembly" : "First select Parliament"}
+=======
+                      style={[
+                        styles.input,
+                        !formData.district && styles.disabledInput,
+                      ]}
+                      placeholder={
+                        formData.district
+                          ? "Select Assembly"
+                          : "First select Parliament"
+                      }
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       value={formData.constituency}
                       editable={false}
@@ -554,9 +616,13 @@ const RegisterExecute = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Occupation</Text>
+<<<<<<< HEAD
                 <TouchableOpacity
                   onPress={() => openBottomSheet("occupation")}
                 >
+=======
+                <TouchableOpacity onPress={() => openBottomSheet("occupation")}>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -650,7 +716,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
     padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
   },
   card: {
     backgroundColor: "white",
@@ -663,7 +729,11 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 15 : 20,
     marginBottom: isSmallScreen ? 150 : 100,
     width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
+<<<<<<< HEAD
     maxWidth: 800
+=======
+    maxWidth: 800,
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   title: {
     fontSize: isSmallScreen ? 18 : 20,
@@ -777,7 +847,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
+<<<<<<< HEAD
     marginTop: Platform.OS === 'ios' ? 200 : 0,
+=======
+    marginTop: Platform.OS === "ios" ? 200 : 0,
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
   },
   modalTitle: {

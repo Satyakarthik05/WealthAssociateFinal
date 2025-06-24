@@ -1,378 +1,853 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
-  Text,
-  ScrollView,
   StyleSheet,
+  Dimensions,
+  Linking,
+  Platform,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
-  Linking,
+  Text,
+  Animated,
+  TextInput,
   Modal,
-  Alert,
-  Dimensions,
-  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView,
 } from "react-native";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
-import Carousel from "react-native-reanimated-carousel";
+import { Ionicons } from "@expo/vector-icons";
+import RNPickerSelect from "react-native-picker-select";
 
-const { width } = Dimensions.get("window");
+import { API_URL } from "../../../data/ApiUrl";
+import { getCategorizedProperties } from "../../MainScreen/PropertyStock";
+import PropertyCard from "../../components/home/PropertyCard";
+import PropertyModal from "../../components/home/PropertyModal";
+import SectionHeader from "../../components/home/SectionHeader";
+
+const { width, height } = Dimensions.get("window");
+const PROPERTIES_PER_PAGE = 20;
+const IS_WEB = Platform.OS === "web";
+const IS_SMALL_SCREEN = width < 450;
 
 const WealthPropertiesScreen = () => {
-  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState({});
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
-  const [referredInfo, setReferredInfo] = useState(null);
+  const [referredInfo, setReferredInfo] = useState({
+    name: "",
+    mobileNumber: "",
+  });
+  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    propertyType: "",
+    location: "",
+    minPrice: "",
+    maxPrice: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [likedProperties, setLikedProperties] = useState([]);
+  const [wealthProperties, setWealthProperties] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const navigation = useNavigation();
-  const [currentIndices, setCurrentIndices] = useState({});
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const scrollViewRef = useRef(null);
 
   useEffect(() => {
-    fetchProperties();
-    loadReferredInfoFromStorage();
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading, fadeAnim, slideAnim]);
+
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
+    }
+  }, [currentPage]);
+
+  const getDetails = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const type = await AsyncStorage.getItem("userType");
+
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
+      }
+
+      let endpoint = "";
+      switch (type) {
+        case "WealthAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          token: `${token}` || "",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const newDetails = await response.json();
+      setDetails(newDetails);
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
   }, []);
 
-  const loadReferredInfoFromStorage = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
-      const storedInfo = await AsyncStorage.getItem("referredAddedByInfo");
-      if (storedInfo) {
-        setReferredInfo(JSON.parse(storedInfo));
-      }
-    } catch (error) {
-      console.error("Error loading referred info from storage:", error);
-    }
-  };
-
-  const formatImages = (property) => {
-    if (!property) return [];
-
-    if (Array.isArray(property.newImageUrls) && property.newImageUrls.length > 0) {
-      return property.newImageUrls.filter(url => url);
-    }
-
-    if (typeof property.newImageUrls === "string") {
-      return [property.newImageUrls];
-    }
-
-    return [];
-  };
-
-  const fetchProperties = async () => {
-    try {
-      const response = await fetch(`${API_URL}/properties/getApproveProperty`);
-      const data = await response.json();
-      if (data && Array.isArray(data)) {
-        const wealthProps = data.filter(
-          (property) => getPropertyTag(property.createdAt) === "Wealth Property"
-        );
-        
-        // Initialize current indices for carousels
-        const indices = {};
-        wealthProps.forEach((_, index) => {
-          indices[index] = 0;
-        });
-        setCurrentIndices(indices);
-
-        setProperties(
-          wealthProps.map((property) => ({
-            ...property,
-            images: formatImages(property),
-          }))
-        );
-      }
+      setLoading(true);
+      const categories = await getCategorizedProperties();
+      setWealthProperties(categories.wealthProperties);
+      setTotalPages(
+        Math.ceil(categories.wealthProperties.length / PROPERTIES_PER_PAGE)
+      );
     } catch (error) {
       console.error("Error fetching properties:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getPropertyTag = (createdAt) => {
-    const currentDate = new Date();
-    const propertyDate = new Date(createdAt);
-    const timeDifference = currentDate - propertyDate;
-    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-
-    if (daysDifference <= 3) {
-      return "Regular Property";
-    } else if (daysDifference >= 4 && daysDifference <= 17) {
-      return "Approved Property";
-    } else if (daysDifference >= 18 && daysDifference <= 25) {
-      return "Wealth Property";
-    } else {
-      return "Listed Property";
-    }
-  };
-
-  const handlePropertyPress = async (property) => {
-    if (!property?._id) {
-      console.error("Property ID is missing");
-      return;
-    }
-
-    let formattedPrice = "Price not available";
+  const loadReferredInfoFromStorage = useCallback(async () => {
     try {
-      const priceValue = parseInt(property.price);
-      if (!isNaN(priceValue)) {
-        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      const data = await AsyncStorage.getItem("referredAddedByInfo");
+      if (data) {
+        setReferredInfo(JSON.parse(data));
       }
-    } catch (e) {
-      console.error("Error formatting price:", e);
+    } catch (error) {
+      console.error("Failed to load referred info:", error);
     }
+  }, []);
 
-    try {
-      await AsyncStorage.setItem(
-        "currentProperty",
-        JSON.stringify({
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          images: property.images,
-        })
-      );
+  useEffect(() => {
+    const loadData = async () => {
+      await getDetails();
+      await fetchProperties();
+    };
+    loadData();
+  }, [getDetails, fetchProperties]);
+
+  useEffect(() => {
+    if (isPropertyModalVisible) {
+      loadReferredInfoFromStorage();
+    }
+  }, [isPropertyModalVisible, loadReferredInfoFromStorage]);
+
+  const handlePropertyPress = useCallback(
+    (property) => {
+      if (!property?._id) {
+        console.error("Property ID is missing");
+        return;
+      }
+
+      const images = normalizeImageSources(property).map((uri) => ({
+        uri: uri,
+      }));
+
+      let formattedPrice = "Price not available";
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
 
       navigation.navigate("PropertyDetails", {
         property: {
           ...property,
           id: property._id,
           price: formattedPrice,
-          images: property.images,
+          images:
+            images.length > 0 ? images : [require("../../../assets/logo.png")],
         },
       });
-    } catch (error) {
-      console.error("Error storing property:", error);
-      Alert.alert("Error", "Failed to navigate to property details");
-    }
-  };
+    },
+    [navigation]
+  );
 
-  const handleEnquiryNow = (property) => {
-    setSelectedProperty(property);
-    setPropertyModalVisible(true);
-  };
+  const handleShare = useCallback(
+    (property) => {
+      const images = normalizeImageSources(property);
+      let shareImage = images.length > 0 ? images[0] : null;
 
-  const handleShare = async (property) => {
-    try {
-      if (!property) {
-        Alert.alert("Error", "No property data to share");
-        return;
+      let formattedPrice = "Price not available";
+      if (property.price) {
+        try {
+          const priceValue = parseInt(property.price);
+          if (!isNaN(priceValue)) {
+            formattedPrice = `₹${priceValue.toLocaleString()}`;
+          }
+        } catch (e) {
+          console.error("Error formatting price:", e);
+        }
       }
 
-      const shareData = {
-        photo: property.images?.[0] || null,
-        location: property.location || "Location not specified",
-        price: property.price || "Price not available",
-        propertyType: property.propertyType || "Property",
-        PostedBy: property.PostedBy || "",
-        fullName: property.fullName || "Wealth Associate",
-        mobile: property.mobile || property.MobileNumber || "",
-      };
+      navigation.navigate("PropertyCard", {
+        property: {
+          photo: shareImage,
+          location: property.location || "Location not specified",
+          price: formattedPrice,
+          propertyType: property.propertyType || "Property",
+          PostedBy: property.PostedBy || details?.Number || "",
+          fullName: property.fullName || details?.name || "Wealth Associate",
+        },
+      });
+    },
+    [navigation, details]
+  );
 
-      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
-      navigation.navigate("PropertyCard", { property: shareData });
-    } catch (error) {
-      console.error("Sharing error:", error);
-      Alert.alert("Error", "Failed to share property");
+  const handleEnquiryNow = useCallback((property) => {
+    setSelectedProperty(property);
+    setPropertyModalVisible(true);
+  }, []);
+
+  const normalizeImageSources = useCallback((property) => {
+    if (!property) return [];
+
+    if (Array.isArray(property.newImageUrls)) {
+      return property.newImageUrls.filter(
+        (url) => url && typeof url === "string"
+      );
+    } else if (
+      typeof property.newImageUrls === "string" &&
+      property.newImageUrls
+    ) {
+      return [property.newImageUrls];
     }
-  };
 
-  const PropertyImageSlider = ({ images, index }) => {
-    const carouselRef = useRef(null);
+    if (Array.isArray(property.imageUrls)) {
+      return property.imageUrls.filter((url) => url && typeof url === "string");
+    } else if (typeof property.imageUrls === "string" && property.imageUrls) {
+      return [property.imageUrls];
+    }
 
-    if (images.length === 0) {
-      return (
-        <Image
-          source={require("../../../assets/logo.png")}
-          style={{ width: '100%', height: 200 }}
-          resizeMode="cover"
-        />
+    return [];
+  }, []);
+
+  const toggleLike = useCallback(
+    async (propertyId) => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !likedProperties.includes(propertyId);
+        let updatedLikes;
+
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, propertyId];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== propertyId);
+        }
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: propertyId,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || details?.FullName || "User",
+            mobileNumber:
+              userDetails?.MobileNumber || details?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
+      }
+    },
+    [likedProperties, details]
+  );
+
+  const filterProperties = useCallback(() => {
+    let filtered = [...wealthProperties];
+
+    if (searchQuery) {
+      filtered = filtered.filter((property) => {
+        const propertyId = property._id
+          ? property._id.slice(-4).toLowerCase()
+          : "";
+        return (
+          propertyId.includes(searchQuery.toLowerCase()) ||
+          (property.location &&
+            property.location
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (property.propertyType &&
+            property.propertyType
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+        );
+      });
+    }
+
+    if (filterCriteria.propertyType) {
+      filtered = filtered.filter(
+        (property) => property.propertyType === filterCriteria.propertyType
       );
     }
 
-    return (
-      <View style={styles.imageSlider}>
-        <Carousel
-          ref={carouselRef}
-          width={width - 32}
-          height={200}
-          loop={images.length > 1}
-          data={images}
-          scrollAnimationDuration={800}
-          onSnapToItem={(i) => setCurrentIndices(prev => ({...prev, [index]: i}))}
-          renderItem={({ item }) => (
-            <Image
-              source={{ uri: item }}
-              style={{
-                width: '100%',
-                height: 200,
-                borderTopLeftRadius: 12,
-                borderTopRightRadius: 12,
-              }}
-              resizeMode="cover"
-            />
-          )}
-        />
+    if (filterCriteria.location) {
+      filtered = filtered.filter(
+        (property) => property.location === filterCriteria.location
+      );
+    }
 
-        {images.length > 1 && (
-          <View style={styles.pagination}>
-            {images.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === currentIndices[index] ? styles.activeDot : styles.inactiveDot,
-                ]}
-              />
-            ))}
-          </View>
-        )}
+    if (filterCriteria.minPrice) {
+      const minPriceValue = parseFloat(filterCriteria.minPrice) * 100000;
+      filtered = filtered.filter((property) => property.price >= minPriceValue);
+    }
+
+    if (filterCriteria.maxPrice) {
+      const maxPriceValue = parseFloat(filterCriteria.maxPrice) * 100000;
+      filtered = filtered.filter((property) => property.price <= maxPriceValue);
+    }
+
+    const newTotalPages = Math.ceil(filtered.length / PROPERTIES_PER_PAGE);
+    if (newTotalPages !== totalPages) {
+      setTotalPages(newTotalPages);
+    }
+
+    if (currentPage > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(newTotalPages);
+    } else if (newTotalPages === 0) {
+      setCurrentPage(1);
+    }
+
+    return filtered;
+  }, [wealthProperties, searchQuery, filterCriteria, totalPages, currentPage]);
+
+  const paginatedProperties = useMemo(() => {
+    const filtered = filterProperties();
+    const startIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
+    const endIndex = startIndex + PROPERTIES_PER_PAGE;
+    return filtered.slice(startIndex, endIndex);
+  }, [filterProperties, currentPage]);
+
+  const getUniqueValues = useCallback(
+    (key) => {
+      return [...new Set(wealthProperties.map((item) => item[key]))].filter(
+        Boolean
+      );
+    },
+    [wealthProperties]
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilterCriteria({
+      propertyType: "",
+      location: "",
+      minPrice: "",
+      maxPrice: "",
+    });
+    setSearchQuery("");
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const applyFilters = useCallback(() => {
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const renderPagination = useCallback(() => {
+    if (totalPages <= 1) return null;
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    return (
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === 1 && styles.disabledButton,
+          ]}
+          onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.pageButtonText}>Previous</Text>
+        </TouchableOpacity>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pageNumbersContainer}
+        >
+          {Array.from(
+            { length: endPage - startPage + 1 },
+            (_, i) => startPage + i
+          ).map((page) => (
+            <TouchableOpacity
+              key={page}
+              style={[
+                styles.pageNumber,
+                currentPage === page && styles.activePage,
+              ]}
+              onPress={() => setCurrentPage(page)}
+            >
+              <Text
+                style={
+                  currentPage === page
+                    ? styles.activePageText
+                    : styles.pageNumberText
+                }
+              >
+                {page}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === totalPages && styles.disabledButton,
+          ]}
+          onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <Text style={styles.pageButtonText}>Next</Text>
+        </TouchableOpacity>
       </View>
     );
-  };
+  }, [currentPage, totalPages]);
+
+  const RenderPropertyCard = React.memo(({ property }) => {
+    const [isLiked, setIsLiked] = useState(
+      likedProperties.includes(property._id)
+    );
+
+    const handleToggleLike = useCallback(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !isLiked;
+        setIsLiked(newLikedStatus);
+
+        let updatedLikes;
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, property._id];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== property._id);
+        }
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: property._id,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || details?.FullName || "User",
+            mobileNumber:
+              userDetails?.MobileNumber || details?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
+      }
+    }, [isLiked, likedProperties, property._id, details]);
+
+    return (
+      <PropertyCard
+        property={property}
+        onPress={() => handlePropertyPress(property)}
+        onEnquiryPress={() => handleEnquiryNow(property)}
+        onSharePress={() => handleShare(property)}
+        isLiked={isLiked}
+        onLikePress={handleToggleLike}
+      />
+    );
+  });
+
+  const renderHeader = useCallback(
+    () => (
+      <>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Wealth Properties</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchFilterContainer}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by Property ID, Location or Type..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+            <Ionicons
+              name="search"
+              size={20}
+              color="#999"
+              style={styles.searchIcon}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setFilterModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="filter" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+      </>
+    ),
+    [searchQuery, navigation]
+  );
+
+  const renderEmptyComponent = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No properties found</Text>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={resetFilters}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.resetButtonText}>Reset Filters</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [resetFilters]
+  );
+
+  const renderFilterModal = useCallback(
+    () => (
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View
+                style={[
+                  styles.filterModalContent,
+                  IS_SMALL_SCREEN
+                    ? styles.smallScreenModal
+                    : styles.largeScreenModal,
+                ]}
+              >
+                <View style={styles.modalHandle} />
+                <Text style={styles.filterHeader}>Filter Properties</Text>
+
+                <ScrollView
+                  style={styles.filterScrollContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Property Type</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          propertyType: value,
+                        })
+                      }
+                      items={getUniqueValues("propertyType").map((type) => ({
+                        label: type,
+                        value: type,
+                      }))}
+                      value={filterCriteria.propertyType}
+                      placeholder={{ label: "Select Property Type", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#E91E63"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Location</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          location: value,
+                        })
+                      }
+                      items={getUniqueValues("location").map((loc) => ({
+                        label: loc,
+                        value: loc,
+                      }))}
+                      value={filterCriteria.location}
+                      placeholder={{ label: "Select Location", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#E91E63"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>
+                      Price Range (in lakhs)
+                    </Text>
+                    <View style={styles.priceRangeContainer}>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Min"
+                          value={filterCriteria.minPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              minPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <Text style={styles.priceRangeSeparator}>to</Text>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Max"
+                          value={filterCriteria.maxPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              maxPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.filterButtonsContainer}>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.resetFilterButton]}
+                    onPress={resetFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.resetFilterButtonText}>Reset All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.applyFilterButton]}
+                    onPress={applyFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterButtonText}>Apply Filters</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    ),
+    [
+      isFilterModalVisible,
+      getUniqueValues,
+      filterCriteria,
+      resetFilters,
+      applyFilters,
+    ]
+  );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3E5C76" />
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#E91E63" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+      <Animated.View
+        style={[
+          styles.contentContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
       >
-        {properties.length === 0 ? (
-          <Text style={styles.noPropertiesText}>
-            No wealth properties available
-          </Text>
-        ) : (
-          properties.map((property, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => handlePropertyPress(property)}
-              activeOpacity={0.9}
-              style={styles.card}
-            >
-              <PropertyImageSlider images={property.images} index={index} />
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.propertyScrollView}
+          contentContainerStyle={styles.propertyGridContainer}
+        >
+          {renderHeader()}
+          {renderPagination()}
 
-              <View style={styles.content}>
-                <View style={styles.propertyIdWrapper}>
-                  <Text style={styles.propertyIdText}>
-                    Property ID: {property?._id?.slice(-4)}
-                  </Text>
-                </View>
-
-                <View style={styles.headerRow}>
-                  <Text style={styles.propertyType}>{property.propertyType}</Text>
-                  <TouchableOpacity>
-                    <Ionicons
-                      name={"heart-outline"}
-                      size={26}
-                      color={"gray"}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.location}>📍 {property.location}</Text>
-
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>
-                    ₹ {parseInt(property.price).toLocaleString()}
-                  </Text>
-
-                  <View style={styles.priceButtons}>
-                    <TouchableOpacity
-                      style={[styles.btn, styles.enquireBtn]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleEnquiryNow(property);
-                      }}
-                    >
-                      <Text style={styles.btnText}>Enquire</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.btn, styles.shareBtn]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleShare(property);
-                      }}
-                    >
-                      <Text style={styles.btnText}>Share</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-
-      <Modal
-        visible={isPropertyModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setPropertyModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            {!referredInfo ? (
-              <View style={styles.noReferredInfo}>
-                <Text style={styles.noReferredInfoText}>
-                  No referral information available
-                </Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
-                >
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Image
-                  source={require("../../../assets/man.png")}
-                  style={styles.agentLogo}
-                />
-                <Text style={styles.modalTitle}>Referred By</Text>
-                <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
-                <Text style={styles.modalText}>
-                  Mobile: {referredInfo.mobileNumber}
-                </Text>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() =>
-                    Linking.openURL(`tel:${referredInfo.mobileNumber}`)
+          {paginatedProperties.length > 0 ? (
+            <View style={styles.propertyListContainer}>
+              {paginatedProperties.map((item) => (
+                <View
+                  key={item._id}
+                  style={
+                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
                   }
                 >
-                  <Ionicons name="call" size={20} color="white" />
-                  <Text style={styles.callButtonText}>Call Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
-                >
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+                  <RenderPropertyCard property={item} />
+                </View>
+              ))}
+            </View>
+          ) : (
+            renderEmptyComponent()
+          )}
+
+          {renderPagination()}
+        </ScrollView>
+
+        {renderFilterModal()}
+        <PropertyModal
+          visible={isPropertyModalVisible}
+          onClose={() => setPropertyModalVisible(false)}
+          property={selectedProperty}
+          referredInfo={referredInfo}
+        />
+      </Animated.View>
     </View>
   );
 };
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  iconContainer: {
+    top: 10,
+    right: 12,
+  },
+  placeholder: {
+    color: "#999",
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === "web" ? "45%" : "20%",
+  },
+  contentContainer: {
+    flex: 1,
+    width: "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -380,184 +855,249 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#f8f9fa",
   },
-  scrollView: {
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginTop: "2%",
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 5,
+  },
+  headerTitleContainer: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  noPropertiesText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-    color: "#666",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    marginVertical: 10,
-    overflow: "hidden",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    alignSelf: "center",
-    width: Platform.OS === "web" ? 350 : '100%',
-  },
-  imageSlider: {
-    position: "relative",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    overflow: "hidden",
-  },
-  pagination: {
-    position: "absolute",
-    bottom: 8,
-    alignSelf: "center",
-    flexDirection: "row",
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 3,
-  },
-  activeDot: {
-    backgroundColor: "#fff",
-  },
-  inactiveDot: {
-    backgroundColor: "rgba(255,255,255,0.4)",
-  },
-  content: {
-    padding: 14,
-  },
-  propertyIdWrapper: {
-    backgroundColor: "#EEF2F3",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 6,
-  },
-  propertyIdText: {
-    fontSize: 13,
-    color: "#555",
-    fontWeight: "500",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  propertyType: {
-    fontSize: 18,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: "bold",
     color: "#333",
   },
-  location: {
-    fontSize: 15,
-    color: "#555",
-    marginTop: 4,
-  },
-  priceRow: {
+  searchFilterContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 10,
-    flexWrap: "wrap",
+    marginVertical: 15,
+    paddingHorizontal: 15,
+    width: "100%",
   },
-  price: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1B4D3E",
-  },
-  priceButtons: {
-    flexDirection: "row",
-    marginTop: Platform.OS === "web" ? 0 : 6,
-  },
-  btn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginLeft: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  enquireBtn: {
-    backgroundColor: "#3E5C76",
-  },
-  shareBtn: {
-    backgroundColor: "#666",
-  },
-  btnText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  modalContainer: {
+  searchContainer: {
     flex: 1,
+    marginRight: 10,
+    position: "relative",
+  },
+  searchInput: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 40,
+    backgroundColor: "#fff",
+    width: "100%",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 15,
+    top: 10,
+  },
+  filterButton: {
+    backgroundColor: "#3E5C76",
+    padding: 10,
+    borderRadius: 5,
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
   },
-  modalContent: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
+  propertyListContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
   },
-  agentLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignSelf: "center",
+  webPropertyItem: {
+    width: "32%",
+    marginRight: "1%",
     marginBottom: 15,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
+  mobilePropertyItem: {
+    width: "100%",
+    marginBottom: 15,
   },
-  modalText: {
-    fontSize: 16,
-    marginVertical: 4,
-  },
-  callButton: {
-    flexDirection: "row",
-    alignItems: "center",
+  emptyContainer: {
+    flex: 1,
     justifyContent: "center",
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 15,
-  },
-  callButtonText: {
-    color: "white",
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  closeButton: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#dc3545",
     alignItems: "center",
+    height: height * 0.5,
   },
-  closeButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  noReferredInfo: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  noReferredInfoText: {
+  emptyText: {
     fontSize: 16,
     color: "#666",
     marginBottom: 20,
+  },
+  resetButton: {
+    backgroundColor: "#E91E63",
+    padding: 12,
+    borderRadius: 5,
+  },
+  resetButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  filterModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 30,
+    maxHeight: height * 0.85,
+  },
+  smallScreenModal: {
+    width: "100%",
+  },
+  largeScreenModal: {
+    width: Platform.OS === "web" ? "50%" : "100%",
+    alignSelf: "center",
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#ccc",
+    borderRadius: 5,
+    alignSelf: "center",
+    marginBottom: 15,
+  },
+  filterHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+  },
+  filterScrollContainer: {
+    maxHeight: height * 0.6,
+    paddingHorizontal: 5,
+  },
+  filterSection: {
+    marginBottom: 25,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#333",
+  },
+  priceRangeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  priceInputContainer: {
+    flex: 1,
+    marginRight: 10,
+  },
+  priceInput: {
+    height: 48,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    fontSize: 16,
+  },
+  priceRangeSeparator: {
+    marginHorizontal: 8,
+    color: "#666",
+  },
+  filterButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    paddingHorizontal: 10,
+  },
+  resetFilterButton: {
+    backgroundColor: "#f0f0f0",
+    flex: 1,
+    marginRight: 10,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  applyFilterButton: {
+    backgroundColor: "#E91E63",
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+  },
+  filterButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
+  },
+  resetFilterButtonText: {
+    color: "#666",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
+  },
+  paginationContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  pageNumbersContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 5,
+  },
+  pageButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 5,
+    backgroundColor: "#3E5C76",
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  pageButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  pageNumber: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 3,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#3E5C76",
+    minWidth: 35,
+    alignItems: "center",
+  },
+  activePage: {
+    backgroundColor: "#3E5C76",
+  },
+  pageNumberText: {
+    color: "#3E5C76",
+  },
+  activePageText: {
+    color: "#fff",
+  },
+  propertyScrollView: {
+    width: "100%",
+  },
+  propertyGridContainer: {
+    paddingBottom: 20,
   },
 });
 

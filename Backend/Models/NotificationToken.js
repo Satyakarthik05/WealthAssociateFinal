@@ -34,8 +34,8 @@ const NotificationTokenSchema = new mongoose.Schema({
 });
 
 // Index for faster queries
-NotificationTokenSchema.index({ expoPushToken: 1 });
-NotificationTokenSchema.index({ userId: 1 });
+// NotificationTokenSchema.index({ expoPushToken: 1 });
+// NotificationTokenSchema.index({ userId: 1 });
 
 const NotificationToken = mongoose.model("NotificationToken", NotificationTokenSchema);
 

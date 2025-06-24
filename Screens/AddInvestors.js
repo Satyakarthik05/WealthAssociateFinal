@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -410,7 +410,14 @@ const styles = StyleSheet.create({
   card: {
     display: "flex",
     justifyContent: "center",
-    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width:
+      width < 450
+        ? "90%"
+        : Platform.OS === "web"
+        ? width > 1024
+          ? "60%"
+          : "80%"
+        : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -542,14 +549,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom:Platform.OS==="ios" ? "-1%":"5%",
+    marginBottom: Platform.OS === "ios" ? "-1%" : "5%",
     textAlign: "center",
     color: "#2B2D42",
     fontFamily: "Roboto-Bold",
   },
   searchContainer: {
     position: "relative",
-    marginTop:Platform.OS==="ios"?"60%":"",
+    marginTop: Platform.OS === "ios" ? "60%" : "",
   },
   searchInput: {
     width: "100%",

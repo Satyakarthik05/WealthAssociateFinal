@@ -139,19 +139,21 @@ const AddInvestor = ({ closeModal }) => {
     Keyboard.dismiss();
     setBottomSheetType(type);
     setSearchTerm("");
-    
+
     switch (type) {
       case "skill":
         setFilteredData(skills);
         break;
       case "location":
-        const assemblies = constituencies.flatMap(district => district.assemblies);
+        const assemblies = constituencies.flatMap(
+          (district) => district.assemblies
+        );
         setFilteredData(assemblies);
         break;
       default:
         setFilteredData([]);
     }
-    
+
     setBottomSheetVisible(true);
     setTimeout(() => {
       searchInputRef.current?.focus();
@@ -160,19 +162,21 @@ const AddInvestor = ({ closeModal }) => {
 
   const handleSearch = (text) => {
     setSearchTerm(text);
-    
+
     switch (bottomSheetType) {
       case "skill":
         setFilteredData(
-          skills.filter(item =>
+          skills.filter((item) =>
             item.toLowerCase().includes(text.toLowerCase())
           )
         );
         break;
       case "location":
-        const assemblies = constituencies.flatMap(district => district.assemblies);
+        const assemblies = constituencies.flatMap(
+          (district) => district.assemblies
+        );
         setFilteredData(
-          assemblies.filter(item =>
+          assemblies.filter((item) =>
             item.name.toLowerCase().includes(text.toLowerCase())
         ));
         break;
@@ -210,10 +214,9 @@ const AddInvestor = ({ closeModal }) => {
       userDetails.Number ||
       "Wealthassociate";
 
-    const registeredByValue = [
-      "WealthAssociate",
-      "ReferralAssociate",
-    ].includes(userType)
+    const registeredByValue = ["WealthAssociate", "ReferralAssociate"].includes(
+      userType
+    )
       ? userType
       : "WealthAssociate";
 
@@ -312,7 +315,11 @@ const AddInvestor = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
+<<<<<<< HEAD
                   keyExtractor={(item, index) => 
+=======
+                  keyExtractor={(item, index) =>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                     bottomSheetType === "skill" ? item : `${item.code}-${index}`
                   }
                   style={styles.modalList}
@@ -385,8 +392,16 @@ const AddInvestor = ({ closeModal }) => {
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     keyboardType="phone-pad"
                     value={formData.mobileNumber}
+<<<<<<< HEAD
                     onChangeText={(text) => 
                       handleInputChange("mobileNumber", text.replace(/[^0-9]/g, ""))
+=======
+                    onChangeText={(text) =>
+                      handleInputChange(
+                        "mobileNumber",
+                        text.replace(/[^0-9]/g, "")
+                      )
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                     }
                     maxLength={10}
                   />
@@ -403,9 +418,13 @@ const AddInvestor = ({ closeModal }) => {
             <View style={styles.row}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Select Category</Text>
+<<<<<<< HEAD
                 <TouchableOpacity
                   onPress={() => openBottomSheet("skill")}
                 >
+=======
+                <TouchableOpacity onPress={() => openBottomSheet("skill")}>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -426,9 +445,13 @@ const AddInvestor = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Location</Text>
+<<<<<<< HEAD
                 <TouchableOpacity
                   onPress={() => openBottomSheet("location")}
                 >
+=======
+                <TouchableOpacity onPress={() => openBottomSheet("location")}>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -483,7 +506,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
     padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
   },
   card: {
     backgroundColor: "white",
@@ -496,7 +519,11 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 15 : 20,
     marginBottom: isSmallScreen ? 150 : 100,
     width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
+<<<<<<< HEAD
     maxWidth: 800
+=======
+    maxWidth: 800,
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   title: {
     fontSize: isSmallScreen ? 18 : 20,
@@ -606,7 +633,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
+<<<<<<< HEAD
     marginTop: Platform.OS === 'ios' ? 200 : 0,
+=======
+    marginTop: Platform.OS === "ios" ? 200 : 0,
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
   },
   modalTitle: {

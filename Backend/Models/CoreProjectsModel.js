@@ -7,6 +7,7 @@ const CoreProjectsSchema = new mongoose.Schema(
     city: { type: String, required: true },
     website: { type: String, required: true },
     photo: { type: String, required: true },
+    newImageUrl: { type: String, required: true },
     mobile: { type: String, required: true },
     editedAt: { type: Date }, // Stores the last edit timestamp
   },

@@ -22,6 +22,11 @@ const callExecutiveSchema = new mongoose.Schema(
     assignedType: {
       type: String,
     },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "inactive"
+    },
     assignedUsers: [
       {
         userType: {

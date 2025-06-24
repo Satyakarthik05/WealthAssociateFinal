@@ -96,7 +96,7 @@ const StartingScreen = () => {
               key={index}
               style={[
                 styles.button,
-                shouldUseMobileStyles && styles.mobileSpecificButton
+                shouldUseMobileStyles && styles.mobileSpecificButton,
               ]}
               onPress={() => handleLoginTypeSelection(option.loginType)}
             >

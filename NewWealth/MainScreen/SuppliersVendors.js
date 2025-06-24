@@ -24,7 +24,7 @@ import paint3 from "../../assets/paint3.jpg";
 import paint4 from "../../assets/paint4.jpg";
 import Hvac1 from "../../assets/Hvac1.jpg";
 import Hvac2 from "../../assets/Hvac2.jpg";
-import Hvac3 from "../../assets/Hvac3.jpg";
+import Hvac3 from "../../assets/Hvac3.jpg";                                               
 import Hvac4 from "../../assets/Hvac4.jpg";
 import Land1 from "../../assets/Land1.jpg";
 import Land2 from "../../assets/Land2.jpg";

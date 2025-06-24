@@ -54,6 +54,19 @@ const getCachedImage = async (uri, cacheKey) => {
   }
 };
 
+// Preload function for external use
+export const preload = async (uri, cacheKey = null) => {
+  try {
+    if (!uri || typeof uri !== "string") return;
+    if (!cacheKey) {
+      cacheKey = encodeURIComponent(uri);
+    }
+    await cacheImage(uri, cacheKey);
+  } catch (error) {
+    console.error("Error preloading image:", error);
+  }
+};
+
 // Main LazyImage component
 const LazyImage = ({ source, style, resizeMode = "cover", cacheKey }) => {
   const [imageUri, setImageUri] = useState(null);
@@ -131,7 +144,6 @@ const LazyImage = ({ source, style, resizeMode = "cover", cacheKey }) => {
     }
   };
 
-  // Show fallback on error
   if (isError) {
     return (
       <View style={[style, styles.imagePlaceholder]}>
@@ -143,7 +155,6 @@ const LazyImage = ({ source, style, resizeMode = "cover", cacheKey }) => {
     );
   }
 
-  // Show shimmer until loaded
   return (
     <ShimmerPlaceHolder
       LinearGradient={LinearGradient}

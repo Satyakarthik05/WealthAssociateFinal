@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import LottieView from "lottie-react-native";
 
 import { API_URL } from "../../data/ApiUrl";
+import { getCategorizedProperties } from "./PropertyStock";
 import LoadingScreen from "../../assets/animations/home[1].json";
 import ActionButtons from "../components/home/ActionButtons";
 import PropertyCard from "../components/home/PropertyCard";
@@ -30,8 +31,6 @@ const HomeScreen = () => {
   const [details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState("");
-  const [properties, setProperties] = useState([]);
-  const [propertiess, setPropertiess] = useState([]);
   const [coreClients, setCoreClients] = useState([]);
   const [coreProjects, setCoreProjects] = useState([]);
   const [valueprojects, setValueProjects] = useState([]);
@@ -42,6 +41,13 @@ const HomeScreen = () => {
   const [referredInfo, setReferredInfo] = useState({
     name: "",
     mobileNumber: "",
+  });
+  const [propertiess, setPropertiess] = useState();
+  const [propertyCategories, setPropertyCategories] = useState({
+    regularProperties: [],
+    approvedProperties: [],
+    wealthProperties: [],
+    listedProperties: [],
   });
 
   const navigation = useNavigation();
@@ -65,43 +71,6 @@ const HomeScreen = () => {
       ]).start();
     }
   }, [loading]);
-
-  // Helper functions
-  const getPropertyTag = (createdAt) => {
-    const currentDate = new Date();
-    const propertyDate = new Date(createdAt);
-    const timeDifference = currentDate - propertyDate;
-    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-
-    if (daysDifference <= 3) return "Regular Property";
-    if (daysDifference >= 4 && daysDifference <= 17) return "Approved Property";
-    if (daysDifference >= 18 && daysDifference <= 25) return "Wealth Property";
-    return "Listed Property";
-  };
-
-  const getImageByPropertyType = (propertyType) => {
-    switch (propertyType.toLowerCase()) {
-      case "flat(apartment)":
-      case "apartment":
-        return require("../../assets/download.jpeg");
-      case "land(opensite)":
-      case "land":
-        return require("../../assets/Land.jpg");
-      case "house(individual)":
-      case "house":
-        return require("../../assets/house.png");
-      case "villa":
-        return require("../../assets/villa.jpg");
-      case "agriculture land":
-        return require("../../assets/agriculture.jpeg");
-      case "commercial property":
-        return require("../../assets/commercial.jpeg");
-      case "commercial land":
-        return require("../../assets/commland.jpeg");
-      default:
-        return require("../../assets/house.png");
-    }
-  };
 
   // Data fetching functions
   const getDetails = async () => {
@@ -157,8 +126,6 @@ const HomeScreen = () => {
       setDetails(newDetails);
     } catch (error) {
       console.error("Error fetching user details:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -232,18 +199,6 @@ const HomeScreen = () => {
     }
   };
 
-  const fetchProperties = async () => {
-    try {
-      const response = await fetch(`${API_URL}/properties/getApproveProperty`);
-      const data = await response.json();
-      if (data && Array.isArray(data) && data.length > 0) {
-        setProperties(data);
-      }
-    } catch (error) {
-      console.error("Error fetching properties:", error);
-    }
-  };
-
   const fetchPropertiess = async () => {
     try {
       setLoading(true);
@@ -281,9 +236,9 @@ const HomeScreen = () => {
       }));
 
       setPropertiess(formattedProperties);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching properties:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -391,47 +346,92 @@ const HomeScreen = () => {
     return [];
   };
 
-  useEffect(() => {
-    getDetails();
-    fetchCoreClients();
-    fetchCoreProjects();
-    fetchValueProjects();
-    fetchProperties();
-    fetchPropertiess();
-    loadReferredInfoFromStorage();
-  }, []);
-
-  useEffect(() => {
-    if (details?.MyRefferalCode) {
-      fetchReferralCount();
+  const getImageByPropertyType = (propertyType) => {
+    switch (propertyType.toLowerCase()) {
+      case "flat(apartment)":
+      case "apartment":
+        return require("../../assets/download.jpeg");
+      case "land(opensite)":
+      case "land":
+        return require("../../assets/Land.jpg");
+      case "house(individual)":
+      case "house":
+        return require("../../assets/house.png");
+      case "villa":
+        return require("../../assets/villa.jpg");
+      case "agriculture land":
+        return require("../../assets/agriculture.jpeg");
+      case "commercial property":
+        return require("../../assets/commercial.jpeg");
+      case "commercial land":
+        return require("../../assets/commland.jpeg");
+      default:
+        return require("../../assets/house.png");
     }
-  }, [details?.MyRefferalCode]);
+  };
+
+  const getImageSource = (item) => {
+    if (!item) return require("../../assets/logo.png");
+
+    if (item.newImageUrl && typeof item.newImageUrl === "string") {
+      return { uri: item.newImageUrl };
+    }
+
+    if (item.imageUrl && typeof item.imageUrl === "string") {
+      return { uri: item.imageUrl };
+    }
+
+    return require("../../assets/logo.png");
+  };
+
+  const handleOpenLink = (url) => {
+    if (url) {
+      Linking.openURL(url).catch((err) =>
+        console.error("Couldn't load page", err)
+      );
+    } else {
+      alert("Website link not available");
+    }
+  };
+
+  // Load all data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+
+        // Load all data in parallel
+        await Promise.all([
+          getDetails(),
+          fetchCoreClients(),
+          fetchCoreProjects(),
+          fetchValueProjects(),
+          fetchPropertiess(),
+          loadReferredInfoFromStorage(),
+        ]);
+
+        // Get categorized properties
+        const categories = await getCategorizedProperties();
+        setPropertyCategories(categories);
+
+        if (details?.MyRefferalCode) {
+          await fetchReferralCount();
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (isPropertyModalVisible) {
       loadReferredInfoFromStorage();
     }
   }, [isPropertyModalVisible]);
-
-  const regularProperties = properties.filter(
-    (property) => getPropertyTag(property.createdAt) === "Regular Property"
-  );
-  const approvedProperties = properties.filter(
-    (property) => getPropertyTag(property.createdAt) === "Approved Property"
-  );
-  const wealthProperties = properties.filter(
-    (property) => getPropertyTag(property.createdAt) === "Wealth Property"
-  );
-  const listedProperties = properties.filter(
-    (property) => getPropertyTag(property.createdAt) === "Listed Property"
-  );
-
-  const showReferralCode = [
-    "WealthAssociate",
-    "Customer",
-    "CoreMember",
-    "ReferralAssociate",
-  ].includes(userType);
 
   const RenderPropertyCard = ({ property }) => {
     const [isLiked, setIsLiked] = useState(
@@ -492,45 +492,6 @@ const HomeScreen = () => {
     );
   };
 
-  const handleOpenLink = (url) => {
-    if (url) {
-      Linking.openURL(url).catch((err) =>
-        console.error("Couldn't load page", err)
-      );
-    } else {
-      alert("Website link not available");
-    }
-  };
-
-  const getImageSource = (item) => {
-    if (!item) return require("../../assets/logo.png");
-
-    // First try newImageUrl
-    if (item.newImageUrl && typeof item.newImageUrl === "string") {
-      return { uri: item.newImageUrl };
-    }
-
-    // Then try imageUrl
-    if (item.imageUrl && typeof item.imageUrl === "string") {
-      return { uri: item.imageUrl };
-    }
-
-    // Default fallback
-    return require("../../assets/logo.png");
-  };
-
-  // const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Minimum 3 seconds loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 3000);
-
-    // Cleanup timer on unmount
-    return () => clearTimeout(timer);
-  }, []);
-
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -543,6 +504,13 @@ const HomeScreen = () => {
       </View>
     );
   }
+
+  const showReferralCode = [
+    "WealthAssociate",
+    "Customer",
+    "CoreMember",
+    "ReferralAssociate",
+  ].includes(userType);
 
   return (
     <View style={styles.container}>
@@ -592,7 +560,7 @@ const HomeScreen = () => {
 
         <ActionButtons navigation={navigation} />
 
-        {regularProperties.length > 0 && (
+        {propertyCategories.regularProperties.length > 0 && (
           <>
             <SectionHeader
               title="Regular Properties"
@@ -603,18 +571,21 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {regularProperties.slice(0, 10).map((property, index) => (
-                <View
-                  key={`regular-${property._id || index}`}
-                  style={{ marginHorizontal: 5 }}
-                >
-                  <RenderPropertyCard property={property} />
-                </View>
-              ))}
+              {propertyCategories.regularProperties
+                .slice(0, 10)
+                .map((property, index) => (
+                  <View
+                    key={`regular-${property._id || index}`}
+                    style={{ marginHorizontal: 5 }}
+                  >
+                    <RenderPropertyCard property={property} />
+                  </View>
+                ))}
             </ScrollView>
           </>
         )}
-        {approvedProperties.length > 0 && (
+
+        {propertyCategories.approvedProperties.length > 0 && (
           <>
             <SectionHeader
               title="Approved Properties"
@@ -625,19 +596,21 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {approvedProperties.slice(0, 10).map((property, index) => (
-                <View
-                  key={`approved-${property._id || index}`}
-                  style={{ marginHorizontal: 5 }}
-                >
-                  <RenderPropertyCard property={property} />
-                </View>
-              ))}
+              {propertyCategories.approvedProperties
+                .slice(0, 10)
+                .map((property, index) => (
+                  <View
+                    key={`approved-${property._id || index}`}
+                    style={{ marginHorizontal: 5 }}
+                  >
+                    <RenderPropertyCard property={property} />
+                  </View>
+                ))}
             </ScrollView>
           </>
         )}
 
-        {wealthProperties.length > 0 && (
+        {propertyCategories.wealthProperties.length > 0 && (
           <>
             <SectionHeader
               title="Wealth Properties"
@@ -648,19 +621,21 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {wealthProperties.slice(0, 10).map((property, index) => (
-                <View
-                  key={`wealth-${property._id || index}`}
-                  style={{ marginHorizontal: 5 }}
-                >
-                  <RenderPropertyCard property={property} />
-                </View>
-              ))}
+              {propertyCategories.wealthProperties
+                .slice(0, 10)
+                .map((property, index) => (
+                  <View
+                    key={`wealth-${property._id || index}`}
+                    style={{ marginHorizontal: 5 }}
+                  >
+                    <RenderPropertyCard property={property} />
+                  </View>
+                ))}
             </ScrollView>
           </>
         )}
 
-        {listedProperties.length > 0 && (
+        {propertyCategories.listedProperties.length > 0 && (
           <>
             <SectionHeader
               title="Listed Properties"
@@ -671,14 +646,16 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {listedProperties.slice(0, 10).map((property, index) => (
-                <View
-                  key={`listed-${property._id || index}`}
-                  style={{ marginHorizontal: 5 }}
-                >
-                  <RenderPropertyCard property={property} />
-                </View>
-              ))}
+              {propertyCategories.listedProperties
+                .slice(0, 10)
+                .map((property, index) => (
+                  <View
+                    key={`listed-${property._id || index}`}
+                    style={{ marginHorizontal: 5 }}
+                  >
+                    <RenderPropertyCard property={property} />
+                  </View>
+                ))}
             </ScrollView>
           </>
         )}
@@ -704,6 +681,7 @@ const HomeScreen = () => {
             ))}
           </ScrollView>
         )}
+
         {coreClients.length > 0 && (
           <>
             <SectionHeader title="Core Clients" />
@@ -800,7 +778,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
     paddingHorizontal: 15,
     top: 10,
-    // paddingBottom:"20%"
   },
   loadingContainer: {
     flex: 1,
@@ -811,12 +788,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    // paddingBottom:"40%"
     marginBottom: Platform.OS === "web" ? "0" : "25%",
   },
   horizontalScroll: {
     paddingVertical: 10,
-    // paddingHorizontal: 10,
   },
   agentPhotoContainer: {
     alignItems: "flex-start",
@@ -883,7 +858,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
-    // paddingBottom:"20%"
   },
   projectImage: {
     width: 130,

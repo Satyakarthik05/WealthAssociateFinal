@@ -203,20 +203,22 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContainer,
-          isMobileWidth && styles.mobileScrollContainer
+          isMobileWidth && styles.mobileScrollContainer,
         ]}
         keyboardShouldPersistTaps="handled"
       >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.container}>
-            <View style={[
-              styles.card,
-              isMobileWidth ? styles.mobileCard : styles.webCard
-            ]}>
+            <View
+              style={[
+                styles.card,
+                isMobileWidth ? styles.mobileCard : styles.webCard,
+              ]}
+            >
               {/* Left Section - Only shown on web in larger views */}
               {Platform.OS === "web" && !isMobileWidth && (
                 <View style={styles.leftSection}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleLogoPress}
                     style={styles.logoContainer}
                   >
@@ -224,17 +226,21 @@ export default function LoginScreen() {
                       source={logo1}
                       style={styles.logo}
                       resizeMode="contain"
-                      onError={(e) => console.log('Image error:', e.nativeEvent.error)}
+                      onError={(e) =>
+                        console.log("Image error:", e.nativeEvent.error)
+                      }
                     />
                   </TouchableOpacity>
                 </View>
               )}
 
               {/* Right Section - Form content */}
-              <View style={[
-                styles.rightSection,
-                isMobileWidth && styles.mobileRightSection
-              ]}>
+              <View
+                style={[
+                  styles.rightSection,
+                  isMobileWidth && styles.mobileRightSection,
+                ]}
+              >
                 {Platform.OS !== "web" && (
                   <TouchableOpacity
                     style={styles.backButton}
@@ -249,7 +255,7 @@ export default function LoginScreen() {
                     source={logo2}
                     style={[
                       styles.appLogo,
-                      isMobileWidth && styles.mobileAppLogo
+                      isMobileWidth && styles.mobileAppLogo,
                     ]}
                     resizeMode="contain"
                   />
@@ -303,7 +309,9 @@ export default function LoginScreen() {
                         style={styles.eyeIcon}
                       >
                         <Icon
-                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          name={
+                            showPassword ? "eye-outline" : "eye-off-outline"
+                          }
                           size={20}
                           color="#3E5C76"
                         />
@@ -313,7 +321,10 @@ export default function LoginScreen() {
 
                   <View style={styles.actions}>
                     <TouchableOpacity
-                      style={[styles.loginButton, loading && styles.disabledButton]}
+                      style={[
+                        styles.loginButton,
+                        loading && styles.disabledButton,
+                      ]}
                       onPress={handleLogin}
                       disabled={loading}
                     >
@@ -349,7 +360,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 24,
   },
   mobileScrollContainer: {
@@ -357,17 +368,17 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: "#F5F7FA",
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -375,56 +386,56 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   webCard: {
-    width: '80%',
+    width: "80%",
     maxWidth: 1000,
-    flexDirection: 'row',
+    flexDirection: "row",
     minHeight: 600,
   },
   mobileCard: {
-    width: '100%',
+    width: "100%",
     maxWidth: 500,
   },
   leftSection: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingRight: 24,
     borderRightWidth: 1,
-    borderRightColor: '#E5E7EB',
+    borderRightColor: "#E5E7EB",
   },
   logoContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logo: {
-    width: '100%',
+    width: "100%",
     maxWidth: 300,
     height: 250,
     ...Platform.select({
       web: {
-        cursor: 'pointer',
-        userSelect: 'none',
+        cursor: "pointer",
+        userSelect: "none",
       },
     }),
   },
   rightSection: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
     paddingLeft: 24,
   },
   mobileRightSection: {
     paddingLeft: 0,
   },
   backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'web' ? 16 : 0,
-    left: Platform.OS === 'web' ? 16 : 0,
+    position: "absolute",
+    top: Platform.OS === "web" ? 16 : 0,
+    left: Platform.OS === "web" ? 16 : 0,
     zIndex: 1,
     padding: 8,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   appLogo: {
@@ -438,29 +449,29 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 18,
-    color: '#1F2937',
-    fontFamily: 'Cairo-SemiBold',
-    textAlign: 'center',
+    color: "#1F2937",
+    fontFamily: "Cairo-SemiBold",
+    textAlign: "center",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: '#374151',
-    fontFamily: 'Cairo-SemiBold',
+    color: "#374151",
+    fontFamily: "Cairo-SemiBold",
     marginBottom: 8,
     marginLeft: 4,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 52,
@@ -468,10 +479,10 @@ const styles = StyleSheet.create({
   inputField: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
-    fontFamily: 'Cairo-Regular',
+    color: "#1F2937",
+    fontFamily: "Cairo-Regular",
     paddingVertical: 14,
-    outlineStyle: 'none',
+    outlineStyle: "none",
   },
   inputIcon: {
     marginLeft: 8,
@@ -481,16 +492,16 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loginButton: {
-    backgroundColor: '#3E5C76',
+    backgroundColor: "#3E5C76",
     borderRadius: 12,
-    width: '100%',
+    width: "100%",
     height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -500,24 +511,24 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontFamily: 'Cairo-SemiBold',
+    fontFamily: "Cairo-SemiBold",
   },
   forgotPassword: {
     marginTop: 16,
   },
   forgotPasswordText: {
-    color: '#3E5C76',
+    color: "#3E5C76",
     fontSize: 14,
-    fontFamily: 'Cairo-SemiBold',
-    textDecorationLine: 'underline',
+    fontFamily: "Cairo-SemiBold",
+    textDecorationLine: "underline",
   },
   errorText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 14,
-    fontFamily: 'Cairo-Regular',
-    textAlign: 'center',
+    fontFamily: "Cairo-Regular",
+    textAlign: "center",
     marginBottom: 16,
     paddingHorizontal: 16,
   },

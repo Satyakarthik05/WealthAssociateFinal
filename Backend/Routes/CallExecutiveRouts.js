@@ -9,7 +9,9 @@ const {
   myCustomers,
   myProperties
   ,getCallExe,
-  editExecutive
+  editExecutive,
+  toggleStatus,
+  getStatus
 } = require("../Controllers/CallExecutiveController");
 const callcentertoken = require("../middleWares/callcentertoken");
 
@@ -26,5 +28,9 @@ router.delete("/call-executives/:id", deleteCallExecutive);
 router.get("/myagents", callcentertoken, myagents);
 router.get("/mycustomers", callcentertoken, myCustomers);
 router.get("/myproperties", callcentertoken,  myProperties);
+
+
+router.patch("/:id/toggle-status", toggleStatus);
+router.get("/:id/status", getStatus);
 
 module.exports = router;
