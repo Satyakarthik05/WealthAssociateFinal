@@ -208,12 +208,8 @@ const AddExpertForm = ({ closeModal }) => {
         };
         input.click();
       } else {
-<<<<<<< HEAD
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-=======
         const permissionResult =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         if (permissionResult.status !== "granted") {
           Alert.alert("Permission is required to upload a photo.");
           return;
@@ -269,16 +265,10 @@ const AddExpertForm = ({ closeModal }) => {
     setSearchTerm(text);
     const data = bottomSheetType === "location" ? constituencies : expertTypes;
     setFilteredData(
-<<<<<<< HEAD
-      data.filter(item =>
-        (item.name || item).toLowerCase().includes(text.toLowerCase())
-    ));
-=======
       data.filter((item) =>
         (item.name || item).toLowerCase().includes(text.toLowerCase())
       )
     );
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   };
 
   const handleSelectItem = (item) => {
@@ -289,31 +279,22 @@ const AddExpertForm = ({ closeModal }) => {
 
   const handleSubmit = async () => {
     if (!form.name || !form.expertType || !form.location || !photo) {
-<<<<<<< HEAD
-      Alert.alert("Error", "Please fill all required fields and upload a photo.");
-=======
       Alert.alert(
         "Error",
         "Please fill all required fields and upload a photo."
       );
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
       return;
     }
 
     setLoading(true);
     try {
       const formData = new FormData();
-<<<<<<< HEAD
-      Object.entries(form).forEach(([key, value]) => formData.append(key, value));
-      Object.entries(additionalFields).forEach(([key, value]) => formData.append(key, value));
-=======
       Object.entries(form).forEach(([key, value]) =>
         formData.append(key, value)
       );
       Object.entries(additionalFields).forEach(([key, value]) =>
         formData.append(key, value)
       );
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
 
       if (photo) {
         if (Platform.OS === "web") {
@@ -322,25 +303,17 @@ const AddExpertForm = ({ closeModal }) => {
           } else if (photo.startsWith("blob:")) {
             const response = await fetch(photo);
             const blob = await response.blob();
-<<<<<<< HEAD
-            formData.append("photo", new File([blob], "photo.jpg", { type: blob.type }));
-=======
             formData.append(
               "photo",
               new File([blob], "photo.jpg", { type: blob.type })
             );
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
           }
         } else {
           const localUri = photo;
           const filename = localUri.split("/").pop();
-<<<<<<< HEAD
-          const type = filename.match(/\.(\w+)$/)?.[1] ? `image/${filename.match(/\.(\w+)$/)?.[1]}` : `image`;
-=======
           const type = filename.match(/\.(\w+)$/)?.[1]
             ? `image/${filename.match(/\.(\w+)$/)?.[1]}`
             : `image`;
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
           formData.append("photo", { uri: localUri, name: filename, type });
         }
       }
@@ -367,13 +340,8 @@ const AddExpertForm = ({ closeModal }) => {
   };
 
   const renderItem = ({ item }) => (
-<<<<<<< HEAD
-    <TouchableOpacity 
-      style={styles.listItem} 
-=======
     <TouchableOpacity
       style={styles.listItem}
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
       onPress={() => handleSelectItem(item)}
     >
       <Text style={styles.listItemText}>
@@ -401,13 +369,9 @@ const AddExpertForm = ({ closeModal }) => {
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>
-<<<<<<< HEAD
-                {bottomSheetType === "location" ? "Select Constituency" : "Select Expert Type"}
-=======
                 {bottomSheetType === "location"
                   ? "Select Constituency"
                   : "Select Expert Type"}
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               </Text>
               <View style={styles.searchContainer}>
                 <TextInput
@@ -419,29 +383,20 @@ const AddExpertForm = ({ closeModal }) => {
                   value={searchTerm}
                   autoFocus={true}
                 />
-<<<<<<< HEAD
-                <MaterialIcons name="search" size={24} color="#3E5C76" style={styles.searchIcon} />
-=======
                 <MaterialIcons
                   name="search"
                   size={24}
                   color="#3E5C76"
                   style={styles.searchIcon}
                 />
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               </View>
               <FlatList
                 data={filteredData}
                 renderItem={renderItem}
-<<<<<<< HEAD
-                keyExtractor={(item, index) => 
-                  bottomSheetType === "expertType" ? item : `${item.name}-${index}`
-=======
                 keyExtractor={(item, index) =>
                   bottomSheetType === "expertType"
                     ? item
                     : `${item.name}-${index}`
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                 }
                 style={styles.modalList}
                 keyboardShouldPersistTaps="handled"
@@ -506,12 +461,6 @@ const AddExpertForm = ({ closeModal }) => {
 
             {[
               { label: "Name", key: "name", placeholder: "Enter expert name" },
-<<<<<<< HEAD
-              { label: "Qualification", key: "qualification", placeholder: "Ex. BA LLB" },
-              { label: "Experience", key: "experience", placeholder: "Ex. 5 Years" },
-              { label: "Mobile", key: "mobile", placeholder: "Ex. 9063392872", keyboardType: "numeric" },
-              { label: "Office Address", key: "officeAddress", placeholder: "Full address" },
-=======
               {
                 label: "Qualification",
                 key: "qualification",
@@ -533,7 +482,6 @@ const AddExpertForm = ({ closeModal }) => {
                 key: "officeAddress",
                 placeholder: "Full address",
               },
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             ].map((field) => (
               <View style={styles.formGroup} key={field.key}>
                 <Text style={styles.label}>{field.label}</Text>
@@ -549,16 +497,6 @@ const AddExpertForm = ({ closeModal }) => {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Location (Constituency)</Text>
-<<<<<<< HEAD
-              <TouchableOpacity 
-                style={styles.input} 
-                onPress={() => openBottomSheet("location")}
-              >
-                <Text style={form.location ? styles.inputText : styles.placeholderText}>
-                  {form.location || "Select Constituency"}
-                </Text>
-                <MaterialIcons name="keyboard-arrow-down" size={24} color="#555" style={styles.dropdownIcon} />
-=======
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => openBottomSheet("location")}
@@ -576,22 +514,11 @@ const AddExpertForm = ({ closeModal }) => {
                   color="#555"
                   style={styles.dropdownIcon}
                 />
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               </TouchableOpacity>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Expert Type</Text>
-<<<<<<< HEAD
-              <TouchableOpacity 
-                style={styles.input} 
-                onPress={() => openBottomSheet("expertType")}
-              >
-                <Text style={form.expertType ? styles.inputText : styles.placeholderText}>
-                  {form.expertType || "Select Expert Type"}
-                </Text>
-                <MaterialIcons name="keyboard-arrow-down" size={24} color="#555" style={styles.dropdownIcon} />
-=======
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => openBottomSheet("expertType")}
@@ -609,7 +536,6 @@ const AddExpertForm = ({ closeModal }) => {
                   color="#555"
                   style={styles.dropdownIcon}
                 />
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
               </TouchableOpacity>
             </View>
 
@@ -827,11 +753,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-<<<<<<< HEAD
-    marginBottom:Platform.OS==="ios" ? "-14%":"",
-=======
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   modalContent: {
     backgroundColor: "#FFF",
