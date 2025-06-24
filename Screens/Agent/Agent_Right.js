@@ -18,7 +18,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CustomModal from "../../Components/CustomModal";
 import PostProperty from "../Properties/PostProperty";
 import RequestProperty from "../Properties/RequestProperty";
-import AddClubMember from "../Customer/Regicus";
+import AddClubMember from "../coreClients/Customer/Regicus";
 import RequestExpert from "../../NewWealth/ExpertPanel/Requested_expert";
 import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
@@ -40,7 +40,7 @@ import logo10 from "../../assets/house.png";
 import logo11 from "../../assets/logo.png";
 
 // Import nested action components
-import AddCustomer from "../Customer/Regicus";
+import AddCustomer from "../coreClients/Customer/Regicus";
 import AddInvestor from "../Investors/AddInvestors";
 import AddNRI from "../NRI/AddNri";
 import AddSkilled from "../SkilledLabour/Rskill";

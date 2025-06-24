@@ -19,11 +19,6 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-// import logo6 from "../../assets/Land.jpg";
-// import logo7 from "../../assets/residntial.jpg";
-// import logo8 from "../../assets/commercial.jpg";
-// import logo9 from "../../assets/villa.jpg";
-// import logo10 from "../../assets/house.png";
 import logo11 from "../../assets/logo.png";
 
 const { width } = Dimensions.get("window");
@@ -40,6 +35,19 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const [userType, setUserType] = useState("");
+  const [windowWidth, setWindowWidth] = useState(width);
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      const { width } = Dimensions.get("window");
+      setWindowWidth(width);
+    };
+
+    Dimensions.addEventListener('change', updateDimensions);
+    return () => {
+      Dimensions.removeEventListener('change', updateDimensions);
+    };
+  }, []);
 
   // Enhanced property type image mapping
   const getImageByPropertyType = (propertyType) => {
@@ -306,8 +314,8 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   }, [agentLocation]);
 
   const renderPropertyCards = () => {
-    if (isWeb) {
-      // Web layout - 3 cards per row
+    if (isWeb && windowWidth >= 450) {
+      // Web layout - 3 cards per row when width >= 450px
       const rows = [];
       for (let i = 0; i < filteredProperties.length; i += 3) {
         const rowProperties = filteredProperties.slice(i, i + 3);
@@ -323,7 +331,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
       }
       return rows;
     } else {
-      // Mobile layout - 1 card per row
+      // Mobile layout or web when width < 450px - 1 card per row
       return filteredProperties.map((item, index) => (
         <View key={index} style={styles.propertyCard}>
           {renderPropertyCard(item)}
@@ -371,7 +379,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>All Requested Properties</Text>
         {agentLocation && (
           <Text style={styles.locationText}>
             Your Location: {agentLocation}
@@ -379,7 +386,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         )}
       </View>
 
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, windowWidth < 450 && styles.smallScreenSearchContainer]}>
         <View style={styles.searchInputContainer}>
           <Ionicons
             name="search"
@@ -394,7 +401,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
             onChangeText={handleSearch}
           />
         </View>
-        <View style={styles.filterContainer}>
+        <View style={[styles.filterContainer, windowWidth < 450 && styles.smallScreenFilterContainer]}>
           <Picker
             selectedValue={filterType}
             style={styles.filterPicker}
@@ -436,7 +443,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, windowWidth < 450 && styles.smallScreenModalContainer]}>
             {referredInfo ? (
               <>
                 <Image source={logo11} style={styles.agentLogo} />
@@ -445,9 +452,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                 <Text style={styles.modalText}>
                   Mobile: {referredInfo.mobileNumber}
                 </Text>
-                {/* <Text style={styles.modalText}>
-                  Email: {referredInfo.email}
-                </Text> */}
                 <TouchableOpacity
                   style={styles.callButton}
                   onPress={() =>
@@ -523,7 +527,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     padding: 15,
     alignItems: "center",
   },
@@ -543,6 +547,9 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  smallScreenSearchContainer: {
+    flexDirection: "column",
   },
   searchInputContainer: {
     flex: 1,
@@ -564,6 +571,9 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     width: isWeb ? 200 : "100%",
+  },
+  smallScreenFilterContainer: {
+    width: "100%",
   },
   filterPicker: {
     height: 60,
@@ -713,6 +723,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  smallScreenModalContainer: {
+    width: "90%",
   },
   agentLogo: {
     width: 80,

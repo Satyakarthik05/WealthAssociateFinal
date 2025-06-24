@@ -39,7 +39,7 @@ import LazyImage from "../components/home/LazyImage";
 const { width, height } = Dimensions.get("window");
 const PROPERTIES_PER_PAGE = 20;
 const IS_WEB = Platform.OS === "web";
-const IS_SMALL_SCREEN = width < 450;
+const IS_SMALL_VIEWPORT = width < 450 || (Platform.OS === 'web' && window.innerWidth < 450);
 
 const ViewAllProperties = ({ route }) => {
   const [loading, setLoading] = useState(true);
@@ -71,12 +71,27 @@ const ViewAllProperties = ({ route }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [tabContentWidth, setTabContentWidth] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(width);
 
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
   const scrollViewRef = useRef(null);
   const tabScrollViewRef = useRef(null);
+
+  useEffect(() => {
+    const updateViewportWidth = () => {
+      const newWidth = Platform.OS === 'web' ? window.innerWidth : width;
+      setViewportWidth(newWidth);
+    };
+
+    if (Platform.OS === 'web') {
+      window.addEventListener('resize', updateViewportWidth);
+      return () => window.removeEventListener('resize', updateViewportWidth);
+    }
+  }, []);
+
+  const isSmallViewport = viewportWidth < 450;
 
   useEffect(() => {
     if (!loading) {
@@ -510,6 +525,7 @@ const ViewAllProperties = ({ route }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.pageNumbersContainer}
         >
           {Array.from(
@@ -643,6 +659,7 @@ const ViewAllProperties = ({ route }) => {
             ref={tabScrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.tabContainer}
             onScroll={handleTabScroll}
             scrollEventThrottle={16}
@@ -740,7 +757,7 @@ const ViewAllProperties = ({ route }) => {
               onPress={scrollTabsRight}
               activeOpacity={0.7}
             >
-              <Ionicons name="chevron-forward" size={24} color="#E91E63" />
+              <Ionicons name="chevron-forward" size={24} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -786,7 +803,7 @@ const ViewAllProperties = ({ route }) => {
               <View
                 style={[
                   styles.filterModalContent,
-                  IS_SMALL_SCREEN
+                  isSmallViewport
                     ? styles.smallScreenModal
                     : styles.largeScreenModal,
                 ]}
@@ -797,6 +814,7 @@ const ViewAllProperties = ({ route }) => {
                 <ScrollView
                   style={styles.filterScrollContainer}
                   showsVerticalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={false}
                 >
                   <View style={styles.filterSection}>
                     <Text style={styles.filterLabel}>Property Type</Text>
@@ -819,7 +837,7 @@ const ViewAllProperties = ({ route }) => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#E91E63"
+                          color="#3E5C76"
                         />
                       )}
                     />
@@ -846,7 +864,7 @@ const ViewAllProperties = ({ route }) => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#E91E63"
+                          color="#3E5C76"
                         />
                       )}
                     />
@@ -918,6 +936,7 @@ const ViewAllProperties = ({ route }) => {
       filterCriteria,
       resetFilters,
       applyFilters,
+      isSmallViewport,
     ]
   );
 
@@ -949,18 +968,19 @@ const ViewAllProperties = ({ route }) => {
           ref={scrollViewRef}
           style={styles.propertyScrollView}
           contentContainerStyle={styles.propertyGridContainer}
+           showsVerticalScrollIndicator={false}
+           showsHorizontalScrollIndicator={false}
+          
         >
           {renderHeader()}
           {renderPagination()}
 
           {paginatedProperties.length > 0 ? (
-            <View style={styles.propertyListContainer}>
+            <View style={isSmallViewport ? styles.mobilePropertyListContainer : styles.webPropertyListContainer}>
               {paginatedProperties.map((item) => (
                 <View
                   key={item._id}
-                  style={
-                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
-                  }
+                  style={isSmallViewport ? styles.mobilePropertyItem : styles.webPropertyItem}
                 >
                   <RenderPropertyCard property={item} />
                 </View>
@@ -1062,7 +1082,7 @@ const styles = StyleSheet.create({
     top: 10,
   },
   filterButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
     justifyContent: "center",
@@ -1085,7 +1105,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   activeTabButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
   },
   tabButtonText: {
     color: "#666",
@@ -1098,20 +1118,26 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 5,
     padding: 8,
-    backgroundColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "#3E5C76",
     borderRadius: 20,
   },
-  propertyListContainer: {
+  webPropertyListContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  mobilePropertyListContainer: {
     paddingHorizontal: 15,
     paddingBottom: 20,
   },
   webPropertyItem: {
-    width: "32%",
-    marginRight: "1%",
+    width: '32%',
     marginBottom: 15,
   },
   mobilePropertyItem: {
-    width: "100%",
+    width: '100%',
     marginBottom: 15,
   },
   emptyContainer: {
@@ -1126,7 +1152,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resetButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     padding: 12,
     borderRadius: 5,
   },
@@ -1172,6 +1198,7 @@ const styles = StyleSheet.create({
   filterScrollContainer: {
     maxHeight: height * 0.6,
     paddingHorizontal: 5,
+    backgroundColor:"#fff"
   },
   filterSection: {
     marginBottom: 25,
@@ -1211,7 +1238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   resetFilterButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#3E5C76",
     flex: 1,
     marginRight: 10,
     padding: 12,
@@ -1220,7 +1247,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   applyFilterButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     flex: 1,
     padding: 12,
     borderRadius: 8,
@@ -1232,7 +1259,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetFilterButtonText: {
-    color: "#666",
+    color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,
@@ -1255,7 +1282,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 5,
     borderRadius: 5,
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
   },
   disabledButton: {
     backgroundColor: "#ccc",
@@ -1270,21 +1297,32 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: "#E91E63",
+    borderColor: "#3E5C76",
     minWidth: 35,
     alignItems: "center",
   },
   activePage: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
   },
   pageNumberText: {
-    color: "#E91E63",
+    color: "#3E5C76",
   },
   activePageText: {
     color: "#fff",
   },
   propertyScrollView: {
     width: "100%",
+    backgroundColor:"#fff",
+    ...Platform.select({
+    web: {
+      overflow: 'hidden',
+      scrollbarWidth: 'none',  // For Firefox
+      msOverflowStyle: 'none', // For IE and Edge
+      '&::-webkit-scrollbar': {
+        display: 'none',      // For Chrome, Safari, and Opera
+      },
+    },
+  }),
   },
   propertyGridContainer: {
     paddingBottom: 20,
