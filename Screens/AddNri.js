@@ -14,6 +14,7 @@ import {
   Modal,
   FlatList,
   Dimensions,
+  StatusBar,
 } from "react-native";
 import { API_URL } from "../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,7 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
-const AddNRIMember = ({ closeModal }) => {
+const AddNRIMember = () => {
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [locality, setLocality] = useState("");
@@ -174,508 +175,319 @@ const AddNRIMember = ({ closeModal }) => {
     setLoading(false);
   };
 
-  // Render web layout with 3 fields per row
-  const renderWebLayout = () => (
-    <View style={styles.webContainer}>
-      <View style={styles.headerContainer}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.screenTitle}>ADD NRI MEMBER</Text>
-        </View>
-        <Image source={logo1} style={styles.logo} />
-      </View>
-
-      <View style={styles.card}>
-        {/* Row 1 */}
-        <View style={styles.webRow}>
-          {/* Name */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setName}
-                value={name}
-              />
-              <FontAwesome
-                name="user"
-                size={20}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </View>
-          </View>
-
-          {/* Country */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Country</Text>
-            <TouchableOpacity
-              style={styles.inputWrapper}
-              onPress={() => setShowCountryModal(true)}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Select Country"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                value={country}
-                editable={false}
-                pointerEvents="none"
-              />
-              <MaterialIcons
-                name="arrow-drop-down"
-                size={24}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Locality */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Locality (Abroad)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex. Dallas"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setLocality}
-                value={locality}
-              />
-              <MaterialIcons
-                name="location-on"
-                size={20}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Row 2 */}
-        <View style={styles.webRow}>
-          {/* Indian Location */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Location in India</Text>
-            <TouchableOpacity
-              style={styles.inputWrapper}
-              onPress={() => setShowLocationModal(true)}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Select Location"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                value={indianLocation}
-                editable={false}
-                pointerEvents="none"
-              />
-              <MaterialIcons
-                name="arrow-drop-down"
-                size={24}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Occupation */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Occupation</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex. Software Engineer"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setOccupation}
-                value={occupation}
-              />
-              <MaterialIcons
-                name="work"
-                size={20}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </View>
-          </View>
-
-          {/* Mobile IN */}
-          <View style={styles.webInputContainer}>
-            <Text style={styles.label}>Mobile IN (WhatsApp No.)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex. 9063392872"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={(text) =>
-                  setMobileIN(text.replace(/[^0-9]/g, ""))
-                }
-                value={mobileIN}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
-              <MaterialIcons
-                name="phone"
-                size={20}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Row 3 - Single field spanning full width */}
-        <View style={styles.webRow}>
-          {/* Mobile Country No */}
-          <View style={[styles.webInputContainer]}>
-            <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex. 9063392872"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={(text) =>
-                  setMobileCountryNo(text.replace(/[^0-9]/g, ""))
-                }
-                value={mobileCountryNo}
-                keyboardType="phone-pad"
-                maxLength={15}
-              />
-              <MaterialIcons
-                name="phone"
-                size={20}
-                color="#3E5C76"
-                style={styles.icon}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={handleAddMember}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>Register</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.navigate("RegisterAS")}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading && (
-          <ActivityIndicator
-            size="large"
-            color="#3E5C76"
-            style={styles.loadingIndicator}
-          />
-        )}
-      </View>
-    </View>
-  );
-
-  // Render mobile layout (original)
-  const renderMobileLayout = () => (
-    <ScrollView
-      contentContainerStyle={styles.scrollContainer}
-    >
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-    <Ionicons name="arrow-back" size={24} color="#2B2D42" />
-  </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.screenTitle}>ADD NRI MEMBER</Text>
-        </View>
-        <Image source={logo1} style={styles.logo} />
-      </View>
-
-      <View style={styles.card}>
-        {/* Name Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              onChangeText={setName}
-              value={name}
-            />
-            <FontAwesome
-              name="user"
-              size={20}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </View>
-        </View>
-
-        {/* Country Select */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Country</Text>
-          <TouchableOpacity
-            style={styles.inputWrapper}
-            onPress={() => setShowCountryModal(true)}
-          >
-            <TextInput
-              style={styles.input}
-              placeholder="Select Country"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              value={country}
-              editable={false}
-              pointerEvents="none"
-            />
-            <MaterialIcons
-              name="arrow-drop-down"
-              size={24}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Locality Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Locality (Abroad)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. Dallas"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              onChangeText={setLocality}
-              value={locality}
-            />
-            <MaterialIcons
-              name="location-on"
-              size={20}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </View>
-        </View>
-
-        {/* Location in India Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Location in India</Text>
-          <TouchableOpacity
-            style={styles.inputWrapper}
-            onPress={() => setShowLocationModal(true)}
-          >
-            <TextInput
-              style={styles.input}
-              placeholder="Select Location"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              value={indianLocation}
-              editable={false}
-              pointerEvents="none"
-            />
-            <MaterialIcons
-              name="arrow-drop-down"
-              size={24}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Occupation Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Occupation</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. Software Engineer"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              onChangeText={setOccupation}
-              value={occupation}
-            />
-            <MaterialIcons
-              name="work"
-              size={20}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </View>
-        </View>
-
-        {/* Mobile IN Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Mobile IN (WhatsApp No.)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. 9063392872"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              onChangeText={(text) =>
-                setMobileIN(text.replace(/[^0-9]/g, ""))
-              }
-              value={mobileIN}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
-            <MaterialIcons
-              name="phone"
-              size={20}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </View>
-        </View>
-
-        {/* Mobile Country No Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. 9063392872"
-              placeholderTextColor="rgba(25, 25, 25, 0.5)"
-              onChangeText={(text) =>
-                setMobileCountryNo(text.replace(/[^0-9]/g, ""))
-              }
-              value={mobileCountryNo}
-              keyboardType="phone-pad"
-              maxLength={15}
-            />
-            <MaterialIcons
-              name="phone"
-              size={20}
-              color="#3E5C76"
-              style={styles.icon}
-            />
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={handleAddMember}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>Register</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.navigate("RegisterAS")}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading && (
-          <ActivityIndicator
-            size="large"
-            color="#3E5C76"
-            style={styles.loadingIndicator}
-          />
-        )}
-      </View>
-    </ScrollView>
-  );
-
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        {Platform.OS === 'web' ? renderWebLayout() : renderMobileLayout()}
-
-        {/* Country Modal */}
-        <Modal
-          visible={showCountryModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowCountryModal(false)}
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContainer,
+            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+          ]}
+          style={styles.scrollView}
+          nestedScrollEnabled={true}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Country</Text>
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search country..."
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  onChangeText={setCountrySearch}
-                  value={countrySearch}
-                  autoFocus={true}
-                />
-                <MaterialIcons
-                  name="search"
-                  size={24}
-                  color="#3E5C76"
-                  style={styles.searchIcon}
-                />
+          <View style={styles.headerContainer}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#2B2D42" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.screenTitle}>ADD NRI MEMBER</Text>
+            </View>
+            <Image source={logo1} style={styles.logo} />
+          </View>
+
+          <View style={styles.card}>
+            {/* Row 1 */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setName}
+                    value={name}
+                  />
+                  <FontAwesome
+                    name="user"
+                    size={20}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </View>
               </View>
-              <FlatList
-                data={filteredCountries}
-                renderItem={renderCountryItem}
-                keyExtractor={(item) => item.value}
-                style={styles.modalList}
-              />
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Country</Text>
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowCountryModal(true)}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Country"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={country}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <MaterialIcons
+                    name="arrow-drop-down"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Row 2 */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Locality (Abroad)</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. Dallas"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setLocality}
+                    value={locality}
+                  />
+                  <MaterialIcons
+                    name="location-on"
+                    size={20}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Location in India</Text>
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowLocationModal(true)}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Location"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={indianLocation}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <MaterialIcons
+                    name="arrow-drop-down"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Row 3 */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Occupation</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. Software Engineer"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setOccupation}
+                    value={occupation}
+                  />
+                  <MaterialIcons
+                    name="work"
+                    size={20}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile IN (WhatsApp No.)</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. 9063392872"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={(text) =>
+                      setMobileIN(text.replace(/[^0-9]/g, ""))
+                    }
+                    value={mobileIN}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Row 4 - Single field */}
+            <View style={styles.inputRow}>
+              <View style={[styles.inputContainer, { width: width < 450 ? '100%' : '48%' }]}>
+                <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. 9063392872"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={(text) =>
+                      setMobileCountryNo(text.replace(/[^0-9]/g, ""))
+                    }
+                    value={mobileCountryNo}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color="#E82E5F"
+                    style={styles.icon}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.row}>
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setShowCountryModal(false);
-                  setCountrySearch("");
-                }}
+                style={styles.registerButton}
+                onPress={handleAddMember}
+                disabled={loading}
               >
-                <Text style={styles.closeButtonText}>Close</Text>
+                <Text style={styles.buttonText}>Register</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.navigate("RegisterAS")}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
 
-        {/* Location Modal */}
-        <Modal
-          visible={showLocationModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowLocationModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Location</Text>
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search location..."
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  onChangeText={setLocationSearch}
-                  value={locationSearch}
-                  autoFocus={true}
-                />
-                <MaterialIcons
-                  name="search"
-                  size={24}
-                  color="#3E5C76"
-                  style={styles.searchIcon}
-                />
-              </View>
-              <FlatList
-                data={filteredConstituencies}
-                renderItem={renderLocationItem}
-                keyExtractor={(item, index) => index.toString()}
-                style={styles.modalList}
+            {loading && (
+              <ActivityIndicator
+                size="large"
+                color="#E82E5F"
+                style={styles.loadingIndicator}
               />
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setShowLocationModal(false);
-                  setLocationSearch("");
-                }}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
-        </Modal>
+        </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Country Modal */}
+      <Modal
+        visible={showCountryModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCountryModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : null}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Country</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search country..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setCountrySearch}
+                value={countrySearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#E82E5F"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredCountries}
+              renderItem={renderCountryItem}
+              keyExtractor={(item) => item.value}
+              style={styles.modalList}
+              keyboardShouldPersistTaps="handled"
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowCountryModal(false);
+                setCountrySearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Location Modal */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : null}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search location..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setLocationSearch}
+                value={locationSearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#E82E5F"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredConstituencies}
+              renderItem={renderLocationItem}
+              keyExtractor={(item, index) => index.toString()}
+              style={styles.modalList}
+              keyboardShouldPersistTaps="handled"
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowLocationModal(false);
+                setLocationSearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <StatusBar style="auto" />
     </View>
   );
 };
@@ -685,11 +497,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
   },
-  webContainer: {
+  scrollView: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    width: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 20,
+  },
+  smallScreenScrollContainer: {
+    paddingHorizontal: 10,
+    paddingTop: width < 450 && Platform.OS === "web" ? 280 : 0,
+    height: "100vh"
   },
   headerContainer: {
     flexDirection: "row",
@@ -702,14 +523,10 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
   },
-  scrollContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
   card: {
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "80%" : "90%") : "90%",
+    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -719,28 +536,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     alignItems: "center",
-    margin: 20,
+    margin: 10,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
   },
-  inputContainer: {
-    width: "100%",
-    position: "relative",
-    zIndex: 1,
-    marginBottom: 15,
-  },
-  webInputContainer: {
-    width: Platform.OS === 'web' ? '30%' : '100%',
-    position: "relative",
-    zIndex: 1,
-    marginBottom: 15,
-    marginHorizontal: Platform.OS === 'web' ? 10 : 0,
-  },
-  webRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  inputRow: {
+    flexDirection: width < 450 ? "column" : "row",
+    justifyContent: "space-between",
+    gap: 15,
     width: '100%',
-    marginBottom: 15,
+  },
+  inputContainer: {
+    width: width < 450 ? "100%" : "48%",
+    position: "relative",
+    zIndex: 1,
   },
   inputWrapper: {
     position: "relative",
@@ -757,22 +566,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 2,
-    marginBottom: 5,
+    marginBottom: 15,
     borderWidth: 1,
     borderColor: "#ccc",
     fontFamily: "Roboto-Regular",
   },
   logo: {
-    width: Platform.OS === "android" ? 105 : 100,
-    height: Platform.OS === "android" ? 105 : 100,
+    width: width < 450 ? 105 : 100,
+    height: width < 450 ? 105 : 100,
     resizeMode: "contain",
     marginRight: 7,
-    marginBottom: 20,
-    left: Platform.OS === "android" ? -102 : -700
+    top: Platform.OS === "ios" ? "20%" : "",
+    marginBottom: 60,
+    left: width < 450 ? -102 : "-43%",
   },
   icon: {
     position: "absolute",
-    left: Platform.OS === "web" ? '85%' : 245,
+    right: 10,
     top: 13,
     color: "#3E5C76",
   },
@@ -815,11 +625,12 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     fontWeight: "700",
-    fontSize: 18,
+    fontSize: 16,
     color: "#2B2D42",
-    top: 50,
+    top: 40,  
     left: 50,
     textAlign: "center",
+    marginTop: Platform.OS === "ios" ? "18%" : "",
     fontFamily: "Roboto-Bold",
   },
   // Modal styles
@@ -838,14 +649,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom:Platform.OS==="ios" ? "-30%":"10%",
     textAlign: "center",
     color: "#2B2D42",
     fontFamily: "Roboto-Bold",
   },
   searchContainer: {
     position: "relative",
-    marginBottom: 15,
+    marginTop:Platform.OS==="ios"?"40%":"",
   },
   searchInput: {
     width: "100%",

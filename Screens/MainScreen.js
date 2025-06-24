@@ -9,22 +9,24 @@ import {
   Platform,
   width,
 } from "react-native";
+import { useWindowDimensions } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../assets/exp_and.jpg";
 import logo2 from "../assets/exp.jpg";
-import logo3 from "../assets/logosub.png";
+import logo3 from "../assets/logosubW.png";
 import logo4 from "../assets/quote.png";
 import logo5 from "../assets/cardbg.png";
 const isSmallDevice = width < 450;
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const isSmallDevice = width < 450;
+
   return (
     <ImageBackground
       source={
-        Platform.OS === "ios"
-          ? logo1
-          : Platform.OS === "android"
+        Platform.OS === "ios" || Platform.OS === "android" || isSmallDevice
           ? logo1
           : logo2
       }
@@ -32,17 +34,42 @@ const LoginScreen = () => {
       resizeMode="cover"
     >
       {/* Logo */}
-      <View style={styles.logoContainer}>
+      <View
+        style={[
+          styles.logoContainer,
+          {
+            top: isSmallDevice ? 60 : 40, // ⬅ push down in mobile
+          },
+        ]}
+      >
         <Image
-          source={logo3} // Company logo
-          style={styles.logo}
-          resizeMode="contain"
+          source={logo3}
+          style={{
+            width: isSmallDevice ? 130 : 200,
+            height: isSmallDevice ? 80 : 100,
+            resizeMode: "contain",
+          }}
         />
       </View>
-      <View style={styles.quoteContainer}>
+
+      <View
+        style={[
+          styles.quoteContainer,
+          {
+            top: isSmallDevice ? 170 : 120, // ⬅ push down
+            right: isSmallDevice ? -15 : 20,
+          },
+        ]}
+      >
         <Image
-          source={require("../assets/quote.png")}
-          style={styles.quote}
+          source={logo4}
+          style={[
+            styles.quote,
+            {
+              width: isSmallDevice ? 260 : 360,
+              height: isSmallDevice ? 100 : 180,
+            },
+          ]}
           resizeMode="contain"
         />
       </View>
@@ -50,39 +77,98 @@ const LoginScreen = () => {
       {/* Card with PNG background */}
       <ImageBackground
         source={require("../assets/cardbg.png")}
-        style={styles.card}
+        style={[
+          styles.card,
+          {
+            top: isSmallDevice ? 90 : 100,
+            width: isSmallDevice ? 325 : 580,
+            height: isSmallDevice ? 200 : 330,
+          },
+        ]}
         resizeMode="stretch"
       >
-        <Text style={styles.welcomeText}>Welcome to Wealth Associates</Text>
+        <Text
+          style={[
+            styles.welcomeText,
+            {
+              fontSize: isSmallDevice ? 15 : 18,
+              bottom: isSmallDevice ? -25 : 30,
+            },
+          ]}
+        >
+          Welcome to Wealth Associates
+        </Text>
 
         {/* Buttons */}
-        <View style={styles.buttonContainer}>
+        <View
+          style={[
+            styles.buttonContainer,
+            {
+              marginTop: isSmallDevice ? "20%" : 10,
+              marginLeft: isSmallDevice ? 8 : 18,
+            },
+          ]}
+        >
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              {
+                paddingVertical: isSmallDevice ? 10 : 15,
+                paddingHorizontal: isSmallDevice ? 25 : 45,
+              },
+            ]}
             onPress={() => navigation.navigate("Starting Screen")}
           >
             <Text style={styles.buttonText}> Login </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              {
+                paddingVertical: isSmallDevice ? 10 : 15,
+                paddingHorizontal: isSmallDevice ? 25 : 45,
+              },
+            ]}
             onPress={() => navigation.navigate("RegisterAS")}
           >
             <Text style={styles.buttonText}>Register</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Footer Text */}
         <View style={styles.footerTextContainer}>
-          <Text style={styles.footerText}>if already registered ?</Text>
-          <Text style={styles.footerText2}>new user ?</Text>
+          <Text
+            style={[
+              styles.footerText,
+              {
+                fontSize: isSmallDevice ? 12 : 14,
+                marginLeft: isSmallDevice ? 34 : 110,
+                marginTop: isSmallDevice ? -2 : 5,
+              },
+            ]}
+          >
+            if already registered ?
+          </Text>
+          <Text
+            style={[
+              styles.footerText2,
+              {
+                fontSize: isSmallDevice ? 12 : 14,
+                marginLeft: isSmallDevice ? 59 : 140,
+                marginTop: isSmallDevice ? -2 : 5,
+              },
+            ]}
+          >
+            new user ?
+          </Text>
         </View>
+
         <Text
           style={{
             zIndex: 10,
             top: "40%",
             color: "white",
             fontSize: 20,
-            fontWeight: 600,
+            fontWeight: "600",
             marginTop: 20,
           }}
         >
@@ -94,7 +180,7 @@ const LoginScreen = () => {
             top: "40%",
             color: "white",
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: "600",
             marginTop: 5,
           }}
         >
@@ -116,47 +202,24 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     position: "absolute",
-    top: Platform.OS === "android" || Platform.OS === "ios" ? 50 : 18,
-    alignItems: "left",
+    top: 20,
+    right: 20,
+    zIndex: 10,
   },
-  logo: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? 250 : 200,
-    height: Platform.OS === "android" || Platform.OS === "ios" ? 90 : 80,
-    position: "relative",
-    right:
-      Platform.OS === "android" || Platform.OS === "ios" || isSmallDevice
-        ? -113
-        : -680,
-  },
+
   quoteContainer: {
     position: "absolute",
-    top: Platform.OS === "android" || Platform.OS === "ios" ? 160 : 30,
-    alignItems: "left",
+    alignItems: "flex-end",
   },
-  quote: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? 250 : 500,
-    height: Platform.OS === "android" || Platform.OS === "ios" ? 128 : 280,
-    position: "relative",
-    right: Platform.OS === "android" || Platform.OS === "ios" ? 113 : 630,
-    left: Platform.OS === "android" || Platform.OS === "ios" ? 75 : 324,
-  },
+
   card: {
     position: "relative",
-    top: Platform.OS === "android" || Platform.OS === "ios" ? 90 : 100,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? 325 : 580,
-    height: Platform.OS === "android" || Platform.OS === "ios" ? 200 : 330,
-    // marginLeft:10,
-    alignItems: "center", // Centers children (text + buttons)
-    justifyContent: "center", // Centers vertically
+    alignItems: "center",
+    justifyContent: "center",
   },
   welcomeText: {
-    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 15 : 18,
     color: "#fff",
     fontWeight: "bold",
-    // marginBottom: 20,
-    position: "relative",
-    // left:155,
-    bottom: Platform.OS === "android" || Platform.OS === "ios" ? -25 : 30,
     textShadowColor: "rgba(0, 0, 0, 0.7)",
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 5,
@@ -164,18 +227,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     width: "100%",
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? "20%" : 10,
     justifyContent: "space-evenly",
-    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 8 : 18,
   },
   button: {
     backgroundColor: "#3E5C76",
-    paddingVertical:
-      Platform.OS === "android" || Platform.OS === "ios" ? 10 : 15,
-    paddingHorizontal:
-      Platform.OS === "android" || Platform.OS === "ios" ? 25 : 45,
-    borderWidth: 0.5, // Thickness of the border
-    borderColor: "#A9BCD0", // Color of the border
+    borderWidth: 0.5,
+    borderColor: "#A9BCD0",
     padding: 10,
     borderRadius: 8,
     elevation: 5,
@@ -192,21 +249,25 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: "#fff",
-    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 12 : 14,
-    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 34 : 110,
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? -2 : 5,
-    textShadowColor: "rgba(0, 0, 0, 0.7)", // Dark shadow for depth
-    textShadowOffset: { width: 2, height: 2 }, // Slight offset for natural look
-    textShadowRadius: 5, // Smooth blur effect
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
+  },
+  quote: {
+    width: 250,
+    height: 100,
+    resizeMode: "contain",
+  },
+  logo: {
+    width: 150,
+    height: 60,
+    resizeMode: "contain",
   },
   footerText2: {
     color: "#fff",
-    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 12 : 14,
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? -2 : 5,
-    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 59 : 140,
-    textShadowColor: "rgba(0, 0, 0, 0.7)", // Dark shadow for depth
-    textShadowOffset: { width: 2, height: 2 }, // Slight offset for natural look
-    textShadowRadius: 5, // Smooth blur effect
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
   },
 });
 

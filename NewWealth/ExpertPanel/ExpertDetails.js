@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useWindowDimensions } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import logo1 from "../../assets/man.png";
 
@@ -20,6 +21,9 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
   const [error, setError] = useState(null);
   const [Details, setDetails] = useState({});
   const [PostedBy, setPostedBy] = useState("");
+
+  const { width } = useWindowDimensions();
+  const isMobileView = Platform.OS !== "web" || width < 450;
 
   useEffect(() => {
     if (!expertType) return;
@@ -101,63 +105,90 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          onPress={() => onSwitch(null)}
-          style={styles.backButton}
+    <View style={{ flex: 1, backgroundColor: "#D8E3E7" }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 16,
+          paddingBottom: 40,
+        }}
+        style={{ flex: 1 }}
+      >
+        <View
+          style={[
+            styles.container,
+            {
+              width: isMobileView ? "100%" : "80%",
+            },
+          ]}
         >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => onSwitch(null)}
+              style={styles.backButton}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
 
-      <Text style={styles.header}>{expertType} Experts</Text>
+          <Text style={styles.header}>{expertType} Experts</Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : error ? (
-        <Text style={styles.errorText}>{error}</Text>
-      ) : experts.length > 0 ? (
-        <ScrollView
-          contentContainerStyle={styles.cardContainer}
-          style={styles.scrollView}
-        >
-          {experts.map((item, index) => (
-            <View key={item._id} style={styles.expertCard}>
-              <Image
-                source={item.photo ? { uri: `${API_URL}${item.photo}` } : logo1}
-                style={styles.profileImage}
-              />
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : experts.length > 0 ? (
+            <View style={styles.cardContainer}>
+              {experts.map((item, index) => (
+                <View
+                  key={item._id}
+                  style={[
+                    styles.expertCard,
+                    {
+                      width: isMobileView ? "90%" : "30%",
+                    },
+                  ]}
+                >
+                  <Image
+                    source={
+                      item.photo ? { uri: `${API_URL}${item.photo}` } : logo1
+                    }
+                    style={styles.profileImage}
+                  />
 
-              <Text style={styles.expertName}>{item.name}</Text>
-              <Text style={styles.expertDetails}>
-                <Text style={styles.label}>Qualification:</Text>{" "}
-                {item.qualification}
-              </Text>
-              <Text style={styles.expertDetails}>
-                <Text style={styles.label}>Experience:</Text> {item.experience}{" "}
-                Years
-              </Text>
-              <Text style={styles.expertDetails}>
-                <Text style={styles.label}>Location:</Text> {item.location}
-              </Text>
-              <TouchableOpacity
-                style={styles.requestButton}
-                onPress={() => requestExpert(item)}
-              >
-                <Text style={styles.requestButtonText}>Request Expert</Text>
-              </TouchableOpacity>
+                  <Text style={styles.expertName}>{item.name}</Text>
+                  <Text style={styles.expertDetails}>
+                    <Text style={styles.label}>Qualification:</Text>{" "}
+                    {item.qualification}
+                  </Text>
+                  <Text style={styles.expertDetails}>
+                    <Text style={styles.label}>Experience:</Text>{" "}
+                    {item.experience} Years
+                  </Text>
+                  <Text style={styles.expertDetails}>
+                    <Text style={styles.label}>Location:</Text> {item.location}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.requestButton}
+                    onPress={() => requestExpert(item)}
+                  >
+                    <Text style={styles.requestButtonText}>Request Expert</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-          ))}
-        </ScrollView>
-      ) : (
-        <Text style={styles.noExperts}>
-          No experts found for this category.
-        </Text>
-      )}
+          ) : (
+            <Text style={styles.noExperts}>
+              No experts found for this category.
+            </Text>
+          )}
 
-      {/* Bottom spacing */}
-      <View style={styles.bottomSpacing} />
+          {/* Bottom spacing */}
+          <View style={styles.bottomSpacing} />
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -165,7 +196,6 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#D8E3E7",
     padding: 16,
     width: Platform.OS === "web" ? "80%" : "100%",
     alignSelf: "center",
@@ -176,11 +206,29 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   backButton: {
-    padding: 5,
+    backgroundColor: "#A9BCD0",
+    paddingTop: 14, // increased top padding
+    paddingBottom: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    marginTop: 20, // more spacing from top
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+    justifyContent: "center", // centers content vertically
+    alignItems: "center", // centers content horizontally
   },
   backButtonText: {
     fontSize: 16,
-    color: "blue",
+    fontWeight: "bold",
+    color: "#282D42",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   header: {
     fontSize: 22,
@@ -192,6 +240,7 @@ const styles = StyleSheet.create({
   scrollView: {
     width: "100%",
     marginBottom: 20,
+    flexGrow: 1,
   },
   cardContainer: {
     flexDirection: "row",

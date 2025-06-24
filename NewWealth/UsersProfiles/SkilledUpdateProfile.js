@@ -129,9 +129,9 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
           contentContainerStyle={styles.scrollContainer}
           nestedScrollEnabled={true}
         >
+              <Text style={styles.register_text}>Edit Details</Text>
           <View style={styles.card}>
             <View style={styles.register_main}>
-              <Text style={styles.register_text}>Edit Details</Text>
             </View>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
@@ -157,7 +157,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     <FontAwesome
                       name="user"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -180,7 +180,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     <MaterialIcons
                       name="phone"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -222,7 +222,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     <MaterialIcons
                       name="work"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -240,7 +240,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     <MaterialIcons
                       name="location-on"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -263,7 +263,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     <MaterialIcons
                       name="lock"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -291,7 +291,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
             {isLoading && (
               <ActivityIndicator
                 size="large"
-                color="#E82E5F"
+                color="#3E5C76"
                 style={styles.loadingIndicator}
               />
             )}
@@ -306,23 +306,25 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
+    width:"100%",
+    borderRadius: 30,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#D8E3E7",
     borderRadius: 30,
   },
   register_main: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#ffffff",
     width: Platform.OS === "web" ? "100%" : 260,
-    height: 40,
+    height: 1,
     borderRadius: 20,
   },
   register_text: {
@@ -330,8 +332,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     alignContent: "center",
-    fontSize: 20,
-    color: "#fff",
+    fontSize: 24,
+    color: "black",
+    fontFamily: "OpenSanssemibold",
   },
   card: {
     display: "flex",
@@ -402,13 +405,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   registerButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 15,
   },
   cancelButton: {
-    backgroundColor: "#424242",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 15,

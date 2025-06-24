@@ -188,9 +188,11 @@ const Rskill = ({ closeModal }) => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
+          style={styles.scrollView}
           nestedScrollEnabled={true}
         >
           <View style={styles.headerContainer}>
@@ -207,95 +209,101 @@ const Rskill = ({ closeModal }) => {
           </View>
 
           <View style={styles.card}>
-            {/* Full Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  onChangeText={setFullName}
-                  value={fullName}
-                />
-                <FontAwesome
-                  name="user"
-                  size={20}
-                  color="#3E5C76"
-                  style={styles.icon}
-                />
+            {/* Input Row */}
+            <View style={styles.inputRow}>
+              {/* Full Name Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setFullName}
+                    value={fullName}
+                  />
+                  <FontAwesome
+                    name="user"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.icon}
+                  />
+                </View>
+              </View>
+
+              {/* Skill Select */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Skill</Text>
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowSkillModal(true)}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Skill"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={skill}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <MaterialIcons
+                    name="arrow-drop-down"
+                    size={24}
+                    color="#3E5C76"
+                    style={styles.icon}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Skill Select */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Select Skill</Text>
-              <TouchableOpacity
-                style={styles.inputWrapper}
-                onPress={() => setShowSkillModal(true)}
-              >
-                <TextInput
-                  style={styles.input}
-                  placeholder="Select Skill"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={skill}
-                  editable={false}
-                  pointerEvents="none"
-                />
-                <MaterialIcons
-                  name="arrow-drop-down"
-                  size={24}
-                  color="#3E5C76"
-                  style={styles.icon}
-                />
-              </TouchableOpacity>
-            </View>
+            {/* Second Input Row */}
+            <View style={styles.inputRow}>
+              {/* Location Select */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Location</Text>
+                <TouchableOpacity
+                  style={styles.inputWrapper}
+                  onPress={() => setShowLocationModal(true)}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Location"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={location}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <MaterialIcons
+                    name="arrow-drop-down"
+                    size={24}
+                    color="#3E5C76"
+                    style={styles.icon}
+                  />
+                </TouchableOpacity>
+              </View>
 
-            {/* Location Select */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Location</Text>
-              <TouchableOpacity
-                style={styles.inputWrapper}
-                onPress={() => setShowLocationModal(true)}
-              >
-                <TextInput
-                  style={styles.input}
-                  placeholder="Select Location"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={location}
-                  editable={false}
-                  pointerEvents="none"
-                />
-                <MaterialIcons
-                  name="arrow-drop-down"
-                  size={24}
-                  color="#3E5C76"
-                  style={styles.icon}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Mobile Number Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Mobile Number</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. 9063392872"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  onChangeText={(text) =>
-                    setMobileNumber(text.replace(/[^0-9]/g, ""))
-                  }
-                  value={mobileNumber}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-                <MaterialIcons
-                  name="phone"
-                  size={20}
-                  color="#3E5C76"
-                  style={styles.icon}
-                />
+              {/* Mobile Number Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Number</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. 9063392872"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={(text) =>
+                      setMobileNumber(text.replace(/[^0-9]/g, ""))
+                    }
+                    value={mobileNumber}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.icon}
+                  />
+                </View>
               </View>
             </View>
 
@@ -334,42 +342,49 @@ const Rskill = ({ closeModal }) => {
         transparent={true}
         onRequestClose={() => setShowSkillModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Skill</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search skill..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setSkillSearch}
-                value={skillSearch}
-                autoFocus={true}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOuterContainer}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Skill</Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search skill..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setSkillSearch}
+                  value={skillSearch}
+                  autoFocus={true}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#3E5C76"
+                  style={styles.searchIcon}
+                />
+              </View>
+              <FlatList
+                data={filteredSkills}
+                renderItem={renderSkillItem}
+                keyExtractor={(item, index) => index.toString()}
+                style={styles.modalList}
+                keyboardShouldPersistTaps="handled"
               />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#3E5C76"
-                style={styles.searchIcon}
-              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowSkillModal(false);
+                  setSkillSearch("");
+                }}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <FlatList
-              data={filteredSkills}
-              renderItem={renderSkillItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowSkillModal(false);
-                setSkillSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Location Modal */}
@@ -379,42 +394,49 @@ const Rskill = ({ closeModal }) => {
         transparent={true}
         onRequestClose={() => setShowLocationModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Location</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search location..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setLocationSearch}
-                value={locationSearch}
-                autoFocus={true}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOuterContainer}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Location</Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search location..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setLocationSearch}
+                  value={locationSearch}
+                  autoFocus={true}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#3E5C76"
+                  style={styles.searchIcon}
+                />
+              </View>
+              <FlatList
+                data={filteredConstituencies}
+                renderItem={renderLocationItem}
+                keyExtractor={(item, index) => index.toString()}
+                style={styles.modalList}
+                keyboardShouldPersistTaps="handled"
               />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#3E5C76"
-                style={styles.searchIcon}
-              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowLocationModal(false);
+                  setLocationSearch("");
+                }}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <FlatList
-              data={filteredConstituencies}
-              renderItem={renderLocationItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowLocationModal(false);
-                setLocationSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -424,6 +446,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D8E3E7",
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 20,
   },
   headerContainer: {
     flexDirection: "row",
@@ -436,14 +468,10 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
   },
-  scrollContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
   card: {
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -457,8 +485,14 @@ const styles = StyleSheet.create({
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
   },
-  inputContainer: {
+  inputRow: {
+    flexDirection: width < 450 ? "column" : "row",
+    justifyContent: "space-between",
+    gap: 15,
     width: "100%",
+  },
+  inputContainer: {
+    width: width < 450 ? "100%" : "48%",
     position: "relative",
     zIndex: 1,
     marginBottom: 15,
@@ -484,16 +518,16 @@ const styles = StyleSheet.create({
     fontFamily: "Roboto-Regular",
   },
   logo: {
-    width: Platform.OS === "android" ? 105 : 100,
-    height: Platform.OS === "android" ? 105 : 100,
+    width: width < 450 ? 105 : 100,
+    height: width < 450 ? 105 : 100,
     resizeMode: "contain",
     marginRight: 7,
     marginBottom: 40,
-    left: Platform.OS === "android" ? -102 : -700,
+    left: width < 450 ? -102 : -530,
   },
   icon: {
     position: "absolute",
-    left: Platform.OS === "web" ? 830 : 245,
+    right: 10,
     top: 13,
     color: "#3E5C76",
   },
@@ -544,6 +578,9 @@ const styles = StyleSheet.create({
     fontFamily: "Roboto-Bold",
   },
   // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -559,7 +596,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom:Platform.OS==="ios" ? "-35%":"5%",
     textAlign: "center",
     color: "#2B2D42",
     fontFamily: "Roboto-Bold",
@@ -567,6 +604,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: "relative",
     marginBottom: 15,
+    marginTop:Platform.OS==="ios"?"75%":"",
   },
   searchInput: {
     width: "100%",

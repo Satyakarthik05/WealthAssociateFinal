@@ -78,7 +78,7 @@ const CoreClients = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f1f1",
+    backgroundColor: "#D8E3E7",
     padding: 10,
   },
   loadingContainer: {
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
     padding: 10,
-    marginBottom: 15,
+    marginBottom: 5,
   },
   clientImage: {
     width: "100%",

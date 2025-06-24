@@ -78,7 +78,8 @@ const data = [
 
 const ExpertPanel = ({ onSwitch, userType }) => {
   const [isCoreMember, setIsCoreMember] = useState(false);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isMobileView = Platform.OS !== "web" || width < 450;
   const navigation = useNavigation();
 
   const numColumns = Platform.OS === "web" ? 3 : 2;
@@ -89,10 +90,11 @@ const ExpertPanel = ({ onSwitch, userType }) => {
     () => ({
       ...styles.mainContainer,
       paddingHorizontal: spacing,
-      width: Platform.OS === "web" ? "80%" : "100%",
+      width: isMobileView ? "100%" : "80%",
       alignSelf: "center",
+      minHeight: height,
     }),
-    [width]
+    [width, height]
   );
 
   useEffect(() => {
@@ -128,61 +130,65 @@ const ExpertPanel = ({ onSwitch, userType }) => {
       );
     }
   };
-
   return (
-    <ScrollView>
-      <View style={containerStyle}>
-        <Text style={styles.header}>Expert Panel</Text>
+    <View style={styles.rootContainer}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={containerStyle}>
+          <Text style={styles.header}>Expert Panel</Text>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.requestButton]}
-            onPress={handleRequestExpert}
-          >
-            <Text style={styles.buttonText}>Request Expert</Text>
-          </TouchableOpacity>
-
-          {isCoreMember && (
+          <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={[styles.button, styles.addExpertButton]}
-              onPress={handleAddExpert}
+              style={[styles.button, styles.requestButton]}
+              onPress={handleRequestExpert}
             >
-              <Text style={styles.buttonText}>Add Expert</Text>
+              <Text style={styles.buttonText}>Request Expert</Text>
             </TouchableOpacity>
-          )}
-        </View>
 
-        <View style={styles.gridContainer}>
-          {data.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.item,
-                {
-                  flexBasis: `${Platform.OS === "web" ? 33.33 : 50}%`,
-                },
-              ]}
-              onPress={() => onSwitch(item.title)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconContainer}>
-                <Image source={{ uri: item.icon }} style={styles.icon} />
-              </View>
-              <Text style={styles.text}>{item.title}</Text>
-            </TouchableOpacity>
-          ))}
+            {isCoreMember && (
+              <TouchableOpacity
+                style={[styles.button, styles.addExpertButton]}
+                onPress={handleAddExpert}
+              >
+                <Text style={styles.buttonText}>Add Expert</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.gridContainer}>
+            {data.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.item,
+                  {
+                    flexBasis: isMobileView ? "50%" : "33.33%",
+                  },
+                ]}
+                onPress={() => onSwitch(item.title)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconContainer}>
+                  <Image source={{ uri: item.icon }} style={styles.icon} />
+                </View>
+                <Text style={styles.text}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  rootContainer: {
     flex: 1,
     backgroundColor: "#D8E3E7",
+  },
+  mainContainer: {
+    flexGrow: 1,
     paddingTop: 20,
-    paddingBottom: 60,
+    paddingBottom: 90,
   },
   header: {
     fontSize: 22,

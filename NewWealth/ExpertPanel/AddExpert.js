@@ -12,6 +12,9 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Modal,
+  FlatList,
+  Keyboard,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -20,9 +23,9 @@ import { useNavigation } from "@react-navigation/native";
 import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
 const AddExpertForm = ({ closeModal }) => {
+  const { width, height } = useWindowDimensions();
+  const isMobile = width < 450;
   const fontsLoaded = useFontsLoader();
-  const { width } = useWindowDimensions();
-  const isSmallScreen = width < 400;
   const locationInputRef = useRef();
   const navigation = useNavigation();
 
@@ -41,12 +44,10 @@ const AddExpertForm = ({ closeModal }) => {
   const [constituencies, setConstituencies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [additionalFields, setAdditionalFields] = useState({});
-
-  // Dropdown states
-  const [filteredConstituencies, setFilteredConstituencies] = useState([]);
-  const [filteredExpertTypes, setFilteredExpertTypes] = useState([]);
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [showExpertTypeDropdown, setShowExpertTypeDropdown] = useState(false);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [bottomSheetType, setBottomSheetType] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const expertFields = {
     LEGAL: [
@@ -158,14 +159,11 @@ const AddExpertForm = ({ closeModal }) => {
     "LIAISONING",
   ];
 
-  // Fetch all constituencies
   useEffect(() => {
     const fetchConstituencies = async () => {
       try {
         const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch constituencies");
-        }
+        if (!response.ok) throw new Error("Failed to fetch constituencies");
         const data = await response.json();
 
         const allConstituencies = data.flatMap((district) =>
@@ -176,8 +174,6 @@ const AddExpertForm = ({ closeModal }) => {
         );
 
         setConstituencies(allConstituencies);
-        setFilteredConstituencies(allConstituencies);
-        setFilteredExpertTypes(expertTypes);
       } catch (error) {
         console.error("Error fetching constituencies:", error);
         Alert.alert("Error", "Failed to load location data");
@@ -189,24 +185,7 @@ const AddExpertForm = ({ closeModal }) => {
 
   const handleChange = (key, value) => {
     setForm({ ...form, [key]: value });
-
-    if (key === "expertType") {
-      setAdditionalFields({});
-    }
-
-    if (key === "location") {
-      const filtered = constituencies.filter((item) =>
-        item.name.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredConstituencies(filtered);
-    }
-
-    if (key === "expertType") {
-      const filtered = expertTypes.filter((item) =>
-        item.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredExpertTypes(filtered);
-    }
+    if (key === "expertType") setAdditionalFields({});
   };
 
   const handleAdditionalFieldChange = (key, value) => {
@@ -229,9 +208,7 @@ const AddExpertForm = ({ closeModal }) => {
         };
         input.click();
       } else {
-        const permissionResult =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.status !== "granted") {
           Alert.alert("Permission is required to upload a photo.");
           return;
@@ -242,12 +219,12 @@ const AddExpertForm = ({ closeModal }) => {
           quality: 1,
         });
 
-        if (!result.canceled && result.assets && result.assets.length > 0) {
+        if (!result.canceled && result.assets?.length > 0) {
           setPhoto(result.assets[0].uri);
         }
       }
     } catch (error) {
-      console.error("Error selecting image from gallery:", error);
+      console.error("Error selecting image:", error);
       Alert.alert("Error", "Failed to select image");
     }
   };
@@ -255,7 +232,6 @@ const AddExpertForm = ({ closeModal }) => {
   const takePhotoWithCamera = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
       if (status !== "granted") {
         Alert.alert("Camera permission is required to take a photo.");
         return;
@@ -267,7 +243,7 @@ const AddExpertForm = ({ closeModal }) => {
         quality: 1,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!result.canceled && result.assets?.length > 0) {
         setPhoto(result.assets[0].uri);
       }
     } catch (error) {
@@ -276,70 +252,62 @@ const AddExpertForm = ({ closeModal }) => {
     }
   };
 
+  const openBottomSheet = (type) => {
+    Keyboard.dismiss();
+    setBottomSheetType(type);
+    setSearchTerm("");
+    setFilteredData(type === "location" ? constituencies : expertTypes);
+    setBottomSheetVisible(true);
+  };
+
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    const data = bottomSheetType === "location" ? constituencies : expertTypes;
+    setFilteredData(
+      data.filter(item =>
+        (item.name || item).toLowerCase().includes(text.toLowerCase())
+    ));
+  };
+
+  const handleSelectItem = (item) => {
+    const key = bottomSheetType === "location" ? "location" : "expertType";
+    handleChange(key, bottomSheetType === "location" ? item.name : item);
+    setBottomSheetVisible(false);
+  };
+
   const handleSubmit = async () => {
-    if (
-      !form.name ||
-      !form.expertType ||
-      !form.qualification ||
-      !form.experience ||
-      !form.location ||
-      !form.mobile ||
-      !form.officeAddress ||
-      !photo
-    ) {
-      Alert.alert("Error", "Please fill all the fields and upload a photo.");
+    if (!form.name || !form.expertType || !form.location || !photo) {
+      Alert.alert("Error", "Please fill all required fields and upload a photo.");
       return;
     }
 
     setLoading(true);
     try {
       const formData = new FormData();
-
-      formData.append("name", form.name);
-      formData.append("expertType", form.expertType);
-      formData.append("qualification", form.qualification);
-      formData.append("experience", form.experience);
-      formData.append("location", form.location);
-      formData.append("mobile", form.mobile);
-      formData.append("officeAddress", form.officeAddress);
-
-      Object.keys(additionalFields).forEach((key) => {
-        formData.append(key, additionalFields[key]);
-      });
+      Object.entries(form).forEach(([key, value]) => formData.append(key, value));
+      Object.entries(additionalFields).forEach(([key, value]) => formData.append(key, value));
 
       if (photo) {
         if (Platform.OS === "web") {
           if (file) {
             formData.append("photo", file);
-          } else if (typeof photo === "string" && photo.startsWith("blob:")) {
+          } else if (photo.startsWith("blob:")) {
             const response = await fetch(photo);
             const blob = await response.blob();
-            const file = new File([blob], "photo.jpg", { type: blob.type });
-            formData.append("photo", file);
+            formData.append("photo", new File([blob], "photo.jpg", { type: blob.type }));
           }
         } else {
           const localUri = photo;
           const filename = localUri.split("/").pop();
-          const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : `image`;
-
-          formData.append("photo", {
-            uri: localUri,
-            name: filename,
-            type,
-          });
+          const type = filename.match(/\.(\w+)$/)?.[1] ? `image/${filename.match(/\.(\w+)$/)?.[1]}` : `image`;
+          formData.append("photo", { uri: localUri, name: filename, type });
         }
-      } else {
-        Alert.alert("Error", "No photo selected.");
-        return;
       }
 
       const response = await fetch(`${API_URL}/expert/registerExpert`, {
         method: "POST",
         body: formData,
-        headers: {
-          Accept: "application/json",
-        },
+        headers: { Accept: "application/json" },
       });
 
       const data = await response.json();
@@ -347,7 +315,7 @@ const AddExpertForm = ({ closeModal }) => {
         Alert.alert("Success", data.message);
         closeModal();
       } else {
-        Alert.alert("Error", data.message || "Failed to register expert.");
+        Alert.alert("Error", data.message || "Registration failed");
       }
     } catch (error) {
       Alert.alert("Error", "Something went wrong. Please try again.");
@@ -357,48 +325,110 @@ const AddExpertForm = ({ closeModal }) => {
     }
   };
 
-  return (
-    <View style={styles.mainContainer}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <View style={styles.header}>
-              <Text style={styles.headerText}>Add Expert</Text>
-            </View>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.formContainer}>
-            
+  const renderItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.listItem} 
+      onPress={() => handleSelectItem(item)}
+    >
+      <Text style={styles.listItemText}>
+        {bottomSheetType === "expertType" ? item : item.name}
+      </Text>
+      {bottomSheetType === "location" && (
+        <Text style={styles.listItemSubText}>{item.district}</Text>
+      )}
+    </TouchableOpacity>
+  );
 
+  const renderBottomSheet = () => (
+    <Modal
+      visible={bottomSheetVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setBottomSheetVisible(false)}
+    >
+      <View style={styles.modalOuterContainer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalKeyboardAvoidingView}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {bottomSheetType === "location" ? "Select Constituency" : "Select Expert Type"}
+              </Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  ref={locationInputRef}
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={handleSearch}
+                  value={searchTerm}
+                  autoFocus={true}
+                />
+                <MaterialIcons name="search" size={24} color="#3E5C76" style={styles.searchIcon} />
+              </View>
+              <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => 
+                  bottomSheetType === "expertType" ? item : `${item.name}-${index}`
+                }
+                style={styles.modalList}
+                keyboardShouldPersistTaps="handled"
+              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setBottomSheetVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3E5C76" />
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.container}>
+          <Text style={styles.title}>Add Expert</Text>
+          <View style={styles.card}>
             <View style={styles.uploadSection}>
               <Text style={styles.label}>Expert Photo</Text>
               {photo ? (
                 <View style={styles.photoContainer}>
                   <Image source={{ uri: photo }} style={styles.uploadedImage} />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => setPhoto(null)}
-                  >
+                  <TouchableOpacity style={styles.removeButton} onPress={() => setPhoto(null)}>
                     <Text style={styles.removeButtonText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.uploadOptions}>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={selectImageFromGallery}
-                  >
-                    <MaterialIcons
-                      name="photo-library"
-                      size={24}
-                      color="#555"
-                    />
+                  <TouchableOpacity style={styles.uploadButton} onPress={selectImageFromGallery}>
+                    <MaterialIcons name="photo-library" size={24} color="#555" />
                     <Text style={styles.uploadButtonText}>Gallery</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={takePhotoWithCamera}
-                  >
+                  <TouchableOpacity style={styles.uploadButton} onPress={takePhotoWithCamera}>
                     <MaterialIcons name="camera-alt" size={24} color="#555" />
                     <Text style={styles.uploadButtonText}>Camera</Text>
                   </TouchableOpacity>
@@ -408,135 +438,49 @@ const AddExpertForm = ({ closeModal }) => {
 
             {[
               { label: "Name", key: "name", placeholder: "Enter expert name" },
-              {
-                label: "Qualification",
-                key: "qualification",
-                placeholder: "Ex. BA LLB",
-              },
-              {
-                label: "Experience",
-                key: "experience",
-                placeholder: "Ex. 5 Years",
-              },
-              {
-                label: "Mobile",
-                key: "mobile",
-                placeholder: "Ex. 9063392872",
-                keyboardType: "numeric",
-              },
-              {
-                label: "Office Address",
-                key: "officeAddress",
-                placeholder: "Full address",
-              },
-            ].map(({ label, key, placeholder, keyboardType }) => (
-              <View style={styles.formGroup} key={key}>
-                <Text style={styles.label}>{label}</Text>
+              { label: "Qualification", key: "qualification", placeholder: "Ex. BA LLB" },
+              { label: "Experience", key: "experience", placeholder: "Ex. 5 Years" },
+              { label: "Mobile", key: "mobile", placeholder: "Ex. 9063392872", keyboardType: "numeric" },
+              { label: "Office Address", key: "officeAddress", placeholder: "Full address" },
+            ].map((field) => (
+              <View style={styles.formGroup} key={field.key}>
+                <Text style={styles.label}>{field.label}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={placeholder}
-                  value={form[key]}
-                  onChangeText={(text) => handleChange(key, text)}
-                  keyboardType={keyboardType || "default"}
+                  placeholder={field.placeholder}
+                  value={form[field.key]}
+                  onChangeText={(text) => handleChange(field.key, text)}
+                  keyboardType={field.keyboardType || "default"}
                 />
               </View>
             ))}
 
-            {/* Location Dropdown */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Location (Constituency)</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search Constituency"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={form.location}
-                  ref={locationInputRef}
-                  onChangeText={(text) => {
-                    handleChange("location", text);
-                    setShowLocationDropdown(true);
-                  }}
-                  onFocus={() => {
-                    setShowLocationDropdown(true);
-                    setShowExpertTypeDropdown(false);
-                  }}
-                  onBlur={() => {
-                    if (!showLocationDropdown) {
-                      setTimeout(() => setShowLocationDropdown(false), 200);
-                    }
-                  }}
-                />
-                {showLocationDropdown && (
-                  <View style={styles.dropdownList}>
-                    <ScrollView
-                      style={styles.dropdownScroll}
-                      keyboardShouldPersistTaps="always"
-                    >
-                      {filteredConstituencies.map((item, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.dropdownItem}
-                          onPress={() => {
-                            handleChange("location", item.name);
-                            setShowLocationDropdown(false);
-                            locationInputRef.current.blur();
-                          }}
-                          onPressIn={() => setShowLocationDropdown(true)}
-                        >
-                          <Text style={styles.dropdownItemText}>
-                            {item.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity 
+                style={styles.input} 
+                onPress={() => openBottomSheet("location")}
+              >
+                <Text style={form.location ? styles.inputText : styles.placeholderText}>
+                  {form.location || "Select Constituency"}
+                </Text>
+                <MaterialIcons name="keyboard-arrow-down" size={24} color="#555" style={styles.dropdownIcon} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Expert Type</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search Expert Type"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={form.expertType}
-                  onChangeText={(text) => {
-                    handleChange("expertType", text);
-                    setShowExpertTypeDropdown(true);
-                  }}
-                  onFocus={() => {
-                    setShowExpertTypeDropdown(true);
-                    setShowLocationDropdown(false);
-                  }}
-                  onBlur={() => {
-                    if (!showExpertTypeDropdown) {
-                      setTimeout(() => setShowExpertTypeDropdown(false), 200);
-                    }
-                  }}
-                />
-                {showExpertTypeDropdown && (
-                  <View style={styles.dropdownList}>
-                    <ScrollView style={styles.dropdownScroll}>
-                      {filteredExpertTypes.map((item, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.dropdownItem}
-                          onPress={() => {
-                            handleChange("expertType", item);
-                            setShowExpertTypeDropdown(false);
-                          }}
-                          onPressIn={() => setShowExpertTypeDropdown(true)}
-                        >
-                          <Text style={styles.dropdownItemText}>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity 
+                style={styles.input} 
+                onPress={() => openBottomSheet("expertType")}
+              >
+                <Text style={form.expertType ? styles.inputText : styles.placeholderText}>
+                  {form.expertType || "Select Expert Type"}
+                </Text>
+                <MaterialIcons name="keyboard-arrow-down" size={24} color="#555" style={styles.dropdownIcon} />
+              </TouchableOpacity>
             </View>
+
             {form.expertType && expertFields[form.expertType] && (
               <View style={styles.additionalFieldsSection}>
                 <Text style={styles.sectionHeader}>
@@ -549,9 +493,7 @@ const AddExpertForm = ({ closeModal }) => {
                       style={styles.input}
                       placeholder={`Enter ${label}`}
                       value={additionalFields[key] || ""}
-                      onChangeText={(text) =>
-                        handleAdditionalFieldChange(key, text)
-                      }
+                      onChangeText={(text) => handleAdditionalFieldChange(key, text)}
                     />
                   </View>
                 ))}
@@ -570,133 +512,91 @@ const AddExpertForm = ({ closeModal }) => {
                   <Text style={styles.addText}>Add</Text>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
+              <TouchableOpacity 
+                style={styles.cancelButton} 
                 onPress={() => navigation.goBack()}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        </View>
+      </ScrollView>
+      {renderBottomSheet()}
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  // Main container styles
-  mainContainer: {
+  container: {
     flex: 1,
-    width: Platform.OS === "web" ? "80%" : "100%",
-    alignSelf: "center",
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#D8E3E7',
-    padding: Platform.OS === 'web' ? 20 : 0,
-  },
-  keyboardView: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: Platform.OS === 'web' ? 40 : 20,
-  },
-
-  // Form container styles
-  formContainer: {
-    width: Platform.OS === 'web' ? '60%' : '90%',
-    maxWidth: 600,
-    backgroundColor: '#FDFDFD',
-    borderRadius: 15,
+    backgroundColor: "#D8E3E7",
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 10,
-    marginBottom: 60,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  header: {
-    width: '100%',
-    marginBottom: 0,
-    backgroundColor: '#D8E3E7',
-    paddingVertical: 1,
-    borderRadius: 10,
-    alignItems: 'center',
-    height:"5%",
-    marginTop: 20,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#D8E3E7",
   },
-  headerText: {
-    color: "#2B2D42",
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    padding: 20,
+    marginBottom: 100,
+    width: "95%",
+    maxWidth: 800,
+  },
+  title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: "OpenSanssemibold",
+    fontWeight: "bold",
+    color: "black",
+    textAlign: "center",
+    padding: 15,
   },
-
-  // Form elements
   formGroup: {
-    width: '100%',
+    width: "100%",
     marginBottom: 15,
-    position: 'relative',
-    zIndex: 1,
-  },
-  inputWrapper: {
-    position: 'relative',
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'regular',
-    marginBottom: 8,
-    color: '#333',
-    color: "#2B2D42",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#555",
   },
   input: {
-    width: '100%',
     borderWidth: 1,
-    borderColor: 'E0E6ED',
+    borderColor: "#ddd",
     borderRadius: 25,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    backgroundColor: '#F9F9F9',
+    padding: 12,
+    paddingRight: 40,
+    backgroundColor: "#f9f9f9",
     fontSize: 16,
+  },
+  inputText: {
     color: "#2B2D42",
   },
-  dropdownList: {
-    width: '100%',
-    maxHeight: 200,
-    backgroundColor: '#D8E3E7',
-    borderWidth: 1,
-    borderColor: 'E0E6ED',
-    borderRadius: 8,
-    marginTop: 5,
-    zIndex: 1000,
-    elevation: 5,
+  placeholderText: {
+    color: "rgba(25, 25, 25, 0.5)",
   },
-  dropdownScroll: {
-    maxHeight: 200,
+  dropdownIcon: {
+    position: "absolute",
+    right: 15,
+    top: 12,
   },
-  dropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-  },
-
-  // Upload section
   uploadSection: {
-    width: '100%',
+    width: "100%",
     marginBottom: 20,
   },
   photoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   uploadedImage: {
     width: 120,
@@ -704,102 +604,158 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     marginBottom: 10,
     borderWidth: 3,
-    borderColor: '#E91E63',
+    borderColor: "#E91E63",
   },
   uploadOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
   },
   uploadButton: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 15,
     borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-    width: '45%',
+    backgroundColor: "#f0f0f0",
+    width: "45%",
   },
   uploadButtonText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#555',
-    fontWeight: '500',
+    color: "#555",
+    fontWeight: "500",
   },
   removeButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: "#ff4444",
     padding: 10,
     borderRadius: 8,
     width: 120,
-    alignItems: 'center',
+    alignItems: "center",
   },
   removeButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
-
-  // Buttons
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 25,
-  },
-  addButton: {
-    backgroundColor: '#3E5C76',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  cancelButton: {
-    backgroundColor: '#3E5C76',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cancelText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-
-  // Additional fields
   additionalFieldsSection: {
-    width: '100%',
+    width: "100%",
     marginTop: 20,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: "#ddd",
   },
   sectionHeader: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#E91E63',
+    fontWeight: "bold",
+    color: "#E91E63",
     marginBottom: 15,
-    textAlign: 'center',
+    textAlign: "center",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  addButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 30,
+    marginRight: 25,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  addText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  cancelText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    marginBottom:Platform.OS==="ios" ? "-14%":"",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2B2D42",
+  },
+  searchContainer: {
+    position: "relative",
+    marginBottom: 15,
+  },
+  searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
+  },
+  listItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  listItemText: {
+    fontSize: 16,
+  },
+  listItemSubText: {
+    fontSize: 14,
+    color: "#777",
+    marginTop: 4,
+  },
+  closeButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

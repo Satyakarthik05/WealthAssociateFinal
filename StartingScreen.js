@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -17,6 +18,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const StartingScreen = () => {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const isMobileWidth = width < 450;
 
   const handleLoginTypeSelection = async (loginType) => {
     try {
@@ -67,7 +70,6 @@ const StartingScreen = () => {
       icon: <FontAwesome5 name="user-tie" size={hp("4%")} color="white" />,
       loginType: "SkilledResource",
     },
-
     ...(Platform.OS === "web"
       ? [
           {
@@ -79,13 +81,31 @@ const StartingScreen = () => {
       : []),
   ];
 
+  const shouldUseMobileStyles = Platform.OS !== "web" || isMobileWidth;
+
   return (
     <View style={styles.container}>
       <Image source={require("./assets/logo.png")} style={styles.logo} />
       <Text style={styles.welcomeText}>Welcome To Wealth Associates</Text>
       <Text style={styles.loginAsText}>Login as</Text>
 
-      {Platform.OS === "web" ? (
+      {shouldUseMobileStyles ? (
+        <View style={styles.gridContainer}>
+          {loginOptions.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.button,
+                shouldUseMobileStyles && styles.mobileSpecificButton
+              ]}
+              onPress={() => handleLoginTypeSelection(option.loginType)}
+            >
+              {option.icon}
+              <Text style={styles.buttonText}>{option.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
         <View style={styles.card}>
           <View style={styles.gridContainer}>
             {loginOptions.map((option, index) => (
@@ -100,19 +120,6 @@ const StartingScreen = () => {
             ))}
           </View>
         </View>
-      ) : (
-        <View style={styles.gridContainer}>
-          {loginOptions.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.button}
-              onPress={() => handleLoginTypeSelection(option.loginType)}
-            >
-              {option.icon}
-              <Text style={styles.buttonText}>{option.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       )}
     </View>
   );
@@ -123,7 +130,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
     alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? hp("2%") : hp("5%"),
+    paddingTop: Platform.OS === "ios" ? hp("3%") : hp("5%"),
   },
   logo: {
     width: wp("50%"),
@@ -146,6 +153,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom:
       Platform.OS === "android" || Platform.OS === "ios" ? hp("2%") : hp("2%"),
+    color: "#2B2D42",
   },
   card: {
     backgroundColor: "#FDFDFD",
@@ -187,6 +195,18 @@ const styles = StyleSheet.create({
     shadowRadius: Platform.OS === "ios" || Platform.OS === "web" ? 5 : 0,
     marginBottom:
       Platform.OS === "android" || Platform.OS === "ios" ? hp("0%") : hp("10%"),
+  },
+  mobileSpecificButton: {
+    width: wp("38%"),
+    maxWidth: 180,
+    borderRadius: wp("3%"),
+    margin: hp("1.5%"),
+    elevation: Platform.OS === "android" ? 5 : 0,
+    shadowOffset:
+      Platform.OS === "ios" ? { width: 0, height: 3 } : { width: 0, height: 0 },
+    shadowOpacity: Platform.OS === "ios" ? 0.2 : 0,
+    shadowRadius: Platform.OS === "ios" ? 5 : 0,
+    marginBottom: hp("0%"),
   },
   buttonText: {
     color: "white",

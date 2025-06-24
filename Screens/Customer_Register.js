@@ -63,7 +63,6 @@ const RegisterCustomer = () => {
     item.name.toLowerCase().includes(occupationSearch.toLowerCase())
   );
 
-  // Fetch all districts and constituencies
   const fetchDistrictsAndConstituencies = async () => {
     try {
       const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
@@ -74,7 +73,6 @@ const RegisterCustomer = () => {
     }
   };
 
-  // Fetch occupations
   const fetchOccupations = async () => {
     try {
       const response = await fetch(`${API_URL}/discons/occupations`);
@@ -85,7 +83,6 @@ const RegisterCustomer = () => {
     }
   };
 
-  // Fetch agent details
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -238,9 +235,14 @@ const RegisterCustomer = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+          ]}
+          style={styles.scrollView}
           nestedScrollEnabled={true}
         >
           <View style={styles.headerContainer}>
@@ -248,7 +250,7 @@ const RegisterCustomer = () => {
               onPress={() => navigation.goBack()}
               style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={20} color="#2B2D42" />
+              <Ionicons name="arrow-back" size={24} color="#2B2D42" />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
               <Text style={styles.screenTitle}>REGISTER CUSTOMER</Text>
@@ -278,7 +280,7 @@ const RegisterCustomer = () => {
                     <FontAwesome
                       name="user"
                       size={20}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </View>
@@ -300,7 +302,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="phone"
                       size={20}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </View>
@@ -327,7 +329,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </TouchableOpacity>
@@ -354,7 +356,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </TouchableOpacity>
@@ -380,7 +382,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </TouchableOpacity>
@@ -398,7 +400,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="location-on"
                       size={20}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </View>
@@ -421,7 +423,7 @@ const RegisterCustomer = () => {
                     <MaterialIcons
                       name="card-giftcard"
                       size={20}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.icon}
                     />
                   </View>
@@ -449,7 +451,7 @@ const RegisterCustomer = () => {
             {isLoading && (
               <ActivityIndicator
                 size="large"
-                color="#3E5C76"
+                color="#E82E5F"
                 style={styles.loadingIndicator}
               />
             )}
@@ -464,42 +466,47 @@ const RegisterCustomer = () => {
         transparent={true}
         onRequestClose={() => setShowDistrictModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Parliament</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search parliament..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setDistrictSearch}
-                value={districtSearch}
-                autoFocus={true}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOuterContainer}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Parliament</Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search parliament..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setDistrictSearch}
+                  value={districtSearch}
+                  autoFocus={true}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#E82E5F"
+                  style={styles.searchIcon}
+                />
+              </View>
+              <FlatList
+                data={filteredDistricts}
+                renderItem={renderDistrictItem}
+                keyExtractor={(item) => item._id}
+                style={styles.modalList}
               />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#3E5C76"
-                style={styles.searchIcon}
-              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowDistrictModal(false);
+                  setDistrictSearch("");
+                }}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <FlatList
-              data={filteredDistricts}
-              renderItem={renderDistrictItem}
-              keyExtractor={(item) => item._id}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowDistrictModal(false);
-                setDistrictSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Constituency Modal */}
@@ -509,42 +516,47 @@ const RegisterCustomer = () => {
         transparent={true}
         onRequestClose={() => setShowConstituencyModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Assemblies</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search assemblies..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setConstituencySearch}
-                value={constituencySearch}
-                autoFocus={true}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOuterContainer}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Assemblies</Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search assemblies..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setConstituencySearch}
+                  value={constituencySearch}
+                  autoFocus={true}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#E82E5F"
+                  style={styles.searchIcon}
+                />
+              </View>
+              <FlatList
+                data={filteredConstituencies}
+                renderItem={renderConstituencyItem}
+                keyExtractor={(item, index) => index.toString()}
+                style={styles.modalList}
               />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#3E5C76"
-                style={styles.searchIcon}
-              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowConstituencyModal(false);
+                  setConstituencySearch("");
+                }}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <FlatList
-              data={filteredConstituencies}
-              renderItem={renderConstituencyItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowConstituencyModal(false);
-                setConstituencySearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Occupation Modal */}
@@ -554,42 +566,47 @@ const RegisterCustomer = () => {
         transparent={true}
         onRequestClose={() => setShowOccupationModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Occupation</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search occupation..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setOccupationSearch}
-                value={occupationSearch}
-                autoFocus={true}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOuterContainer}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Occupation</Text>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search occupation..."
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setOccupationSearch}
+                  value={occupationSearch}
+                  autoFocus={true}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#E82E5F"
+                  style={styles.searchIcon}
+                />
+              </View>
+              <FlatList
+                data={filteredOccupations}
+                renderItem={renderOccupationItem}
+                keyExtractor={(item) => item.code}
+                style={styles.modalList}
               />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#3E5C76"
-                style={styles.searchIcon}
-              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowOccupationModal(false);
+                  setOccupationSearch("");
+                }}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <FlatList
-              data={filteredOccupations}
-              renderItem={renderOccupationItem}
-              keyExtractor={(item) => item.code}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowOccupationModal(false);
-                setOccupationSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <StatusBar style="auto" />
@@ -602,6 +619,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
   },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 20,
+  },
+  smallScreenScrollContainer: {
+    paddingHorizontal: 10,
+    paddingTop: width < 450 && Platform.OS === "web" ? 310 : 0,
+    height: "100vh"
+  },
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -613,14 +645,10 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
   },
-  scrollContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
   card: {
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width: width < 450 ? "90%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -642,13 +670,12 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    flexDirection: width < 450 ? "column" : "row",
     justifyContent: "space-between",
     gap: 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
+    width: width < 450 ? "100%" : "48%",
     position: "relative",
     zIndex: 1,
   },
@@ -673,12 +700,13 @@ const styles = StyleSheet.create({
     fontFamily: "Roboto-Regular",
   },
   logo: {
-    width: Platform.OS === "android" ? 105 : 100,
-    height: Platform.OS === "android" ? 105 : 100,
+    width: width < 450 ? 105 : 100,
+    height: width < 450 ? 105 : 100,
     resizeMode: "contain",
+    top: Platform.OS === "ios" ? "20%" : "undefined",
     marginRight: 7,
-    marginBottom: 20,
-    left: Platform.OS === "android" ? -105 : -700,
+    marginBottom: Platform.OS === "ios" ? "30%" : 40,
+    left: Platform.OS === "ios" ? "-34%" : "undefined" && width < 450 ? -111 : "-45%",
   },
   icon: {
     position: "absolute",
@@ -732,14 +760,18 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     fontWeight: "700",
-    fontSize: 17,
+    fontSize: 16,
     color: "#2B2D42",
-    top: 50,
     left: 50,
     textAlign: "center",
     fontFamily: "Roboto-Bold",
+    top: Platform.OS === "ios" ? "30%" : 50,
   },
   // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -763,6 +795,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: "relative",
     marginBottom: 15,
+    marginTop:Platform.OS==="ios"?"30%":"",
   },
   searchInput: {
     width: "100%",

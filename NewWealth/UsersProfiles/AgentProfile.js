@@ -12,6 +12,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  useWindowDimensions,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
@@ -23,8 +24,9 @@ import { useNavigation } from "@react-navigation/native";
 import logo1 from "../../assets/man2.png";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
-const { width } = Dimensions.get("window");
 const Agent_Profile = ({ onDetailsUpdates }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = Platform.OS !== "web" || width < 450;
   const [isEditing, setIsEditing] = useState(false);
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
@@ -337,8 +339,10 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false} // optional, in case of horizontal scroll
       >
-        <View style={styles.container}>
+        <View style={[styles.container, { width: isMobile ? "100%" : "80%" }]}>
           <Text style={styles.agentProfileText}>Agent Profile</Text>
           {loading ? (
             <ActivityIndicator
@@ -381,7 +385,16 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
                 <Text style={styles.profileName}>{Details.name}</Text>
               </View>
               <View style={styles.profileCard}>
-                <View style={styles.profileForm}>
+                <View
+                  style={[
+                    styles.profileForm,
+                    {
+                      flexDirection: isMobile ? "column" : "row",
+                      flexWrap: isMobile ? "nowrap" : "wrap",
+                      justifyContent: isMobile ? "flex-start" : "space-between",
+                    },
+                  ]}
+                >
                   {profileFields.map(({ label, icon, key }) => (
                     <CustomInput
                       key={key}
@@ -389,6 +402,7 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
                       icon={icon}
                       value={Details[key]}
                       labelStyle={styles.label}
+                      isMobile={isMobile} // optional: pass to CustomInput if needed
                     />
                   ))}
                 </View>
@@ -448,8 +462,8 @@ const profileFields = [
   { label: "Referral Code", icon: "users", key: "MyRefferalCode" },
 ];
 
-const CustomInput = ({ label, icon, value }) => (
-  <View style={styles.inputWrapper}>
+const CustomInput = ({ label, icon, value, isMobile }) => (
+  <View style={[styles.inputWrapper, { width: isMobile ? "100%" : "30%" }]}>
     <Text style={styles.inputLabel}>{label}</Text>
     <View style={styles.inputContainer}>
       <TextInput
@@ -467,6 +481,7 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     position: "relative",
+    backgroundColor: "#D8E3E7",
   },
   scrollView: {
     flex: 1,
@@ -474,7 +489,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    // paddingBottom: 20,
+    paddingTop: 20, // space at the top
+    paddingBottom: 40,
   },
   container: {
     flex: 1,
@@ -484,11 +500,12 @@ const styles = StyleSheet.create({
     width: Platform.OS === "web" ? "80%" : "100%",
     alignSelf: "center",
     height: "100%",
+    minHeight: "100vh",
   },
   agentProfileText: {
     fontWeight: "bold",
     fontSize: 20,
-    marginBottom: 10,
+    marginBottom: 5,
     fontFamily: "OpenSanssemibold",
   },
   profileForm: {
@@ -502,14 +519,14 @@ const styles = StyleSheet.create({
     backgroundColor: "FDFDFD",
   },
   inputWrapper: {
-    width: Platform.OS === "web" ? "30%" : "100%",
+    width: "100%",
     marginBottom: 15,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FDFDFD",
-    padding: 10,
+    backgroundColor: "#f9f9f9",
+    padding: 9,
     borderRadius: 10,
     elevation: 3,
     width: Platform.OS === "web" ? "100%" : "100%",
@@ -518,7 +535,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#333",
-    fontFamily: "OpenSanssemibold",
+    // fontFamily: "OpenSanssemibold",
     width: Platform.OS === "web" ? "100%" : 200,
   },
   inputLabel: {
@@ -569,7 +586,7 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 0,
   },
   profileCard: {
     width: Platform.OS === "web" ? "80%" : "100%",

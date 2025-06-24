@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +17,8 @@ import {
 
 const RegisterAsScreen = () => {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const isMobileWidth = width < 450;
 
   const registerOptions = [
     {
@@ -49,13 +52,31 @@ const RegisterAsScreen = () => {
     },
   ];
 
+  const shouldUseMobileStyles = Platform.OS !== "web" || isMobileWidth;
+
   return (
     <View style={styles.container}>
       <Image source={require("../assets/logo.png")} style={styles.logo} />
       <Text style={styles.welcomeText}>Welcome To Wealth Associates</Text>
       <Text style={styles.registerAsText}>Register as</Text>
 
-      {Platform.OS === "web" ? (
+      {shouldUseMobileStyles ? (
+        <View style={styles.gridContainer}>
+          {registerOptions.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.button,
+                shouldUseMobileStyles && styles.mobileSpecificButton
+              ]}
+              onPress={() => navigation.navigate(option.navigateTo)}
+            >
+              {option.icon}
+              <Text style={styles.buttonText}>{option.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
         <View style={styles.card}>
           <View style={styles.gridContainer}>
             {registerOptions.map((option, index) => (
@@ -69,19 +90,6 @@ const RegisterAsScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-      ) : (
-        <View style={styles.gridContainer}>
-          {registerOptions.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.button}
-              onPress={() => navigation.navigate(option.navigateTo)}
-            >
-              {option.icon}
-              <Text style={styles.buttonText}>{option.name}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
       )}
     </View>
@@ -158,6 +166,18 @@ const styles = StyleSheet.create({
     shadowRadius: Platform.OS === "ios" || Platform.OS === "web" ? 5 : 0,
     marginBottom:
       Platform.OS === "android" || Platform.OS === "ios" ? hp("0%") : hp("10%"),
+  },
+  mobileSpecificButton: {
+    width: wp("38%"),
+    maxWidth: 180,
+    borderRadius: wp("3%"),
+    margin: hp("1.5%"),
+    elevation: Platform.OS === "android" ? 5 : 0,
+    shadowOffset:
+      Platform.OS === "ios" ? { width: 0, height: 3 } : { width: 0, height: 0 },
+    shadowOpacity: Platform.OS === "ios" ? 0.2 : 0,
+    shadowRadius: Platform.OS === "ios" ? 5 : 0,
+    marginBottom: hp("0%"),
   },
   buttonText: {
     color: "white",

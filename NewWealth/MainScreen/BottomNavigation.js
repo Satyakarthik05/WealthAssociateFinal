@@ -4,26 +4,29 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Platform,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
+import { useWindowDimensions } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
-const { width } = Dimensions.get("window");
-const tabCount = 5;
-const tabWidth = width / tabCount;
 const notchHeight = 45;
 const barHeight = 75;
-const radius = 32; // radius of the notch curve
+const radius = 32;
 
 const BottomNavigation = () => {
-  // Only render for iOS and Android
-  if (Platform.OS !== "ios" && Platform.OS !== "android") return null;
-
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 450;
+  // Only render for iOS and Androi
   const [activeTab, setActiveTab] = useState("newhome");
+  if (Platform.OS !== "web" && !isMobile) {
+    return null; // ✅ Now placed AFTER hooks
+  }
+
+  const tabCount = 5;
+  const tabWidth = width / tabCount;
 
   const tabs = [
     {
@@ -87,7 +90,7 @@ const BottomNavigation = () => {
     setActiveTab(screenName);
     navigation.navigate("Main", { screen: screenName });
   };
-
+  if (!isMobile) return null;
   return (
     <View style={styles.wrapper}>
       {/* Curved background path */}
@@ -107,27 +110,29 @@ const BottomNavigation = () => {
       </View>
 
       {/* Tab buttons */}
-      <View style={styles.tabContainer}>
-        {tabs.map((tab, index) => {
-          const isFocused = activeTab === tab.screenName;
-          const color = isFocused ? "#3E5C76" : "#B0B0B0";
+      {isMobile && (
+        <View style={styles.tabContainer}>
+          {tabs.map((tab, index) => {
+            const isFocused = activeTab === tab.screenName;
+            const color = isFocused ? "#3E5C76" : "#B0B0B0";
 
-          return (
-            <TouchableOpacity
-              key={index}
-              style={styles.tabButton}
-              onPress={() => handleTabPress(tab.screenName)}
-              activeOpacity={0.8}
-            >
-              {/* Hide icon if it's the active one (floating) */}
-              {activeTab !== tab.screenName && (
-                <Ionicons name={tab.icon} size={24} color={color} />
-              )}
-              <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.tabButton}
+                onPress={() => handleTabPress(tab.screenName)}
+                activeOpacity={0.8}
+              >
+                {/* Hide icon if it's the active one (floating) */}
+                {activeTab !== tab.screenName && (
+                  <Ionicons name={tab.icon} size={24} color={color} />
+                )}
+                <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };

@@ -4,24 +4,27 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Platform,
-  Dimensions,
   KeyboardAvoidingView,
   ScrollView,
   ActivityIndicator,
   Modal,
-  Animated,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
+  FlatList,
+  Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import { useWindowDimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+
 const RequestedPropertyForm = ({ closeModal }) => {
   const fontsLoaded = useFontsLoader();
   const [propertyTitle, setPropertyTitle] = useState("");
@@ -36,12 +39,13 @@ const RequestedPropertyForm = ({ closeModal }) => {
   const [locationSearch, setLocationSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [dropdownModalVisible, setDropdownModalVisible] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
+  const [showPropertyTypeModal, setShowPropertyTypeModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const { width } = useWindowDimensions();
+  const isMobileView = Platform.OS !== "web" || width < 450;
   const navigation = useNavigation();
+  const propertyTypeInputRef = useRef(null);
+  const locationInputRef = useRef(null);
 
   // Fetch user details and user type
   const getDetails = async () => {
@@ -127,13 +131,13 @@ const RequestedPropertyForm = ({ closeModal }) => {
     item.name.toLowerCase().includes(propertyTypeSearch.toLowerCase())
   );
 
-  const filteredConstituencies = constituencies.flatMap((item) =>
+  const filteredLocations = constituencies.flatMap((item) =>
     item.assemblies.filter((assembly) =>
       assembly.name.toLowerCase().includes(locationSearch.toLowerCase())
     )
   );
 
-  // Handle form submission with user type specific logic
+  // Handle form submission
   const handleSubmit = async () => {
     if (!propertyTitle || !propertyType || !location || !budget) {
       Alert.alert("Error", "Please fill all the fields.");
@@ -192,230 +196,276 @@ const RequestedPropertyForm = ({ closeModal }) => {
     }
   };
 
-  // Clear dropdown selection
-  const clearPropertyTypeSelection = () => {
-    setPropertyType("");
-    setPropertyTypeSearch("");
-  };
+  // Render dropdown items
+  const renderPropertyTypeItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setPropertyType(item.name);
+        setShowPropertyTypeModal(false);
+        setPropertyTypeSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
 
-  const clearLocationSelection = () => {
-    setLocation("");
-    setLocationSearch("");
-  };
-
-  // Dropdown modal handlers
-  const handlePropertyTypePress = () => {
-    setActiveDropdown("propertyType");
-    setDropdownModalVisible(true);
-  };
-
-  const handleLocationPress = () => {
-    setActiveDropdown("location");
-    setDropdownModalVisible(true);
-  };
-
-  const handleDropdownClose = () => {
-    setDropdownModalVisible(false);
-    setActiveDropdown(null);
-  };
-
-  const handlePropertyTypeSelect = (item) => {
-    setPropertyType(item.name);
-    setPropertyTypeSearch(item.name);
-    handleDropdownClose();
-  };
-
-  const handleLocationSelect = (item) => {
-    setLocation(item.name);
-    setLocationSearch(item.name);
-    handleDropdownClose();
-  };
-
-  // Render dropdown content
-  const renderDropdownContent = () => {
-    if (activeDropdown === "propertyType") {
-      return (
-        <View style={styles.dropdownContent}>
-          <Text style={styles.dropdownTitle}>Select Property Type</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search property types..."
-            value={propertyTypeSearch}
-            onChangeText={setPropertyTypeSearch}
-            autoFocus={true}
-          />
-          <ScrollView style={styles.dropdownScrollView}>
-            {filteredPropertyTypes.map((item) => (
-              <TouchableOpacity
-                key={`${item.code}-${item.name}`}
-                style={styles.dropdownItem}
-                onPress={() => handlePropertyTypeSelect(item)}
-              >
-                <Text>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      );
-    } else if (activeDropdown === "location") {
-      return (
-        <View style={styles.dropdownContent}>
-          <Text style={styles.dropdownTitle}>Select Location</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search locations..."
-            value={locationSearch}
-            onChangeText={setLocationSearch}
-            autoFocus={true}
-          />
-          <ScrollView style={styles.dropdownScrollView}>
-            {filteredConstituencies.map((item) => (
-              <TouchableOpacity
-                key={`${item.code}-${item.name}`}
-                style={styles.dropdownItem}
-                onPress={() => handleLocationSelect(item)}
-              >
-                <Text>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      );
-    }
-    return null;
-  };
+  const renderLocationItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setLocation(item.name);
+        setShowLocationModal(false);
+        setLocationSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1, backgroundColor: "#D8E3E7" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Request a Property</Text>
-        <View style={styles.formContainer}>
-          {/* Property Type Input */}
-          <Text style={styles.label}>Property Type</Text>
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputContainer}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingTop: 60,
+            minHeight: "100%",
+            paddingBottom: 120,
+            alignItems: "center",
+            backgroundColor: "#D8E3E7",
+          }}
+          style={{
+            flex: 1,
+            backgroundColor: "#D8E3E7",
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>Request a Property</Text>
+          <View
+            style={[
+              styles.formContainer,
+              {
+                width: isMobileView ? "90%" : "40%",
+                backgroundColor: "#fff",
+                padding: 16,
+                borderRadius: 10,
+                elevation: 5,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowOffset: { width: 0, height: 2 },
+              },
+            ]}
+          >
+            {/* Property Type Input */}
+            <Text style={styles.label}>Property Type</Text>
+            <TouchableOpacity
+              style={styles.inputWrapper}
+              onPress={() => setShowPropertyTypeModal(true)}
+            >
               <TextInput
+                ref={propertyTypeInputRef}
                 style={styles.input}
                 placeholder="Search Property Type"
                 placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                value={propertyType || propertyTypeSearch}
-                onChangeText={(text) => {
-                  setPropertyTypeSearch(text);
-                  setPropertyType("");
-                }}
-                onFocus={handlePropertyTypePress}
+                value={propertyType}
+                editable={false}
+                pointerEvents="none"
               />
-              {propertyType && (
-                <TouchableOpacity
-                  style={styles.clearButton}
-                  onPress={clearPropertyTypeSelection}
-                >
-                  <MaterialIcons name="clear" size={20} color="#999" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+              <MaterialIcons
+                name="arrow-drop-down"
+                size={24}
+                color="#E82E5F"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
 
-          {/* Location Input */}
-          <Text style={styles.label}>Location (Constituency)</Text>
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputContainer}>
+            {/* Location Input */}
+            <Text style={styles.label}>Location (Constituency)</Text>
+            <TouchableOpacity
+              style={styles.inputWrapper}
+              onPress={() => setShowLocationModal(true)}
+            >
               <TextInput
+                ref={locationInputRef}
                 style={styles.input}
                 placeholder="Ex. Vijayawada"
-                value={location || locationSearch}
-                onChangeText={(text) => {
-                  setLocationSearch(text);
-                  setLocation("");
-                }}
-                onFocus={handleLocationPress}
+                value={location}
+                editable={false}
+                pointerEvents="none"
               />
-              {location && (
-                <TouchableOpacity
-                  style={styles.clearButton}
-                  onPress={clearLocationSelection}
-                >
-                  <MaterialIcons name="clear" size={20} color="#999" />
-                </TouchableOpacity>
-              )}
+              <MaterialIcons
+                name="arrow-drop-down"
+                size={24}
+                color="#E82E5F"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
+
+            {/* Property Location Input */}
+            <Text style={styles.label}>Property Location (Area/Landmark)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="BhavaniPuram"
+              placeholderTextColor="rgba(25, 25, 25, 0.5)"
+              value={islocation}
+              onChangeText={setlocation}
+            />
+
+            {/* Budget Input */}
+            <Text style={styles.label}>Budget</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your budget"
+              placeholderTextColor="rgba(25, 25, 25, 0.5)"
+              value={budget}
+              onChangeText={setBudget}
+              keyboardType="numeric"
+            />
+
+            {/* Property Title Input */}
+            <Text style={styles.label}>Property Title</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex. Need 10 acres land"
+              placeholderTextColor="rgba(25, 25, 25, 0.5)"
+              value={propertyTitle}
+              onChangeText={setPropertyTitle}
+            />
+
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.postButton, loading && styles.disabledButton]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.postButtonText}>Request</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
 
-          {/* Property Location Input */}
-          <Text style={styles.label}>Property Location (Area/Landmark)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="BhavaniPuram"
-            placeholderTextColor="rgba(25, 25, 25, 0.5)"
-            value={islocation}
-            onChangeText={setlocation}
-          />
-
-          {/* Budget Input */}
-          <Text style={styles.label}>Budget</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your budget"
-            placeholderTextColor="rgba(25, 25, 25, 0.5)"
-            value={budget}
-            onChangeText={setBudget}
-            keyboardType="numeric"
-          />
-
-          {/* Property Title Input */}
-          <Text style={styles.label}>Property Title</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex. Need 10 acres land"
-            placeholderTextColor="rgba(25, 25, 25, 0.5)"
-            value={propertyTitle}
-            onChangeText={setPropertyTitle}
-          />
-
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.postButton, loading && styles.disabledButton]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.postButtonText}>Request</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Dropdown Modal */}
+      {/* Property Type Modal */}
       <Modal
-        visible={dropdownModalVisible}
-        transparent={true}
+        visible={showPropertyTypeModal}
         animationType="slide"
-        onRequestClose={handleDropdownClose}
+        transparent={true}
+        onRequestClose={() => setShowPropertyTypeModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.dropdownModalContainer}>
-            {renderDropdownContent()}
-            <TouchableOpacity
-              style={styles.closeDropdownButton}
-              onPress={handleDropdownClose}
-            >
-              <Text style={styles.closeDropdownButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Property Type</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search property types..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setPropertyTypeSearch}
+                    value={propertyTypeSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredPropertyTypes}
+                  renderItem={renderPropertyTypeItem}
+                  keyExtractor={(item) => item.code}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowPropertyTypeModal(false);
+                    setPropertyTypeSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Location Modal */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Location</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search locations..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setLocationSearch}
+                    value={locationSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredLocations}
+                  renderItem={renderLocationItem}
+                  keyExtractor={(item, index) => index.toString()}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowLocationModal(false);
+                    setLocationSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -486,13 +536,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: "#fff",
   },
-  clearButton: {
-    position: "absolute",
-    right: 10,
-    padding: 8,
-  },
   inputWrapper: {
     position: "relative",
+  },
+  icon: {
+    position: "absolute",
+    right: 10,
+    top: 13,
+    color: "#3E5C76",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -530,58 +581,80 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: "#B8C2CC",
   },
-  // Dropdown modal styles
-  modalOverlay: {
+  // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
-  dropdownModalContainer: {
-    backgroundColor: "#fff",
+  modalContent: {
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: "80%",
-    height: "80%",
+    maxHeight: height * 0.7,
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-10%":"",
   },
-  dropdownContent: {
-    flex: 1,
-    width: "100%",
-  },
-  dropdownTitle: {
+  modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",
+    color: "#2B2D42",
+    fontFamily: "Roboto-Bold",
+  },
+  searchContainer: {
+    position: "relative",
+    marginBottom: 15,
   },
   searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    backgroundColor: "#fff",
+    fontFamily: "Roboto-Regular",
   },
-  dropdownScrollView: {
-    flex: 1,
-    width: "100%",
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
     marginBottom: 15,
   },
-  dropdownItem: {
+  listItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: "#eee",
   },
-  closeDropdownButton: {
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "Roboto-Regular",
+  },
+  closeButton: {
     backgroundColor: "#3E5C76",
-    borderRadius: 25,
     padding: 12,
+    borderRadius: 10,
     alignItems: "center",
   },
-  closeDropdownButtonText: {
-    color: "#fff",
+  closeButtonText: {
+    color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+    fontFamily: "Roboto-Bold",
   },
 });
 

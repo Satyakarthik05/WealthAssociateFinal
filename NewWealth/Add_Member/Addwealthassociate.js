@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   FlatList,
-  Pressable,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -24,7 +23,7 @@ import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
 const screenHeight = Dimensions.get("window").height;
 const { width } = Dimensions.get("window");
-const isSmallScreen = width < 600;
+const isSmallScreen = width < 450;
 
 const Add_Agent = ({ closeModal }) => {
   const fontsLoaded = useFontsLoader();
@@ -320,45 +319,53 @@ const Add_Agent = ({ closeModal }) => {
         transparent={true}
         onRequestClose={() => setBottomSheetVisible(false)}
       >
-        <Pressable 
-          style={styles.bottomSheetOverlay}
-          onPress={() => setBottomSheetVisible(false)}
-        >
-          <Pressable style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheet}>
-              <Text style={styles.bottomSheetTitle}>{title}</Text>
-              
-              <View style={styles.searchContainer}>
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.searchInput}
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChangeText={handleSearch}
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{title}</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    ref={searchInputRef}
+                    style={styles.searchInput}
+                    placeholder="Search..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={searchTerm}
+                    onChangeText={handleSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredData}
+                  renderItem={renderItem}
+                  keyExtractor={(item, index) => 
+                    bottomSheetType === "district" ? item.parliament : 
+                    bottomSheetType === "constituency" ? `${item.name}-${index}` : 
+                    item.code
+                  }
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
                 />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setBottomSheetVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
               </View>
-              
-              <FlatList
-                data={filteredData}
-                renderItem={renderItem}
-                keyExtractor={(item, index) => 
-                  bottomSheetType === "district" ? item.parliament : 
-                  bottomSheetType === "constituency" ? `${item.name}-${index}` : 
-                  item.code
-                }
-                keyboardShouldPersistTaps="handled"
-                style={styles.listContainer}
-              />
-              
-              <TouchableOpacity
-                style={styles.bottomSheetCloseButton}
-                onPress={() => setBottomSheetVisible(false)}
-              >
-                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     );
   };
@@ -366,13 +373,14 @@ const Add_Agent = ({ closeModal }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       style={{ flex: 1 }}
     >
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
           <Text style={styles.title}>Register Wealth Associate</Text>
@@ -461,7 +469,7 @@ const Add_Agent = ({ closeModal }) => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.dropdownIcon}
                     />
                   </View>
@@ -488,7 +496,7 @@ const Add_Agent = ({ closeModal }) => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.dropdownIcon}
                     />
                   </View>
@@ -511,7 +519,7 @@ const Add_Agent = ({ closeModal }) => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.dropdownIcon}
                     />
                   </View>
@@ -537,7 +545,7 @@ const Add_Agent = ({ closeModal }) => {
                     <MaterialIcons
                       name="arrow-drop-down"
                       size={24}
-                      color="#3E5C76"
+                      color="#E82E5F"
                       style={styles.dropdownIcon}
                     />
                   </View>
@@ -616,45 +624,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D8E3E7",
-    padding: 20,
+    padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    height:Platform.OS==="ios" ? "100%":"",
   },
   card: {
-    backgroundColor: "white",
+    backgroundColor: "#FDFDFD",
     borderRadius: 20,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    padding: 20,
-    marginBottom: 100,
-    width: Platform.OS === "web" ? "80%" : "95%"
+    padding: isSmallScreen ? 15 : 20,
+    marginBottom: isSmallScreen ? 150 : 100,
+    width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
+    maxWidth: 800,
   },
   title: {
-    fontSize: 20,
+    fontSize: isSmallScreen ? 18 : 20,
     fontWeight: "bold",
     fontFamily: "OpenSanssemibold",
     color: "Black",
     textAlign: "center",
-    padding: 15,
+    padding: isSmallScreen ? 10 : 15,
   },
   row: {
-    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    flexDirection: isSmallScreen ? "column" : "row",
     justifyContent: "space-between",
     flexWrap: "wrap",
-    marginBottom: 15,
+    marginBottom: isSmallScreen ? 10 : 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
-    marginBottom: 15,
+    width: isSmallScreen ? "100%" : "48%",
+    marginBottom: isSmallScreen ? 10 : 15,
   },
   inputWrapper: {
     position: "relative",
   },
   label: {
-    fontSize: 14,
+    fontSize: isSmallScreen ? 13 : 14,
     fontWeight: "bold",
     marginBottom: 5,
     color: "#555",
@@ -664,20 +674,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 25,
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
     paddingRight: 40,
     backgroundColor: "#f9f9f9",
     fontFamily: "OpenSanssemibold",
+    fontSize: isSmallScreen ? 14 : 16,
   },
   inputIcon: {
     position: "absolute",
     right: 15,
-    top: 12,
+    top: isSmallScreen ? 10 : 12,
   },
   dropdownIcon: {
     position: "absolute",
     right: 15,
-    top: 12,
+    top: isSmallScreen ? 10 : 12,
+    color:"#3E5C76",
   },
   disabledInput: {
     backgroundColor: "#eee",
@@ -686,19 +698,19 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 20,
+    marginTop: isSmallScreen ? 15 : 20,
   },
   registerButton: {
     backgroundColor: "#3E5C76",
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
     borderRadius: 30,
-    marginRight: 25,
+    marginRight: isSmallScreen ? 15 : 25,
     minWidth: 120,
     alignItems: "center",
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
-    padding: 12,
+    padding: isSmallScreen ? 10 : 12,
     borderRadius: 30,
     minWidth: 120,
     alignItems: "center",
@@ -706,7 +718,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     fontFamily: "OpenSanssemibold",
   },
   errorContainer: {
@@ -721,66 +733,82 @@ const styles = StyleSheet.create({
     color: "#ff4444",
     textAlign: "center",
     fontFamily: "OpenSanssemibold",
+    fontSize: isSmallScreen ? 13 : 14,
   },
-  // Bottom sheet styles
-  bottomSheetOverlay: {
+  // Modal styles
+  modalOuterContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  bottomSheetContent: {
-    width: '100%',
-    backgroundColor: 'transparent',
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
   },
-  bottomSheet: {
-    backgroundColor: 'white',
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: Dimensions.get('window').height * 0.7,
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-14%":"",
   },
-  bottomSheetTitle: {
+  modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    textAlign: 'center',
-    fontFamily: "OpenSanssemibold",
+    textAlign: "center",
+    color: "#2B2D42",
+    fontFamily: "Roboto-Bold",
   },
   searchContainer: {
+    position: "relative",
     marginBottom: 15,
   },
   searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 25,
-    padding: 12,
-    backgroundColor: '#f9f9f9',
-    fontFamily: "OpenSanssemibold",
+    borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
   },
-  listContainer: {
-    maxHeight: Dimensions.get('window').height * 0.5,
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
   },
   listItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   listItemText: {
     fontSize: 16,
-    fontFamily: "OpenSanssemibold",
+    fontFamily: "Roboto-Regular",
   },
-  bottomSheetCloseButton: {
-    backgroundColor: '#3E5C76',
+  closeButton: {
+    backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 30,
-    marginTop: 15,
-    alignItems: 'center',
+    borderRadius: 10,
+    alignItems: "center",
   },
-  bottomSheetCloseButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  closeButtonText: {
+    color: "#FFF",
     fontSize: 16,
-    fontFamily: "OpenSanssemibold",
+    fontWeight: "bold",
+    fontFamily: "Roboto-Bold",
   },
 });
 

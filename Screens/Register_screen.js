@@ -58,9 +58,9 @@ const Register_screen = () => {
     { name: "1-5 years", code: "02" },
     { name: "5-10 years", code: "03" },
     { name: "10-15 years", code: "04" },
-    { name: "15-20 years", code: "04" },
-    { name: "20-25 years", code: "04" },
-    { name: "25+ years", code: "04" },
+    { name: "15-20 years", code: "05" },
+    { name: "20-25 years", code: "06" },
+    { name: "25+ years", code: "07" },
   ];
 
   const filteredDistricts = parliaments.filter((item) =>
@@ -243,10 +243,17 @@ const Register_screen = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+          ]}
+          style={styles.scrollView}
           nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.headerContainer}>
             <TouchableOpacity
@@ -521,41 +528,50 @@ const Register_screen = () => {
         transparent={true}
         onRequestClose={() => setShowDistrictModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Parliament</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search parliament..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setDistrictSearch}
-                value={districtSearch}
-                autoFocus={true}
-              />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#E82E5F"
-                style={styles.searchIcon}
-              />
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Parliament</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search parliament..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setDistrictSearch}
+                    value={districtSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredDistricts}
+                  renderItem={renderDistrictItem}
+                  keyExtractor={(item) => item._id}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowDistrictModal(false);
+                    setDistrictSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <FlatList
-              data={filteredDistricts}
-              renderItem={renderDistrictItem}
-              keyExtractor={(item) => item._id}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowDistrictModal(false);
-                setDistrictSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -566,41 +582,50 @@ const Register_screen = () => {
         transparent={true}
         onRequestClose={() => setShowConstituencyModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Assemblies</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search assemblies..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setConstituencySearch}
-                value={constituencySearch}
-                autoFocus={true}
-              />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#E82E5F"
-                style={styles.searchIcon}
-              />
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Assemblies</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search assemblies..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setConstituencySearch}
+                    value={constituencySearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredConstituencies}
+                  renderItem={renderConstituencyItem}
+                  keyExtractor={(item, index) => index.toString()}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowConstituencyModal(false);
+                    setConstituencySearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <FlatList
-              data={filteredConstituencies}
-              renderItem={renderConstituencyItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowConstituencyModal(false);
-                setConstituencySearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -611,41 +636,50 @@ const Register_screen = () => {
         transparent={true}
         onRequestClose={() => setShowExpertiseModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Expertise</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search expertise..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setExpertiseSearch}
-                value={expertiseSearch}
-                autoFocus={true}
-              />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#E82E5F"
-                style={styles.searchIcon}
-              />
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Expertise</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search expertise..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setExpertiseSearch}
+                    value={expertiseSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredExpertise}
+                  renderItem={renderExpertiseItem}
+                  keyExtractor={(item) => item.code}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowExpertiseModal(false);
+                    setExpertiseSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <FlatList
-              data={filteredExpertise}
-              renderItem={renderExpertiseItem}
-              keyExtractor={(item) => item.code}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowExpertiseModal(false);
-                setExpertiseSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -656,41 +690,50 @@ const Register_screen = () => {
         transparent={true}
         onRequestClose={() => setShowExperienceModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Experience</Text>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search experience..."
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setExperienceSearch}
-                value={experienceSearch}
-                autoFocus={true}
-              />
-              <MaterialIcons
-                name="search"
-                size={24}
-                color="#E82E5F"
-                style={styles.searchIcon}
-              />
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Experience</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search experience..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setExperienceSearch}
+                    value={experienceSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredExperience}
+                  renderItem={renderExperienceItem}
+                  keyExtractor={(item) => item.code}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowExperienceModal(false);
+                    setExperienceSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <FlatList
-              data={filteredExperience}
-              renderItem={renderExperienceItem}
-              keyExtractor={(item) => item.code}
-              style={styles.modalList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setShowExperienceModal(false);
-                setExperienceSearch("");
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -704,25 +747,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
   },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 20,
+  },
+  smallScreenScrollContainer: {
+    paddingHorizontal: 10,
+    paddingTop:width<450 && Platform.OS==="web"?470:0,
+    height:"100vh"
+  },
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     width: "100%",
+    top: Platform.OS === "ios" ? "1%" : "undefined",
     paddingHorizontal: 20,
-    marginTop: 20,
+    marginTop: Platform.OS === "ios" ? "4%" : 20,
   },
   headerTextContainer: {
-    flex: 1,
-  },
-  scrollContainer: {
-    justifyContent: "center",
-    alignItems: "center",
+    flex: 1, 
   },
   card: {
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    width: width < 450 ? "95%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
     backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
@@ -744,13 +799,12 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    flexDirection: width < 450 || Platform.OS === 'android' ? "column" : "row",
     justifyContent: "space-between",
     gap: 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "30%",
+    width: width < 450 || Platform.OS === 'android' ? "100%" : "30%",
     position: "relative",
     zIndex: 1,
   },
@@ -775,12 +829,13 @@ const styles = StyleSheet.create({
     fontFamily: "Roboto-Regular",
   },
   logo: {
-    width: Platform.OS === "android" ? 105 : 100,
-    height: Platform.OS === "android" ? 105 : 100,
+    width: width < 450 ? 105 : 100,
+    height: width < 450 ? 105 : 100,
     resizeMode: "contain",
+    top: Platform.OS === "ios" ? "20%" : "undefined",
     marginRight: 7,
-    marginBottom: 40,
-    left: Platform.OS === "android" ? -102 : -700,
+    marginBottom: Platform.OS === "ios" ? "30%" : 40,
+    left: Platform.OS === "ios" ? "-34%" : "undefined" && width < 450 ? -111 : "-45%",
   },
   icon: {
     position: "absolute",
@@ -851,16 +906,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 17,
     color: "#2B2D42",
-    top: 50,
-    left: 50,
+    top: Platform.OS === "ios" ? "30%" : 50,
+    left: Platform.OS === "ios" ? "20%" : 50,
     textAlign: "center",
     fontFamily: "Roboto-Bold",
   },
   // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: "#FFF",
@@ -868,6 +931,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
   },
   modalTitle: {
     fontSize: 18,
