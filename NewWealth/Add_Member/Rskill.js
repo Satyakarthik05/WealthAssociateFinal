@@ -173,13 +173,9 @@ const Rskill = ({ closeModal }) => {
         setFilteredData(skilledCategories);
         break;
       case "location":
-<<<<<<< HEAD
-        const assemblies = constituencies.flatMap(district => district.assemblies);
-=======
         const assemblies = constituencies.flatMap(
           (district) => district.assemblies
         );
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         setFilteredData(assemblies);
         break;
       default:
@@ -206,17 +202,11 @@ const Rskill = ({ closeModal }) => {
         );
         break;
       case "location":
-<<<<<<< HEAD
-        const assemblies = constituencies.flatMap(district => district.assemblies);
-        setFilteredData(
-          assemblies.filter(item =>
-=======
         const assemblies = constituencies.flatMap(
           (district) => district.assemblies
         );
         setFilteredData(
           assemblies.filter((item) =>
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
             item.name.toLowerCase().includes(text.toLowerCase())
           )
         );
@@ -354,15 +344,10 @@ const Rskill = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
-<<<<<<< HEAD
-                  keyExtractor={(item, index) => 
-                    bottomSheetType === "skill" ? `${item.id}` : `${item.code}-${index}`
-=======
                   keyExtractor={(item, index) =>
                     bottomSheetType === "skill"
                       ? `${item.id}`
                       : `${item.code}-${index}`
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   }
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
@@ -434,13 +419,9 @@ const Rskill = ({ closeModal }) => {
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     keyboardType="phone-pad"
                     value={formData.mobileNumber}
-<<<<<<< HEAD
-                    onChangeText={(text) => handleInputChange("mobileNumber", text)}
-=======
                     onChangeText={(text) =>
                       handleInputChange("mobileNumber", text)
                     }
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                     maxLength={10}
                   />
                   <MaterialIcons
@@ -545,11 +526,7 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 15 : 20,
     marginBottom: isSmallScreen ? 150 : 100,
     width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
-<<<<<<< HEAD
-    maxWidth: 800
-=======
     maxWidth: 800,
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   title: {
     fontSize: isSmallScreen ? 18 : 20,
@@ -659,11 +636,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
-<<<<<<< HEAD
-    marginTop: Platform.OS === 'ios' ? 200 : 0,
-=======
     marginTop: Platform.OS === "ios" ? 200 : 0,
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
   },
   modalTitle: {
@@ -708,11 +681,7 @@ const styles = StyleSheet.create({
   },
   listItemCategory: {
     fontSize: isSmallScreen ? 12 : 12,
-<<<<<<< HEAD
-    color: '#666',
-=======
     color: "#666",
->>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
     marginTop: 4,
     fontFamily: "OpenSanssemibold",
   },
