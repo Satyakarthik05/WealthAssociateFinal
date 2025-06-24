@@ -160,9 +160,13 @@ const AddNRIMember = ({ closeModal }) => {
         setFilteredData(countries);
         break;
       case "indianLocation":
+<<<<<<< HEAD
+        const assemblies = constituencies.flatMap(district => district.assemblies);
+=======
         const assemblies = constituencies.flatMap(
           (district) => district.assemblies
         );
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         setFilteredData(assemblies);
         break;
       default:
@@ -187,9 +191,13 @@ const AddNRIMember = ({ closeModal }) => {
         );
         break;
       case "indianLocation":
+<<<<<<< HEAD
+        const assemblies = constituencies.flatMap(district => district.assemblies);
+=======
         const assemblies = constituencies.flatMap(
           (district) => district.assemblies
         );
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
         setFilteredData(
           assemblies.filter((item) =>
             item.name.toLowerCase().includes(text.toLowerCase())
@@ -340,10 +348,15 @@ const AddNRIMember = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
+<<<<<<< HEAD
+                  keyExtractor={(item, index) => 
+                    bottomSheetType === "country" ? item.value : `${item.code}-${index}`
+=======
                   keyExtractor={(item, index) =>
                     bottomSheetType === "country"
                       ? item.value
                       : `${item.code}-${index}`
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   }
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
@@ -408,7 +421,13 @@ const AddNRIMember = ({ closeModal }) => {
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Country</Text>
+<<<<<<< HEAD
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("country")}
+                >
+=======
                 <TouchableOpacity onPress={() => openBottomSheet("country")}>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
@@ -482,9 +501,13 @@ const AddNRIMember = ({ closeModal }) => {
                     placeholder="Ex. Software Engineer"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     value={formData.occupation}
+<<<<<<< HEAD
+                    onChangeText={(text) => handleInputChange("occupation", text)}
+=======
                     onChangeText={(text) =>
                       handleInputChange("occupation", text)
                     }
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   />
                   <MaterialIcons
                     name="work"
@@ -517,9 +540,13 @@ const AddNRIMember = ({ closeModal }) => {
 
             <View style={styles.row}>
               <View style={styles.inputContainer}>
+<<<<<<< HEAD
+                <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
+=======
                 <Text style={styles.label}>
                   Mobile Country No (WhatsApp No.)
                 </Text>
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
@@ -527,9 +554,13 @@ const AddNRIMember = ({ closeModal }) => {
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     keyboardType="phone-pad"
                     value={formData.mobileCountryNo}
+<<<<<<< HEAD
+                    onChangeText={(text) => handleInputChange("mobileCountryNo", text)}
+=======
                     onChangeText={(text) =>
                       handleInputChange("mobileCountryNo", text)
                     }
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   />
                   <MaterialIcons
                     name="phone"
@@ -588,7 +619,11 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 15 : 20,
     marginBottom: isSmallScreen ? 150 : 100,
     width: isSmallScreen ? "100%" : Platform.OS === "web" ? "80%" : "95%",
+<<<<<<< HEAD
+    maxWidth: 800
+=======
     maxWidth: 800,
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   title: {
     fontSize: isSmallScreen ? 18 : 20,
@@ -698,8 +733,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
+<<<<<<< HEAD
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-14%":"",
+=======
     marginTop: Platform.OS === "ios" ? 200 : 0,
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   modalTitle: {
     fontSize: 18,

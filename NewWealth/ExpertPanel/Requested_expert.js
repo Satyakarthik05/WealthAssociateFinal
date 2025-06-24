@@ -508,8 +508,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
+<<<<<<< HEAD
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-13%":"",
+=======
     marginTop: Platform.OS === "ios" ? 200 : 0,
     marginBottom: Platform.OS === "ios" ? "-13%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   modalTitle: {
     fontSize: 18,

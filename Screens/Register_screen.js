@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === "ios" ? "4%" : 20,
   },
   headerTextContainer: {
-    flex: 1,
+    flex: 1, 
   },
   card: {
     display: "flex",

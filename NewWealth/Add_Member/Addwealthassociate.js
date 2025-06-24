@@ -375,12 +375,19 @@ const Add_Agent = ({ closeModal }) => {
                 <FlatList
                   data={filteredData}
                   renderItem={renderItem}
+<<<<<<< HEAD
+                  keyExtractor={(item, index) => 
+                    bottomSheetType === "district" ? item.parliament : 
+                    bottomSheetType === "constituency" ? `${item.name}-${index}` : 
+                    item.code
+=======
                   keyExtractor={(item, index) =>
                     bottomSheetType === "district"
                       ? item.parliament
                       : bottomSheetType === "constituency"
                       ? `${item.name}-${index}`
                       : item.code
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
                   }
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
@@ -657,7 +664,11 @@ const styles = StyleSheet.create({
     padding: isSmallScreen ? 20 : 20,
     justifyContent: "center",
     alignItems: "center",
+<<<<<<< HEAD
+    height:Platform.OS==="ios" ? "100%":"",
+=======
     height: Platform.OS === "ios" ? "100%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   card: {
     backgroundColor: "#FDFDFD",
@@ -719,7 +730,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 15,
     top: isSmallScreen ? 10 : 12,
+<<<<<<< HEAD
+    color:"#3E5C76",
+=======
     color: "#3E5C76",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   disabledInput: {
     backgroundColor: "#eee",
@@ -784,9 +799,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+<<<<<<< HEAD
+    maxHeight: Dimensions.get('window').height * 0.7,
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-14%":"",
+=======
     maxHeight: Dimensions.get("window").height * 0.7,
     marginTop: Platform.OS === "ios" ? 200 : 0,
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
+>>>>>>> 58ec7f3d70143606abf2c2d4379b45bfb41feb43
   },
   modalTitle: {
     fontSize: 18,
