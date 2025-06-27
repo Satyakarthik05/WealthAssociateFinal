@@ -19,10 +19,10 @@ const BottomNavigation = () => {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const isMobile = width < 450;
-  // Only render for iOS and Androi
   const [activeTab, setActiveTab] = useState("newhome");
+
   if (Platform.OS !== "web" && !isMobile) {
-    return null; // ✅ Now placed AFTER hooks
+    return null;
   }
 
   const tabCount = 5;
@@ -62,6 +62,7 @@ const BottomNavigation = () => {
   ];
 
   const activeIndex = tabs.findIndex((tab) => tab.screenName === activeTab);
+  const centerX = tabWidth * activeIndex + tabWidth / 2;
 
   // Path for the curved notch background
   const getPath = (index) => {
@@ -82,15 +83,13 @@ const BottomNavigation = () => {
     `;
   };
 
-  // Adjust icon left to be perfectly centered inside the U shape
-  // Since icon container width ~ 60 (padding 14 + icon 24 + padding 14), offset by 30 for half width
-  const centerX = tabWidth * activeIndex + tabWidth / 2;
-
   const handleTabPress = (screenName) => {
     setActiveTab(screenName);
     navigation.navigate("Main", { screen: screenName });
   };
+
   if (!isMobile) return null;
+
   return (
     <View style={styles.wrapper}>
       {/* Curved background path */}
@@ -99,7 +98,11 @@ const BottomNavigation = () => {
       </Svg>
 
       {/* Floating active icon perfectly centered inside the U notch */}
-      <View style={[styles.activeIconContainer, { left: centerX - 30 }]}>
+      <TouchableOpacity
+        style={[styles.activeIconContainer, { left: centerX - 30 }]}
+        onPress={() => handleTabPress(tabs[activeIndex].screenName)}
+        activeOpacity={0.8}
+      >
         <View style={styles.activeCircle}>
           <Ionicons
             name={tabs[activeIndex].iconActive}
@@ -107,32 +110,29 @@ const BottomNavigation = () => {
             color="#3E5C76"
           />
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Tab buttons */}
-      {isMobile && (
-        <View style={styles.tabContainer}>
-          {tabs.map((tab, index) => {
-            const isFocused = activeTab === tab.screenName;
-            const color = isFocused ? "#3E5C76" : "#B0B0B0";
+      <View style={styles.tabContainer}>
+        {tabs.map((tab, index) => {
+          const isFocused = activeTab === tab.screenName;
+          const color = isFocused ? "transparent" : "#B0B0B0"; // Make active tab icon transparent
 
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.tabButton}
-                onPress={() => handleTabPress(tab.screenName)}
-                activeOpacity={0.8}
-              >
-                {/* Hide icon if it's the active one (floating) */}
-                {activeTab !== tab.screenName && (
-                  <Ionicons name={tab.icon} size={24} color={color} />
-                )}
-                <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+          return (
+            <TouchableOpacity
+              key={index}
+              style={styles.tabButton}
+              onPress={() => handleTabPress(tab.screenName)}
+              activeOpacity={0.8}
+            >
+              <View>
+                <Ionicons name={tab.icon} size={24} color={color} />
+              </View>
+              <Text style={[styles.tabLabel, { color }]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   activeIconContainer: {
     position: "absolute",
-    top: -notchHeight + 15, // Adjust so icon sits nicely inside notch
+    top: -notchHeight + 15,
     zIndex: 10,
     width: 60,
     height: 60,

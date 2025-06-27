@@ -211,7 +211,7 @@ const RequestedProperties = () => {
       case "residential":
         return require("../../../assets/residntial.jpg");
       case "commercial":
-        return require("../../../assets/commercial.jpeg");
+        return require("../../../assets/commercial.jpg");
       case "villa":
         return require("../../../assets/villa.jpg");
       default:

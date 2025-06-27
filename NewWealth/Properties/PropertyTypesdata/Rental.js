@@ -1,3 +1,4 @@
+// RentalPropertiesScreen.js
 import React, {
   useState,
   useEffect,
@@ -17,34 +18,29 @@ import {
   Animated,
   TextInput,
   Modal,
-  FlatList,
   TouchableWithoutFeedback,
   Keyboard,
-  Image,
   ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottieView from "lottie-react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import RNPickerSelect from "react-native-picker-select";
 
-import { API_URL } from "../../data/ApiUrl";
-import { getCategorizedProperties } from "../MainScreen/PropertyStock";
-import PropertyCard from "../components/home/PropertyCard";
-import PropertyModal from "../components/home/PropertyModal";
-import SectionHeader from "../components/home/SectionHeader";
-import LazyImage from "../components/home/LazyImage";
+import { API_URL } from "../../../data/ApiUrl";
+import { getCategorizedProperties } from "../../MainScreen/PropertyStock";
+import PropertyCard from "../../components/home/PropertyCard";
+import PropertyModal from "../../components/home/PropertyModal";
+import SectionHeader from "../../components/home/SectionHeader";
 
 const { width, height } = Dimensions.get("window");
 const PROPERTIES_PER_PAGE = 20;
 const IS_WEB = Platform.OS === "web";
 const IS_SMALL_SCREEN = width < 450;
 
-const ViewAllProperties = ({ route }) => {
+const RentalPropertiesScreen = () => {
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState({});
-  const [userType, setUserType] = useState("");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState({
@@ -59,25 +55,15 @@ const ViewAllProperties = ({ route }) => {
     maxPrice: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
   const [likedProperties, setLikedProperties] = useState([]);
-  const [propertyCategories, setPropertyCategories] = useState({
-    regularProperties: [],
-    approvedProperties: [],
-    wealthProperties: [],
-    listedProperties: [],
-    rentalProperties: [], // Added rental properties
-  });
+  const [rentalProperties, setRentalProperties] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [showRightArrow, setShowRightArrow] = useState(false);
-  const [tabContentWidth, setTabContentWidth] = useState(0);
 
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
   const scrollViewRef = useRef(null);
-  const tabScrollViewRef = useRef(null);
 
   useEffect(() => {
     if (!loading) {
@@ -106,7 +92,6 @@ const ViewAllProperties = ({ route }) => {
     try {
       const token = await AsyncStorage.getItem("authToken");
       const type = await AsyncStorage.getItem("userType");
-      setUserType(type);
 
       const storedLikes = await AsyncStorage.getItem("likedProperties");
       if (storedLikes) {
@@ -162,16 +147,10 @@ const ViewAllProperties = ({ route }) => {
     try {
       setLoading(true);
       const categories = await getCategorizedProperties();
-      setPropertyCategories(categories);
-
-      const allProperties = [
-        ...categories.regularProperties,
-        ...categories.approvedProperties,
-        ...categories.wealthProperties,
-        ...categories.listedProperties,
-        ...categories.rentalProperties, // Added rental properties
-      ];
-      setTotalPages(Math.ceil(allProperties.length / PROPERTIES_PER_PAGE));
+      setRentalProperties(categories.rentalProperties);
+      setTotalPages(
+        Math.ceil(categories.rentalProperties.length / PROPERTIES_PER_PAGE)
+      );
     } catch (error) {
       console.error("Error fetching properties:", error);
     } finally {
@@ -231,7 +210,7 @@ const ViewAllProperties = ({ route }) => {
           id: property._id,
           price: formattedPrice,
           images:
-            images.length > 0 ? images : [require("../../assets/logo.png")],
+            images.length > 0 ? images : [require("../../../assets/logo.png")],
         },
       });
     },
@@ -342,33 +321,7 @@ const ViewAllProperties = ({ route }) => {
   );
 
   const filterProperties = useCallback(() => {
-    let filtered = [];
-
-    switch (activeTab) {
-      case "regular":
-        filtered = propertyCategories.regularProperties;
-        break;
-      case "approved":
-        filtered = propertyCategories.approvedProperties;
-        break;
-      case "wealth":
-        filtered = propertyCategories.wealthProperties;
-        break;
-      case "listed":
-        filtered = propertyCategories.listedProperties;
-        break;
-      case "rental":
-        filtered = propertyCategories.rentalProperties; // Added rental case
-        break;
-      default:
-        filtered = [
-          ...propertyCategories.regularProperties,
-          ...propertyCategories.approvedProperties,
-          ...propertyCategories.wealthProperties,
-          ...propertyCategories.listedProperties,
-          ...propertyCategories.rentalProperties, // Added rental properties
-        ];
-    }
+    let filtered = [...rentalProperties];
 
     if (searchQuery) {
       filtered = filtered.filter((property) => {
@@ -424,8 +377,7 @@ const ViewAllProperties = ({ route }) => {
 
     return filtered;
   }, [
-    activeTab,
-    propertyCategories,
+    rentalProperties,
     searchQuery,
     filterCriteria,
     totalPages,
@@ -441,18 +393,11 @@ const ViewAllProperties = ({ route }) => {
 
   const getUniqueValues = useCallback(
     (key) => {
-      const allProperties = [
-        ...propertyCategories.regularProperties,
-        ...propertyCategories.approvedProperties,
-        ...propertyCategories.wealthProperties,
-        ...propertyCategories.listedProperties,
-        ...propertyCategories.rentalProperties, // Added rental properties
-      ];
-      return [...new Set(allProperties.map((item) => item[key]))].filter(
+      return [...new Set(rentalProperties.map((item) => item[key]))].filter(
         Boolean
       );
     },
-    [propertyCategories]
+    [rentalProperties]
   );
 
   const resetFilters = useCallback(() => {
@@ -471,24 +416,6 @@ const ViewAllProperties = ({ route }) => {
     setFilterModalVisible(false);
     setCurrentPage(1);
   }, []);
-
-  const handleTabScroll = (event) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const newShowRightArrow =
-      contentOffset.x + layoutMeasurement.width < contentSize.width;
-    if (newShowRightArrow !== showRightArrow) {
-      setShowRightArrow(newShowRightArrow);
-    }
-  };
-
-  const scrollTabsRight = () => {
-    tabScrollViewRef.current?.scrollTo({ x: tabContentWidth, animated: true });
-  };
-
-  const onTabContentSizeChange = (contentWidth) => {
-    setTabContentWidth(contentWidth);
-    setShowRightArrow(contentWidth > width);
-  };
 
   const renderPagination = useCallback(() => {
     if (totalPages <= 1) return null;
@@ -620,6 +547,18 @@ const ViewAllProperties = ({ route }) => {
   const renderHeader = useCallback(
     () => (
       <>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Rental Properties</Text>
+          </View>
+        </View>
+
         <View style={styles.searchFilterContainer}>
           <View style={styles.searchContainer}>
             <TextInput
@@ -644,146 +583,15 @@ const ViewAllProperties = ({ route }) => {
             <Ionicons name="filter" size={20} color="white" />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.tabContainerWrapper}>
-          <ScrollView
-            ref={tabScrollViewRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabContainer}
-            onScroll={handleTabScroll}
-            scrollEventThrottle={16}
-            onContentSizeChange={onTabContentSizeChange}
-          >
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "all" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("all")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "all" && styles.activeTabButtonText,
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "regular" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("regular")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "regular" && styles.activeTabButtonText,
-                ]}
-              >
-                Regular
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "approved" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("approved")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "approved" && styles.activeTabButtonText,
-                ]}
-              >
-                Approved
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "wealth" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("wealth")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "wealth" && styles.activeTabButtonText,
-                ]}
-              >
-                Wealth
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "listed" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("listed")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "listed" && styles.activeTabButtonText,
-                ]}
-              >
-                Listed
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                activeTab === "rental" && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab("rental")} // Added rental tab
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  activeTab === "rental" && styles.activeTabButtonText,
-                ]}
-              >
-                Rental
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-          {showRightArrow && (
-            <TouchableOpacity
-              style={styles.scrollArrow}
-              onPress={scrollTabsRight}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-forward" size={24} color="#E91E63" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <SectionHeader
-          title={`${
-            activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
-          } Properties`}
-          showViewAll={false}
-        />
       </>
     ),
-    [searchQuery, activeTab, showRightArrow]
+    [searchQuery, navigation]
   );
 
   const renderEmptyComponent = useCallback(
     () => (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No properties found</Text>
+        <Text style={styles.emptyText}>No rental properties found</Text>
         <TouchableOpacity
           style={styles.resetButton}
           onPress={resetFilters}
@@ -948,12 +756,7 @@ const ViewAllProperties = ({ route }) => {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <LottieView
-          source={require("../../assets/animations/home[1].json")}
-          autoPlay
-          loop
-          style={{ width: 200, height: 200 }}
-        />
+        <ActivityIndicator size="large" color="#E91E63" />
       </View>
     );
   }
@@ -1046,19 +849,41 @@ const pickerSelectStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#D8E3E7",
+    backgroundColor: "#f8f9fa",
     paddingBottom: Platform.OS === "web" ? "45%" : "20%",
   },
   contentContainer: {
     flex: 1,
     width: "100%",
-   
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#D8E3E7",
+    backgroundColor: "#f8f9fa",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginTop: "2%",
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 5,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
   },
   searchFilterContainer: {
     flexDirection: "row",
@@ -1093,39 +918,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  tabContainerWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 10,
-    paddingHorizontal: 15,
-  },
-  tabContainer: {
-    flexGrow: 1,
-    paddingRight: 30,
-  },
-  tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  activeTabButton: {
-    backgroundColor: "#3E5C76",
-  },
-  tabButtonText: {
-    color: "#666",
-    fontWeight: "bold",
-  },
-  activeTabButtonText: {
-    color: "#fff",
-  },
-  scrollArrow: {
-    position: "absolute",
-    right: 5,
-    padding: 8,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 20,
-  },
   propertyListContainer: {
     paddingHorizontal: 15,
     paddingBottom: 20,
@@ -1151,7 +943,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resetButton: {
-    backgroundColor: "#3E5C76",
+    backgroundColor: "#E91E63",
     padding: 12,
     borderRadius: 5,
   },
@@ -1245,7 +1037,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   applyFilterButton: {
-    backgroundColor: "#3E5C76",
+    backgroundColor: "#E91E63",
     flex: 1,
     padding: 12,
     borderRadius: 8,
@@ -1316,4 +1108,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ViewAllProperties;
+export default RentalPropertiesScreen;

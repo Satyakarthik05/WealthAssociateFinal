@@ -34,25 +34,32 @@ const PlatformCheckbox = ({ label, status, onPress }) => {
   return <Checkbox.Item label={label} status={status} onPress={onPress} />;
 };
 
-const PropertyForm = ({ closeModal, propertyId, initialData }) => {
+const RentalPropertyForm = ({ closeModal, propertyId, initialData }) => {
   const [formData, setFormData] = useState({
-    FlatLocation: "",
+    propertyLocation: "",
     bhk: "",
     area: "",
     carpetArea: "",
-    totalArea: "",
     floors: "",
-    portions: "",
     furnishing: null,
-    projectStatus: null,
+    propertyType: null,
     facing: null,
-    carParking: null,
-    BankLoanFacility: null,
+    preferredTenant: null,
+    bachelorsAllowed: null,
+    businessAllowed: null,
+    availableFrom: "",
+    monthlyRent: "",
+    securityDeposit: "",
+    maintenanceCharges: "",
     facilities: {
       water: false,
-      vastu: false,
-      documents: false,
+      powerBackup: false,
+      parking: false,
       lift: false,
+      wifi: false,
+      ac: false,
+      furnished: false,
+      security: false,
     },
   });
 
@@ -61,23 +68,30 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
   useEffect(() => {
     if (initialData) {
       setFormData({
-        FlatLocation: initialData.FlatLocation || "",
+        propertyLocation: initialData.propertyLocation || "",
         bhk: initialData.bhk || "",
         area: initialData.area || "",
         carpetArea: initialData.carpetArea || "",
-        totalArea: initialData.totalArea || "",
         floors: initialData.floors || "",
-        portions: initialData.portions || "",
         furnishing: initialData.furnishing || null,
-        projectStatus: initialData.projectStatus || null,
+        propertyType: initialData.propertyType || null,
         facing: initialData.facing || null,
-        carParking: initialData.carParking || null,
-        BankLoanFacility: initialData.BankLoanFacility || null,
+        preferredTenant: initialData.preferredTenant || null,
+        bachelorsAllowed: initialData.bachelorsAllowed || null,
+        businessAllowed: initialData.businessAllowed || null,
+        availableFrom: initialData.availableFrom || "",
+        monthlyRent: initialData.monthlyRent || "",
+        securityDeposit: initialData.securityDeposit || "",
+        maintenanceCharges: initialData.maintenanceCharges || "",
         facilities: {
           water: initialData.facilities?.water || false,
-          vastu: initialData.facilities?.vastu || false,
-          documents: initialData.facilities?.documents || false,
-          lift: initialData.lift?.lift || false,
+          powerBackup: initialData.facilities?.powerBackup || false,
+          parking: initialData.facilities?.parking || false,
+          lift: initialData.facilities?.lift || false,
+          wifi: initialData.facilities?.wifi || false,
+          ac: initialData.facilities?.ac || false,
+          furnished: initialData.facilities?.furnished || false,
+          security: initialData.facilities?.security || false,
         },
       });
     }
@@ -117,10 +131,10 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to update property");
+        throw new Error(result.message || "Failed to update rental property");
       }
 
-      Alert.alert("Success", "Property details updated successfully");
+      Alert.alert("Success", "Rental property details updated successfully");
       closeModal(true);
     } catch (error) {
       console.error("Submission error:", error);
@@ -132,13 +146,22 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Update Property Details</Text>
+      <Text style={styles.title}>Update Rental Property Details</Text>
+
+      {/* Property Location */}
+      <Text style={styles.heading}>Property Location</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter full address"
+        value={formData.propertyLocation}
+        onChangeText={(text) => handleInputChange("propertyLocation", text)}
+      />
 
       {/* BHK Input */}
       <Text style={styles.heading}>BHK Type</Text>
       <TextInput
         style={styles.input}
-        placeholder="e.g., 2BHK"
+        placeholder="e.g., 2BHK, 3BHK, Studio"
         value={formData.bhk}
         onChangeText={(text) => handleInputChange("bhk", text)}
       />
@@ -147,32 +170,35 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
       <Text style={styles.heading}>Area (sq. ft)</Text>
       <TextInput
         style={styles.input}
-        placeholder="e.g., 2400 sq.ft"
+        placeholder="Total area in square feet"
         keyboardType="numeric"
         value={formData.area}
         onChangeText={(text) => handleInputChange("area", text)}
       />
-      <Text style={styles.heading}>No of floors</Text>
+
+      {/* Carpet Area */}
+      <Text style={styles.heading}>Carpet Area (sq. ft)</Text>
       <TextInput
         style={styles.input}
-        placeholder="No of floors"
+        placeholder="Carpet area in square feet"
         keyboardType="numeric"
+        value={formData.carpetArea}
+        onChangeText={(text) => handleInputChange("carpetArea", text)}
+      />
+
+      {/* Floors */}
+      <Text style={styles.heading}>Floor Number</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g., 2 (or 'Ground')"
         value={formData.floors}
         onChangeText={(text) => handleInputChange("floors", text)}
       />
-      <Text style={styles.heading}>No of Portions</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="No of portions"
-        keyboardType="numeric"
-        value={formData.portions}
-        onChangeText={(text) => handleInputChange("portions", text)}
-      />
 
-      {/* Furnishing Checkboxes */}
+      {/* Furnishing */}
       <Text style={styles.heading}>Furnishing</Text>
       <View style={styles.checkboxContainer}>
-        {["Semi-Furnished", "Fully-Furnished"].map((option) => (
+        {["Fully Furnished", "Semi Furnished", "Unfurnished"].map((option) => (
           <PlatformCheckbox
             key={option}
             label={option}
@@ -187,68 +213,159 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
         ))}
       </View>
 
-      {/* Project Status */}
-      <Text style={styles.heading}>Project Status</Text>
+      {/* Property Type */}
+      <Text style={styles.heading}>Property Type</Text>
       <View style={styles.checkboxContainer}>
-        {["Ready to Move", "Under Construction"].map((option) => (
+        {["Apartment", "Independent House", "Villa", "PG"].map((option) => (
           <PlatformCheckbox
             key={option}
             label={option}
-            status={formData.projectStatus === option ? "checked" : "unchecked"}
+            status={formData.propertyType === option ? "checked" : "unchecked"}
             onPress={() =>
               handleInputChange(
-                "projectStatus",
-                formData.projectStatus === option ? null : option
+                "propertyType",
+                formData.propertyType === option ? null : option
               )
             }
           />
         ))}
       </View>
 
+      {/* Facing Direction */}
       <Text style={styles.heading}>Facing Direction</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Facing Direction"
-        value={formData.direction}
-        onChangeText={(value) => handleInputChange("direction", value)}
-      />
+      <View style={styles.checkboxContainer}>
+        {[
+          "North",
+          "South",
+          "East",
+          "West",
+          "North-East",
+          "North-West",
+          "South-East",
+          "South-West",
+        ].map((option) => (
+          <PlatformCheckbox
+            key={option}
+            label={option}
+            status={formData.facing === option ? "checked" : "unchecked"}
+            onPress={() =>
+              handleInputChange(
+                "facing",
+                formData.facing === option ? null : option
+              )
+            }
+          />
+        ))}
+      </View>
 
-      {/* Carpet Area */}
-      <Text style={styles.heading}>Carpet Area (sq. ft)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g., 2000 sq.ft"
-        keyboardType="numeric"
-        value={formData.carpetArea}
-        onChangeText={(text) => handleInputChange("carpetArea", text)}
-      />
+      {/* Preferred Tenant */}
+      <Text style={styles.heading}>Preferred Tenant</Text>
+      <View style={styles.checkboxContainer}>
+        {["Family", "Bachelor", "Company", "Anyone"].map((option) => (
+          <PlatformCheckbox
+            key={option}
+            label={option}
+            status={
+              formData.preferredTenant === option ? "checked" : "unchecked"
+            }
+            onPress={() =>
+              handleInputChange(
+                "preferredTenant",
+                formData.preferredTenant === option ? null : option
+              )
+            }
+          />
+        ))}
+      </View>
 
-      {/* Car Parking */}
-      <Text style={styles.heading}>Car Parking</Text>
+      {/* Bachelors Allowed */}
+      <Text style={styles.heading}>Bachelors Allowed?</Text>
       <View style={styles.checkboxContainer}>
         {["Yes", "No"].map((option) => (
           <PlatformCheckbox
             key={option}
             label={option}
-            status={formData.carParking === option ? "checked" : "unchecked"}
+            status={
+              formData.bachelorsAllowed === option ? "checked" : "unchecked"
+            }
             onPress={() =>
               handleInputChange(
-                "carParking",
-                formData.carParking === option ? null : option
+                "bachelorsAllowed",
+                formData.bachelorsAllowed === option ? null : option
               )
             }
           />
         ))}
       </View>
 
-      {/* Project Facilities */}
-      <Text style={styles.heading}>Project Facilities</Text>
+      {/* Business Allowed */}
+      <Text style={styles.heading}>Business/Commercial Use Allowed?</Text>
+      <View style={styles.checkboxContainer}>
+        {["Yes", "No"].map((option) => (
+          <PlatformCheckbox
+            key={option}
+            label={option}
+            status={
+              formData.businessAllowed === option ? "checked" : "unchecked"
+            }
+            onPress={() =>
+              handleInputChange(
+                "businessAllowed",
+                formData.businessAllowed === option ? null : option
+              )
+            }
+          />
+        ))}
+      </View>
+
+      {/* Rental Details */}
+      <Text style={styles.heading}>Monthly Rent (₹)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter monthly rent amount"
+        keyboardType="numeric"
+        value={formData.monthlyRent}
+        onChangeText={(text) => handleInputChange("monthlyRent", text)}
+      />
+
+      <Text style={styles.heading}>Security Deposit (₹)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter security deposit amount"
+        keyboardType="numeric"
+        value={formData.securityDeposit}
+        onChangeText={(text) => handleInputChange("securityDeposit", text)}
+      />
+
+      <Text style={styles.heading}>Maintenance Charges (₹)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter monthly maintenance charges"
+        keyboardType="numeric"
+        value={formData.maintenanceCharges}
+        onChangeText={(text) => handleInputChange("maintenanceCharges", text)}
+      />
+
+      <Text style={styles.heading}>Available From</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="DD/MM/YYYY"
+        value={formData.availableFrom}
+        onChangeText={(text) => handleInputChange("availableFrom", text)}
+      />
+
+      {/* Facilities */}
+      <Text style={styles.heading}>Facilities</Text>
       <View style={styles.checkboxContainer}>
         {[
-          { label: "24-hour Water Supply", key: "water" },
-          { label: "100% Vastu", key: "vastu" },
-          { label: "Clear Title & Documents", key: "documents" },
-          { label: "lift", key: "lift" },
+          { label: "24/7 Water Supply", key: "water" },
+          { label: "Power Backup", key: "powerBackup" },
+          { label: "Parking Available", key: "parking" },
+          { label: "Lift/Elevator", key: "lift" },
+          { label: "WiFi Included", key: "wifi" },
+          { label: "AC Available", key: "ac" },
+          { label: "Fully Furnished", key: "furnished" },
+          { label: "Security", key: "security" },
         ].map(({ label, key }) => (
           <PlatformCheckbox
             key={key}
@@ -258,35 +375,8 @@ const PropertyForm = ({ closeModal, propertyId, initialData }) => {
           />
         ))}
       </View>
-      <Text style={styles.heading}>Flat/Apartment Location</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Flat Location"
-        value={formData.FlatLocation}
-        onChangeText={(value) => handleInputChange("FlatLocation", value)}
-      />
 
-      {/* Blank Lane Facility */}
-      <Text style={styles.heading}>Bank Loan Facility</Text>
-      <View style={styles.checkboxContainer}>
-        {["Yes", "No"].map((option) => (
-          <PlatformCheckbox
-            key={option}
-            label={option}
-            status={
-              formData.BankLoanFacility === option ? "checked" : "unchecked"
-            }
-            onPress={() =>
-              handleInputChange(
-                "BankLoanFacility",
-                formData.BankLoanFacility === option ? null : option
-              )
-            }
-          />
-        ))}
-      </View>
-
-      {/* Buttons Container */}
+      {/* Buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.buttonSubmit, isSubmitting && styles.disabledButton]}
@@ -396,4 +486,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PropertyForm;
+export default RentalPropertyForm;

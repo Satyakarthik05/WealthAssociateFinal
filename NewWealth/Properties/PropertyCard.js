@@ -21,6 +21,8 @@ import logo from "../../assets/logosub.png";
 import { FontAwesome5, AntDesign } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import defaultAgentImage from "../../assets/man.png";
+import { exportedFullName, exportedMobileNumber } from "../MainScreen/Uppernavigation";
+
 
 const PropertyCard = ({ property = {}, closeModal }) => {
   const viewShotRef = useRef();
@@ -28,6 +30,7 @@ const PropertyCard = ({ property = {}, closeModal }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [agentImage, setAgentImage] = useState(defaultAgentImage);
+  const [propertyImage, setPropertyImage] = useState(logo);
   const [mounted, setMounted] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -41,29 +44,48 @@ const PropertyCard = ({ property = {}, closeModal }) => {
   }, []);
 
   useEffect(() => {
-    const loadProfileImage = async () => {
+    const loadImages = async () => {
       try {
-        const savedImage = await AsyncStorage.getItem("@profileImage");
-        if (mounted && savedImage) {
-          setAgentImage({ uri: savedImage });
+        // Load agent profile image
+        const savedAgentImage = await AsyncStorage.getItem("@profileImage");
+        if (mounted && savedAgentImage) {
+          setAgentImage({ uri: savedAgentImage });
+        }
+
+        // Load property image
+        if (property?.photo) {
+          // Check if it's a local file URI
+          if (property.photo.startsWith("file://")) {
+            const fileExists = await FileSystem.getInfoAsync(property.photo);
+            if (fileExists.exists) {
+              setPropertyImage({ uri: property.photo });
+            } else {
+              setPropertyImage(logo);
+            }
+          }
+          // Check if it's a remote URL
+          else if (property.photo.startsWith("http")) {
+            setPropertyImage({ uri: property.photo });
+          }
+          // Check if it's a base64 string
+          else if (property.photo.startsWith("data:image")) {
+            setPropertyImage({ uri: property.photo });
+          }
+          // Check if it's a local asset reference
+          else if (typeof property.photo === "number") {
+            setPropertyImage(property.photo);
+          }
         }
       } catch (error) {
-        console.error("Error loading profile image:", error);
+        console.error("Error loading images:", error);
+        setImageError(true);
+      } finally {
+        setImageLoading(false);
       }
     };
-    loadProfileImage();
-  }, [mounted]);
 
-  const getPhotoUri = () => {
-    if (!property?.photo) return logo;
-    if (
-      property.photo.startsWith("http") ||
-      property.photo.startsWith("file://")
-    ) {
-      return { uri: property.photo };
-    }
-    return logo;
-  };
+    loadImages();
+  }, [mounted, property?.photo]);
 
   const getAgentName = () => {
     return (
@@ -81,10 +103,6 @@ const PropertyCard = ({ property = {}, closeModal }) => {
       property?.PostedBy ||
       "Contact for details"
     );
-  };
-
-  const handleVisitSite = () => {
-    Linking.openURL("https://www.wealthassociate.in");
   };
 
   const handleShare = async () => {
@@ -189,7 +207,7 @@ const PropertyCard = ({ property = {}, closeModal }) => {
               </View>
             )}
             <Image
-              source={getPhotoUri()}
+              source={propertyImage}
               style={styles.propertyImage}
               resizeMode="cover"
               onLoadStart={() => setImageLoading(true)}
@@ -197,6 +215,7 @@ const PropertyCard = ({ property = {}, closeModal }) => {
               onError={() => {
                 setImageLoading(false);
                 setImageError(true);
+                setPropertyImage(logo);
               }}
               defaultSource={logo}
             />
@@ -222,10 +241,14 @@ const PropertyCard = ({ property = {}, closeModal }) => {
           </View>
 
           <View style={styles.agentInfo}>
-            <Image source={agentImage} style={styles.agentImage} />
+            <Image
+              source={agentImage}
+              style={styles.agentImage}
+              onError={() => setAgentImage(defaultAgentImage)}
+            />
             <View style={styles.agentDetails}>
-              <Text style={styles.agentName}>{getAgentName()}</Text>
-              <Text style={styles.agentPhone}>{getAgentMobile()}</Text>
+              <Text style={styles.agentName}>{exportedFullName}</Text>
+              <Text style={styles.agentPhone}>{exportedMobileNumber}</Text>
             </View>
           </View>
 
@@ -289,7 +312,6 @@ const PropertyCard = ({ property = {}, closeModal }) => {
 
 const styles = StyleSheet.create({
   templateContainer: {
-    // backgroundColor: "#5a89cc",
     borderRadius: 10,
     padding: 10,
     margin: 10,
@@ -301,6 +323,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     maxWidth: 600,
+    backgroundColor: "#fff",
   },
   viewShotContainer: {
     backgroundColor: "#fff5f5",
@@ -434,7 +457,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   errorText: {
-    color: "white",
+    color: "red",
     textAlign: "center",
     fontSize: 16,
     marginVertical: 20,
@@ -483,7 +506,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   scrollContent: {
-    paddingBottom: 80, // Add padding to ensure content isn't hidden behind buttons
+    paddingBottom: 80,
   },
 });
 

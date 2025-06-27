@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,24 +6,135 @@ import {
   TouchableOpacity,
   Linking,
   StyleSheet,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import ViewShot from "react-native-view-shot";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import defaultAgentImage from "../../assets/man.png";
+import { exportedFullName, exportedMobileNumber } from "../MainScreen/Uppernavigation";
 
-const PropertyCards = ({ property, closeModal }) => {
-  const { photo, location, price, propertyType } = property;
+const PropertyCards = ({ property = {}, closeModal }) => {
   const viewShotRef = useRef();
+  const [isSharing, setIsSharing] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [agentImage, setAgentImage] = useState(defaultAgentImage);
+  const [propertyImage, setPropertyImage] = useState(require("../../assets/logosub.png"));
+
+  useEffect(() => {
+    const loadImages = async () => {
+      try {
+        // Load agent profile image from AsyncStorage
+        const savedAgentImage = await AsyncStorage.getItem("@profileImage");
+        if (savedAgentImage) {
+          setAgentImage({ uri: savedAgentImage });
+        }
+
+        // Handle property image
+        if (property?.photo) {
+          // Check if it's a local file URI
+          if (property.photo.startsWith("file://")) {
+            const fileExists = await FileSystem.getInfoAsync(property.photo);
+            if (fileExists.exists) {
+              setPropertyImage({ uri: property.photo });
+            }
+          } 
+          // Check if it's a remote URL
+          else if (property.photo.startsWith("http")) {
+            setPropertyImage({ uri: property.photo });
+          }
+          // Check if it's a base64 string
+          else if (property.photo.startsWith("data:image")) {
+            setPropertyImage({ uri: property.photo });
+          }
+        }
+      } catch (error) {
+        console.error("Error loading images:", error);
+        setImageError(true);
+      } finally {
+        setImageLoading(false);
+      }
+    };
+
+    loadImages();
+  }, [property?.photo]);
 
   const handleShare = async () => {
+    if (!viewShotRef.current) {
+      Alert.alert("Error", "Sharing component not ready");
+      return;
+    }
+
+    setIsSharing(true);
     try {
-      const uri = await viewShotRef.current.capture();
-      await Sharing.shareAsync(uri);
+      const uri = await viewShotRef.current.capture({
+        format: "jpg",
+        quality: 0.9,
+      });
+
+      if (!uri) throw new Error("Failed to capture image");
+
+      const fileUri = FileSystem.cacheDirectory + "shared-property.jpg";
+      await FileSystem.copyAsync({ from: uri, to: fileUri });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          "Sharing Not Supported",
+          "Update your device to enable sharing."
+        );
+        return;
+      }
+
+      const message = `Check out this ${
+        property?.propertyType || "property"
+      } in ${property?.location || "a great location"} for ₹${
+        property?.price || "contact for price"
+      }.\n\nDownload our app: ${
+        Platform.OS === "ios"
+          ? "https://apps.apple.com/in/app/wealth-associate/id6743356719"
+          : "https://play.google.com/store/apps/details?id=com.wealthassociates.alpha"
+      }`;
+
+      await Sharing.shareAsync(fileUri, {
+        dialogTitle: "Property For Sale",
+        mimeType: "image/jpeg",
+        UTI: "image/jpeg",
+        message: message,
+      });
     } catch (error) {
-      console.error("Error sharing:", error);
-      alert("Failed to share property");
+      console.error("Sharing failed:", error);
+      Alert.alert(
+        "Sharing Error",
+        error.message || "Couldn't share the property."
+      );
+    } finally {
+      setIsSharing(false);
     }
   };
+
+  const handleAppStorePress = () => {
+    Linking.openURL(
+      Platform.OS === "ios"
+        ? "https://apps.apple.com/in/app/wealth-associate/id6743356719"
+        : "https://play.google.com/store/apps/details?id=com.wealthassociates.alpha"
+    );
+  };
+
+  if (!property) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>No property data available</Text>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.buttonText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -46,21 +157,55 @@ const PropertyCards = ({ property, closeModal }) => {
           <Text style={styles.forSaleText}>PROPERTY FOR SALE</Text>
 
           {/* Property Image */}
-          <Image
-            source={{ uri: photo || "https://via.placeholder.com/300" }}
-            style={styles.propertyImage}
-            defaultSource={require("../../assets/logosub.png")}
-          />
+          <View style={styles.imageContainer}>
+            {imageLoading && (
+              <ActivityIndicator 
+                size="large" 
+                color="#1a237e" 
+                style={styles.loadingIndicator}
+              />
+            )}
+            <Image
+              source={propertyImage}
+              style={styles.propertyImage}
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+                setPropertyImage(require("../../assets/logosub.png"));
+              }}
+              defaultSource={require("../../assets/logosub.png")}
+            />
+            {imageError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Image not available</Text>
+              </View>
+            )}
+          </View>
 
           {/* Property Details */}
           <View style={styles.detailsContainer}>
             <Text style={styles.propertyType}>
-              PROPERTY TYPE: {propertyType.toUpperCase()}
+              PROPERTY TYPE: {property.propertyType?.toUpperCase() || "PROPERTY"}
             </Text>
             <Text style={styles.location}>
-              LOCATION: {location.toUpperCase()}
+              LOCATION: {property.location?.toUpperCase() || "LOCATION NOT SPECIFIED"}
             </Text>
-            <Text style={styles.price}>₹{price}</Text>
+            <Text style={styles.price}>₹{property.price || "Price on request"}</Text>
+          </View>
+
+          {/* Agent Info */}
+          <View style={styles.agentInfo}>
+            <Image 
+              source={agentImage} 
+              style={styles.agentImage}
+              onError={() => setAgentImage(defaultAgentImage)}
+            />
+            <View style={styles.agentDetails}>
+              <Text style={styles.agentName}>Contact Agent</Text>
+              <Text style={styles.agentPhone}>Wealth Associate</Text>
+            </View>
           </View>
         </View>
 
@@ -68,13 +213,18 @@ const PropertyCards = ({ property, closeModal }) => {
         <View style={styles.footer}>
           <Text style={styles.downloadText}>DOWNLOAD OUR APP</Text>
           <View style={styles.appButtons}>
-            <TouchableOpacity style={styles.appButton}>
-              <FontAwesome name="android" size={16} color="#000" />
-              <Text style={styles.buttonText}>Play Store</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.appButton}>
-              <FontAwesome name="apple" size={16} color="#000" />
-              <Text style={styles.buttonText}>App Store</Text>
+            <TouchableOpacity 
+              style={styles.appButton} 
+              onPress={handleAppStorePress}
+            >
+              <FontAwesome 
+                name={Platform.OS === "ios" ? "apple" : "android"} 
+                size={16} 
+                color="#000" 
+              />
+              <Text style={styles.buttonText}>
+                {Platform.OS === "ios" ? "App Store" : "Play Store"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -82,12 +232,22 @@ const PropertyCards = ({ property, closeModal }) => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.callButton} onPress={closeModal}>
-          <Text style={styles.callButtonText}>Cancel</Text>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-          <FontAwesome name="whatsapp" size={16} color="#fff" />
-          <Text style={styles.shareButtonText}>Share</Text>
+        <TouchableOpacity 
+          style={styles.shareButton} 
+          onPress={handleShare}
+          disabled={isSharing}
+        >
+          {isSharing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <FontAwesome name="whatsapp" size={16} color="#fff" />
+              <Text style={styles.shareButtonText}>Share</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -102,7 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     paddingHorizontal: 10,
     top: 10,
-    maxHeight: "80%",
+    // maxHeight: "80%",
   },
   cardContainer: {
     backgroundColor: "#fff",
@@ -140,6 +300,15 @@ const styles = StyleSheet.create({
     marginTop: -48,
     marginLeft: -20,
   },
+  imageContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingIndicator: {
+    position: 'absolute',
+    zIndex: 1,
+  },
   propertyImage: {
     width: "100%",
     height: 180,
@@ -151,8 +320,20 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  errorContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#eee',
+    width: '100%',
+    height: 180,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+  },
   detailsContainer: {
-    marginBottom: -15,
+    marginBottom: 15,
   },
   propertyType: {
     fontSize: 14,
@@ -177,6 +358,34 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
   },
+  agentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a237e',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  agentImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  agentDetails: {
+    flex: 1,
+  },
+  agentName: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  agentPhone: {
+    color: '#fff',
+    fontSize: 12,
+  },
   footer: {
     backgroundColor: "#e8eaf6",
     padding: 10,
@@ -190,7 +399,7 @@ const styles = StyleSheet.create({
   },
   appButtons: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "center",
     width: "100%",
   },
   appButton: {
@@ -214,7 +423,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 10,
   },
-  callButton: {
+  cancelButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "red",
@@ -223,11 +432,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 5,
     justifyContent: "center",
-  },
-  callButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
   },
   shareButton: {
     flexDirection: "row",

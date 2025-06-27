@@ -5,14 +5,6 @@ import LazyImage, { preload } from "../components/home/LazyImage";
 // Cache expiration time (1 day in milliseconds)
 const CACHE_EXPIRATION_TIME = 24 * 60 * 60 * 1000;
 
-// data.forEach((property) => {
-//   const images = normalizeImageSources(property);
-//   images.forEach((uri) => {
-//     const key = encodeURIComponent(uri);
-//     preload(uri, key); // Now this works
-//   });
-// });
-
 // Helper function to get property tag
 const getPropertyTag = (createdAt) => {
   const currentDate = new Date();
@@ -142,6 +134,7 @@ export const getProperties = async () => {
 };
 
 // 🔹 Returns grouped properties for display
+// In PropertyStock.js
 export const getCategorizedProperties = async () => {
   const properties = await getProperties();
 
@@ -157,11 +150,21 @@ export const getCategorizedProperties = async () => {
   const listedProperties = properties.filter(
     (property) => getPropertyTag(property.createdAt) === "Listed Property"
   );
+  const rentalProperties = properties.filter(
+    (property) => property.propertyType && 
+    property.propertyType.toUpperCase() === "RENTAL"
+  );
 
   return {
     regularProperties,
     approvedProperties,
     wealthProperties,
     listedProperties,
+    rentalProperties,
   };
+};
+
+export const getRentalProperties = async () => {
+  const properties = await getProperties();
+  return properties.filter((property) => property.propertyType === "RENTAL");
 };

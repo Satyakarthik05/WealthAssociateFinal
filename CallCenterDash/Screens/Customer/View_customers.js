@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -14,15 +14,31 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Linking,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../../../data/ApiUrl";
+import logo1 from "../../../assets/man.png";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+
+const getAuthToken = async () => {
+  try {
+    const token = await AsyncStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    return token;
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    throw error;
+  }
+};
 
 export default function ViewCustomers() {
-  // State management
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,32 +46,45 @@ export default function ViewCustomers() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editedCustomer, setEditedCustomer] = useState({
     FullName: "",
-    MobileNumber: "",
-    Occupation: "",
-    MyRefferalCode: "",
     District: "",
     Contituency: "",
+    MobileNumber: "",
+    MyRefferalCode: "",
+    Occupation: "",
   });
+  const [photo, setPhoto] = useState(null);
+  const [file, setFile] = useState(null);
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [coreMembers, setCoreMembers] = useState([]);
-  const [agents, setAgents] = useState([]);
-  const [referrerNames, setReferrerNames] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [executiveId, setExecutiveId] = useState(null);
+  const [executiveName, setExecutiveName] = useState("");
 
-  // Fetch authentication token
-  const getAuthToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      return token || "";
-    } catch (error) {
-      console.error("Error getting auth token:", error);
-      return "";
-    }
-  };
+  const isMobile = Platform.OS !== "web";
 
-  // Fetch assigned customers with all related data
+  useEffect(() => {
+    const getExecutiveInfo = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem("callexecutiveId");
+        const storedName = await AsyncStorage.getItem("callexecutiveName");
+
+        if (storedId) {
+          setExecutiveId(storedId);
+        }
+        if (storedName) {
+          setExecutiveName(storedName);
+        }
+      } catch (error) {
+        console.error("Error retrieving executive info:", error);
+      }
+    };
+
+    getExecutiveInfo();
+    fetchAssignedCustomers();
+  }, []);
+
   const fetchAssignedCustomers = async () => {
     try {
       setRefreshing(true);
@@ -63,113 +92,78 @@ export default function ViewCustomers() {
 
       const token = await getAuthToken();
 
-      // Fetch all necessary data in parallel
-      const [customersRes, agentsRes, coreMembersRes, districtsRes] =
-        await Promise.all([
-          fetch(`${API_URL}/callexe/mycustomers`, {
-            headers: { token },
-          }),
-          fetch(`${API_URL}/agent/allagents`),
-          fetch(`${API_URL}/core/getallcoremembers`),
-          fetch(`${API_URL}/alldiscons/alldiscons`),
-        ]);
+      const [customersRes, districtsRes] = await Promise.all([
+        fetch(`${API_URL}/agent/assignedcus/${executiveId}`, {
+          headers: {
+            token: token || "",
+          },
+        }),
+        fetch(`${API_URL}/alldiscons/alldiscons`, {
+          headers: {
+            token: token || "",
+          },
+        }),
+      ]);
 
-      // Check responses
       if (!customersRes.ok) throw new Error("Failed to fetch customers");
-      if (!agentsRes.ok) throw new Error("Failed to fetch agents");
-      if (!coreMembersRes.ok) throw new Error("Failed to fetch core members");
       if (!districtsRes.ok) throw new Error("Failed to fetch districts");
 
-      // Parse responses
       const customersData = await customersRes.json();
-      const agentsData = await agentsRes.json();
-      const coreMembersData = await coreMembersRes.json();
       const districtsData = await districtsRes.json();
 
-      // Sort customers with pending calls first, then by creation date
+      // Sort customers: first show pending customers assigned to current executive, then others
       const sortedCustomers = customersData.data.sort((a, b) => {
-        if (a.CallExecutiveCall === "Done" && b.CallExecutiveCall !== "Done")
-          return 1;
-        if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall === "Done")
+        // Both assigned to current executive and pending
+        if (
+          a.assignedExecutive === executiveId &&
+          a.CallExecutiveCall !== "Done" &&
+          b.assignedExecutive === executiveId &&
+          b.CallExecutiveCall !== "Done"
+        ) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // A is assigned to current executive and pending
+        if (
+          a.assignedExecutive === executiveId &&
+          a.CallExecutiveCall !== "Done"
+        ) {
           return -1;
+        }
+        // B is assigned to current executive and pending
+        if (
+          b.assignedExecutive === executiveId &&
+          b.CallExecutiveCall !== "Done"
+        ) {
+          return 1;
+        }
+        // Both pending but not assigned to current executive
+        if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall !== "Done") {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // A is pending, B is done
+        if (a.CallExecutiveCall !== "Done") {
+          return -1;
+        }
+        // B is pending, A is done
+        if (b.CallExecutiveCall !== "Done") {
+          return 1;
+        }
+        // Both done
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
-      // Update state
       setCustomers(sortedCustomers);
       setFilteredCustomers(sortedCustomers);
-      setAgents(agentsData.data || []);
-      setCoreMembers(coreMembersData.data || []);
       setDistricts(districtsData || []);
-
-      // Load referrer names
-      loadReferrerNames(
-        sortedCustomers,
-        agentsData.data || [],
-        coreMembersData.data || []
-      );
     } catch (error) {
       console.error("Fetch error:", error);
-      Alert.alert("Error", error.message || "Failed to load data");
+      Alert.alert("Error", error.message || "Failed to load customers");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Load referrer names for display
-  const loadReferrerNames = (customers = [], agents = [], coreMembers = []) => {
-    const names = {};
-
-    customers.forEach((customer) => {
-      if (customer?.ReferredBy && !names[customer.ReferredBy]) {
-        names[customer.ReferredBy] = getReferrerName(
-          customer.ReferredBy,
-          customers,
-          agents,
-          coreMembers
-        );
-      }
-    });
-
-    setReferrerNames(names);
-  };
-
-  // Get referrer name from code
-  const getReferrerName = (
-    referredByCode,
-    customers = [],
-    agents = [],
-    coreMembers = []
-  ) => {
-    if (!referredByCode) return "N/A";
-
-    try {
-      const customerReferrer = customers.find(
-        (c) => c?.MyRefferalCode === referredByCode
-      );
-      if (customerReferrer) return customerReferrer?.FullName || "Customer";
-
-      const agentReferrer = agents.find(
-        (a) => a?.MyRefferalCode === referredByCode
-      );
-      if (agentReferrer) return agentReferrer?.FullName || "Agent";
-
-      const coreReferrer = coreMembers.find(
-        (m) => m?.MyRefferalCode === referredByCode
-      );
-      if (coreReferrer) return coreReferrer?.FullName || "Core Member";
-
-      if (referredByCode === "WA0000000001") return "Wealth Associate";
-
-      return "Referrer not found";
-    } catch (error) {
-      console.error("Error in getReferrerName:", error);
-      return "Error loading referrer";
-    }
-  };
-
-  // Handle search functionality
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredCustomers(customers);
@@ -191,19 +185,10 @@ export default function ViewCustomers() {
     }
   }, [searchQuery, customers]);
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchAssignedCustomers();
-    const interval = setInterval(fetchAssignedCustomers, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Handle refresh
   const handleRefresh = async () => {
     await fetchAssignedCustomers();
   };
 
-  // Mark customer as done
   const handleMarkAsDone = async (customerId) => {
     const confirm = () => {
       if (Platform.OS === "web") {
@@ -223,19 +208,24 @@ export default function ViewCustomers() {
     if (!(await confirm())) return;
 
     try {
+      const token = await getAuthToken();
+
       const response = await fetch(
         `${API_URL}/customer/markasdone/${customerId}`,
         {
           method: "PUT",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ CallExecutiveCall: "Done" }),
         }
       );
 
       if (!response.ok) throw new Error("Failed to update status");
 
+      const result = await response.json();
+
+      // Update the customer in the state
       setCustomers((prevCustomers) => {
         const updated = prevCustomers.map((customer) =>
           customer._id === customerId
@@ -243,23 +233,176 @@ export default function ViewCustomers() {
             : customer
         );
         return updated.sort((a, b) => {
-          if (a.CallExecutiveCall === "Done" && b.CallExecutiveCall !== "Done")
-            return 1;
-          if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall === "Done")
+          // Re-sort after update
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done" &&
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done"
+          ) {
             return -1;
-          return 0;
+          }
+          if (
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return 1;
+          }
+          if (
+            a.CallExecutiveCall !== "Done" &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (a.CallExecutiveCall !== "Done") {
+            return -1;
+          }
+          if (b.CallExecutiveCall !== "Done") {
+            return 1;
+          }
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      });
+
+      setFilteredCustomers((prevCustomers) => {
+        const updated = prevCustomers.map((customer) =>
+          customer._id === customerId
+            ? { ...customer, CallExecutiveCall: "Done" }
+            : customer
+        );
+        return updated.sort((a, b) => {
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done" &&
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done"
+          ) {
+            return -1;
+          }
+          if (
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return 1;
+          }
+          if (
+            a.CallExecutiveCall !== "Done" &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (a.CallExecutiveCall !== "Done") {
+            return -1;
+          }
+          if (b.CallExecutiveCall !== "Done") {
+            return 1;
+          }
+          return new Date(b.createdAt) - new Date(a.createdAt);
         });
       });
 
       Alert.alert("Success", "Customer marked as done");
     } catch (error) {
       console.error("Update error:", error);
-      Alert.alert("Error", "Failed to update customer status");
-      fetchAllData();
+      Alert.alert("Error", error.message || "Failed to update customer status");
     }
   };
 
-  // Edit customer functions
+  const handleCallCustomer = async (mobileNumber) => {
+    try {
+      const callLog = {
+        number: mobileNumber,
+        timestamp: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem(
+        `callLog_${mobileNumber}`,
+        JSON.stringify(callLog)
+      );
+
+      const url = `tel:${mobileNumber}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error("Error initiating call:", error);
+      Alert.alert("Error", "Could not initiate call");
+    }
+  };
+
+  const selectImageFromGallery = async () => {
+    try {
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const imageUrl = URL.createObjectURL(file);
+            setPhoto(imageUrl);
+            setFile(file);
+          }
+        };
+        input.click();
+      } else {
+        const permissionResult =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (permissionResult.status !== "granted") {
+          Alert.alert("Permission is required to upload a photo.");
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 1,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          setPhoto(result.assets[0].uri);
+        }
+      }
+    } catch (error) {
+      console.error("Error selecting image from gallery:", error);
+      Alert.alert("Error", "Failed to select image");
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert("Camera permission is required to take a photo.");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error opening camera:", error);
+      Alert.alert("Error", "Failed to take photo");
+    }
+  };
+
   const handleEditCustomer = (customer) => {
     setSelectedCustomer(customer);
     setEditedCustomer({
@@ -267,9 +410,10 @@ export default function ViewCustomers() {
       District: customer.District,
       Contituency: customer.Contituency,
       MobileNumber: customer.MobileNumber,
-      Occupation: customer.Occupation,
       MyRefferalCode: customer.MyRefferalCode,
+      Occupation: customer.Occupation || "",
     });
+    setPhoto(customer.photo ? `${API_URL}${customer.photo}` : null);
 
     if (customer.District) {
       const district = districts.find(
@@ -291,8 +435,46 @@ export default function ViewCustomers() {
   };
 
   const handleSaveEditedCustomer = async () => {
+    if (!editedCustomer.FullName || !editedCustomer.MobileNumber) {
+      Alert.alert("Error", "Full Name and Mobile Number are required");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const token = await getAuthToken();
+      const formData = new FormData();
+
+      formData.append("FullName", editedCustomer.FullName);
+      formData.append("District", editedCustomer.District);
+      formData.append("Contituency", editedCustomer.Contituency);
+      formData.append("MobileNumber", editedCustomer.MobileNumber);
+      formData.append("MyRefferalCode", editedCustomer.MyRefferalCode);
+      formData.append("Occupation", editedCustomer.Occupation);
+
+      if (photo) {
+        if (Platform.OS === "web") {
+          if (file) {
+            formData.append("photo", file);
+          } else if (typeof photo === "string" && photo.startsWith("blob:")) {
+            const response = await fetch(photo);
+            const blob = await response.blob();
+            const file = new File([blob], "photo.jpg", { type: blob.type });
+            formData.append("photo", file);
+          }
+        } else {
+          const localUri = photo;
+          const filename = localUri.split("/").pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : "image";
+
+          formData.append("photo", {
+            uri: localUri,
+            name: filename,
+            type,
+          });
+        }
+      }
 
       const response = await fetch(
         `${API_URL}/customer/updatecustomer/${selectedCustomer._id}`,
@@ -300,9 +482,8 @@ export default function ViewCustomers() {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify(editedCustomer),
+          body: formData,
         }
       );
 
@@ -310,15 +491,18 @@ export default function ViewCustomers() {
 
       const updatedCustomer = await response.json();
 
-      // Update state with the edited customer
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c._id === selectedCustomer._id ? updatedCustomer.data : c
+      setCustomers((prevCustomers) =>
+        prevCustomers.map((customer) =>
+          customer._id === selectedCustomer._id
+            ? updatedCustomer.data
+            : customer
         )
       );
-      setFilteredCustomers((prev) =>
-        prev.map((c) =>
-          c._id === selectedCustomer._id ? updatedCustomer.data : c
+      setFilteredCustomers((prevCustomers) =>
+        prevCustomers.map((customer) =>
+          customer._id === selectedCustomer._id
+            ? updatedCustomer.data
+            : customer
         )
       );
 
@@ -327,68 +511,194 @@ export default function ViewCustomers() {
     } catch (error) {
       console.error("Update error:", error);
       Alert.alert("Error", error.message || "Failed to update customer");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Delete customer
-  const handleDeleteCustomer = async (customerId) => {
-    const confirm = () => {
+  const handleDeleteCustomer = (customerId) => {
+    const confirmDelete = () => {
       if (Platform.OS === "web") {
-        return window.confirm(
-          "Are you sure you want to mark this customer as done?"
-        );
+        return window.confirm("Are you sure you want to delete this customer?");
       } else {
         return new Promise((resolve) => {
-          Alert.alert("Confirm", "Mark this customer as done?", [
-            { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
-            { text: "Confirm", onPress: () => resolve(true) },
-          ]);
+          Alert.alert(
+            "Confirm Delete",
+            "Are you sure you want to delete this customer?",
+            [
+              {
+                text: "Cancel",
+                onPress: () => resolve(false),
+                style: "cancel",
+              },
+              { text: "Delete", onPress: () => resolve(true) },
+            ]
+          );
         });
       }
     };
 
-    if (!confirm) return;
+    confirmDelete().then(async (confirmed) => {
+      if (!confirmed) return;
 
-    try {
-      const token = await getAuthToken();
+      try {
+        const token = await getAuthToken();
 
-      const response = await fetch(
-        `${API_URL}/customer/deletecustomer/${customerId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+        const response = await fetch(
+          `${API_URL}/customer/deletecustomer/${customerId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      if (!response.ok) throw new Error("Failed to delete customer");
+        if (!response.ok) throw new Error("Failed to delete customer");
 
-      // Remove customer from state
-      setCustomers((prev) => prev.filter((c) => c._id !== customerId));
-      setFilteredCustomers((prev) => prev.filter((c) => c._id !== customerId));
-
-      Alert.alert("Success", "Customer deleted successfully");
-    } catch (error) {
-      console.error("Delete error:", error);
-      Alert.alert("Error", error.message || "Failed to delete customer");
-    }
+        setCustomers((prevCustomers) =>
+          prevCustomers.filter((customer) => customer._id !== customerId)
+        );
+        setFilteredCustomers((prevCustomers) =>
+          prevCustomers.filter((customer) => customer._id !== customerId)
+        );
+        Alert.alert("Success", "Customer deleted successfully");
+      } catch (error) {
+        console.error("Delete error:", error);
+        Alert.alert("Error", error.message || "Failed to delete customer");
+      }
+    });
   };
 
-  // Render loading state
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text style={styles.loadingText}>Loading customers...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const renderCustomerCard = (customer) => (
+    <View
+      key={customer._id}
+      style={[
+        styles.card,
+        customer.CallExecutiveCall === "Done"
+          ? styles.doneCard
+          : styles.pendingCard,
+        customer.assignedExecutive === executiveId &&
+          customer.CallExecutiveCall !== "Done" &&
+          styles.assignedCard,
+      ]}
+    >
+      <Image
+        source={customer.photo ? { uri: `${API_URL}${customer.photo}` } : logo1}
+        style={styles.avatar}
+      />
+      <View style={styles.infoContainer}>
+        {customer.FullName && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Name</Text>
+            <Text style={styles.value}>: {customer.FullName}</Text>
+          </View>
+        )}
 
-  // Main render
-  return (
+        {customer.assignedExecutive &&
+          customer.assignedExecutive !== executiveId && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Assigned To</Text>
+              <Text style={styles.value}>
+                : {customer.CallExecutivename || "Another Executive"}
+              </Text>
+            </View>
+          )}
+
+        {customer.District && (
+          <View style={styles.row}>
+            <Text style={styles.label}>District</Text>
+            <Text style={styles.value}>: {customer.District}</Text>
+          </View>
+        )}
+
+        {customer.Contituency && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Constituency</Text>
+            <Text style={styles.value}>: {customer.Contituency}</Text>
+          </View>
+        )}
+
+        {customer.MobileNumber && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Mobile</Text>
+            <View style={styles.phoneRow}>
+              <Text style={styles.value}>: {customer.MobileNumber}</Text>
+              <TouchableOpacity
+                onPress={() => handleCallCustomer(customer.MobileNumber)}
+                style={styles.smallCallButton}
+              >
+                <Ionicons name="call" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {customer.Occupation && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Occupation</Text>
+            <Text style={styles.value}>: {customer.Occupation}</Text>
+          </View>
+        )}
+
+        {customer.MyRefferalCode && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Referral Code</Text>
+            <Text style={styles.value}>: {customer.MyRefferalCode}</Text>
+          </View>
+        )}
+
+        {customer.referrerDetails && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Referred By</Text>
+            <Text style={styles.value}>
+              : {customer.referrerDetails.name || "Referrer"} (
+              {customer.referrerDetails.phone || "N/A"})
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Status</Text>
+          <Text
+            style={[
+              styles.value,
+              customer.CallExecutiveCall === "Done"
+                ? styles.doneStatus
+                : styles.pendingStatus,
+            ]}
+          >
+            : {customer.CallExecutiveCall === "Done" ? "Done" : "Pending"}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.buttonContainer}>
+        {customer.CallExecutiveCall !== "Done" &&
+          customer.assignedExecutive === executiveId && (
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => handleMarkAsDone(customer._id)}
+            >
+              <Text style={styles.buttonText}>Done</Text>
+            </TouchableOpacity>
+          )}
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditCustomer(customer)}
+        >
+          <Text style={styles.buttonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteCustomer(customer._id)}
+        >
+          <Text style={styles.buttonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderMobileView = () => (
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
@@ -400,9 +710,10 @@ export default function ViewCustomers() {
           />
         }
       >
-        <Text style={styles.heading}>My Assigned Customers</Text>
+        <View style={styles.mobileHeader}>
+          <Text style={styles.heading}>Assigned Customers</Text>
+        </View>
 
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
@@ -412,13 +723,17 @@ export default function ViewCustomers() {
           />
         </View>
 
-        {/* Empty State */}
-        {filteredCustomers.length === 0 && (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0000ff" />
+            <Text style={styles.loadingText}>Loading customers...</Text>
+          </View>
+        ) : filteredCustomers.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.noCustomersText}>
               {searchQuery
                 ? "No matching customers found"
-                : "No customers assigned to you"}
+                : "No customers available"}
             </Text>
             <TouchableOpacity
               style={styles.refreshButton}
@@ -427,113 +742,13 @@ export default function ViewCustomers() {
               <Text style={styles.refreshButtonText}>Refresh</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {/* Customer List */}
-        {filteredCustomers.length > 0 && (
+        ) : (
           <View style={styles.cardContainer}>
-            {filteredCustomers.map((customer) => (
-              <View
-                key={customer._id}
-                style={[
-                  styles.card,
-                  customer.CallExecutiveCall === "Done"
-                    ? styles.doneCard
-                    : styles.pendingCard,
-                ]}
-              >
-                <Image
-                  source={require("../../../assets/man.png")}
-                  style={styles.avatar}
-                />
-                <View style={styles.infoContainer}>
-                  {/* Customer Details */}
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Name</Text>
-                    <Text style={styles.value}>: {customer.FullName}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Mobile</Text>
-                    <Text style={styles.value}>: {customer.MobileNumber}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>District</Text>
-                    <Text style={styles.value}>: {customer.District}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Constituency</Text>
-                    <Text style={styles.value}>: {customer.Contituency}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Occupation</Text>
-                    <Text style={styles.value}>: {customer.Occupation}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Referral Code</Text>
-                    <Text style={styles.value}>
-                      : {customer.MyRefferalCode}
-                    </Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Referred By</Text>
-                    <Text style={styles.value}>
-                      : {referrerNames[customer.ReferredBy] || "Loading..."}
-                    </Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Status</Text>
-                    <Text
-                      style={[
-                        styles.value,
-                        customer.CallExecutiveCall === "Done"
-                          ? styles.doneStatus
-                          : styles.pendingStatus,
-                      ]}
-                    >
-                      :{" "}
-                      {customer.CallExecutiveCall === "Done"
-                        ? "Done"
-                        : "Pending"}
-                    </Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Assigned On</Text>
-                    <Text style={styles.value}>
-                      : {new Date(customer.assignedAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.buttonContainer}>
-                  {customer.CallExecutiveCall !== "Done" && (
-                    <TouchableOpacity
-                      style={styles.doneButton}
-                      onPress={() => handleMarkAsDone(customer._id)}
-                    >
-                      <Text style={styles.buttonText}>Done</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditCustomer(customer)}
-                  >
-                    <Text style={styles.buttonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteCustomer(customer._id)}
-                  >
-                    <Text style={styles.buttonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            {filteredCustomers.map(renderCustomerCard)}
           </View>
         )}
       </ScrollView>
 
-      {/* Edit Customer Modal */}
       <Modal
         visible={editModalVisible}
         animationType="slide"
@@ -544,135 +759,414 @@ export default function ViewCustomers() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Edit Customer</Text>
 
-            {/* Edit Form */}
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={editedCustomer.FullName}
-              onChangeText={(text) =>
-                setEditedCustomer({ ...editedCustomer, FullName: text })
-              }
-            />
+            <ScrollView>
+              <View style={styles.uploadSection}>
+                <Text style={styles.inputLabel}>Passport Size Photo</Text>
+                {photo ? (
+                  <View style={styles.photoContainer}>
+                    <Image
+                      source={{ uri: photo }}
+                      style={styles.uploadedImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => setPhoto(null)}
+                    >
+                      <Text style={styles.removeButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.uploadOptions}>
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={selectImageFromGallery}
+                    >
+                      <MaterialIcons
+                        name="photo-library"
+                        size={24}
+                        color="#555"
+                      />
+                      <Text style={styles.uploadButtonText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={takePhotoWithCamera}
+                    >
+                      <MaterialIcons name="camera-alt" size={24} color="#555" />
+                      <Text style={styles.uploadButtonText}>Camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
 
-            <Text style={styles.inputLabel}>District</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={editedCustomer.District}
-                onValueChange={handleDistrictChange}
-                style={styles.picker}
-                dropdownIconColor="#000"
-              >
-                <Picker.Item label="Select District" value="" />
-                {districts.map((district) => (
-                  <Picker.Item
-                    key={district.parliament}
-                    label={district.parliament}
-                    value={district.parliament}
-                  />
-                ))}
-              </Picker>
-            </View>
-
-            <Text style={styles.inputLabel}>Constituency</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={editedCustomer.Contituency}
-                onValueChange={(itemValue) =>
-                  setEditedCustomer({
-                    ...editedCustomer,
-                    Contituency: itemValue,
-                  })
+              <Text style={styles.inputLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                value={editedCustomer.FullName}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, FullName: text })
                 }
-                style={styles.picker}
-                dropdownIconColor="#000"
-                enabled={!!editedCustomer.District}
-              >
-                <Picker.Item label="Select Constituency" value="" />
-                {constituencies.map((constituency) => (
-                  <Picker.Item
-                    key={constituency.name}
-                    label={constituency.name}
-                    value={constituency.name}
-                  />
-                ))}
-              </Picker>
-            </View>
+              />
 
-            <Text style={styles.inputLabel}>Mobile Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Mobile Number"
-              value={editedCustomer.MobileNumber}
-              onChangeText={(text) =>
-                setEditedCustomer({ ...editedCustomer, MobileNumber: text })
-              }
-              keyboardType="phone-pad"
-            />
+              <Text style={styles.inputLabel}>Occupation</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Occupation"
+                value={editedCustomer.Occupation}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, Occupation: text })
+                }
+              />
 
-            <Text style={styles.inputLabel}>Occupation</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Occupation"
-              value={editedCustomer.Occupation}
-              onChangeText={(text) =>
-                setEditedCustomer({ ...editedCustomer, Occupation: text })
-              }
-            />
+              <Text style={styles.inputLabel}>Mobile Number *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Mobile Number"
+                value={editedCustomer.MobileNumber}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, MobileNumber: text })
+                }
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
 
-            <Text style={styles.inputLabel}>Referral Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Referral Code"
-              value={editedCustomer.MyRefferalCode}
-              onChangeText={(text) =>
-                setEditedCustomer({ ...editedCustomer, MyRefferalCode: text })
-              }
-            />
+              <Text style={styles.inputLabel}>Referral Code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Referral Code"
+                value={editedCustomer.MyRefferalCode}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, MyRefferalCode: text })
+                }
+              />
 
-            {/* Modal Buttons */}
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setEditModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSaveEditedCustomer}
-              >
-                <Text style={styles.modalButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.inputLabel}>District</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={editedCustomer.District}
+                  onValueChange={handleDistrictChange}
+                  style={styles.picker}
+                  dropdownIconColor="#000"
+                >
+                  <Picker.Item label="Select District" value="" />
+                  {districts.map((district) => (
+                    <Picker.Item
+                      key={district.parliament}
+                      label={district.parliament}
+                      value={district.parliament}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.inputLabel}>Constituency</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={editedCustomer.Contituency}
+                  onValueChange={(itemValue) => {
+                    setEditedCustomer({
+                      ...editedCustomer,
+                      Contituency: itemValue,
+                    });
+                  }}
+                  style={styles.picker}
+                  dropdownIconColor="#000"
+                  enabled={!!editedCustomer.District}
+                >
+                  <Picker.Item label="Select Constituency" value="" />
+                  {constituencies.map((constituency) => (
+                    <Picker.Item
+                      key={constituency.name}
+                      label={constituency.name}
+                      value={constituency.name}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveEditedCustomer}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
     </SafeAreaView>
   );
+
+  const renderWebView = () => (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.splitContainer}>
+        <View style={styles.leftPanel}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            refreshControl={
+              Platform.OS !== "web" ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  colors={["#0000ff"]}
+                />
+              ) : undefined
+            }
+          >
+            <View style={styles.header}>
+              <Text style={styles.heading}>Assigned Customers</Text>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name, mobile or referral code"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0000ff" />
+                <Text style={styles.loadingText}>Loading customers...</Text>
+              </View>
+            ) : filteredCustomers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.noCustomersText}>
+                  {searchQuery
+                    ? "No matching customers found"
+                    : "No customers available"}
+                </Text>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleRefresh}
+                >
+                  <Text style={styles.refreshButtonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.webCardContainer}>
+                {filteredCustomers.map(renderCustomerCard)}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Edit Customer</Text>
+
+            <ScrollView>
+              <View style={styles.uploadSection}>
+                <Text style={styles.inputLabel}>Passport Size Photo</Text>
+                {photo ? (
+                  <View style={styles.photoContainer}>
+                    <Image
+                      source={{ uri: photo }}
+                      style={styles.uploadedImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => setPhoto(null)}
+                    >
+                      <Text style={styles.removeButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.uploadOptions}>
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={selectImageFromGallery}
+                    >
+                      <MaterialIcons
+                        name="photo-library"
+                        size={24}
+                        color="#555"
+                      />
+                      <Text style={styles.uploadButtonText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={takePhotoWithCamera}
+                    >
+                      <MaterialIcons name="camera-alt" size={24} color="#555" />
+                      <Text style={styles.uploadButtonText}>Camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.inputLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                value={editedCustomer.FullName}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, FullName: text })
+                }
+              />
+
+              <Text style={styles.inputLabel}>Occupation</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Occupation"
+                value={editedCustomer.Occupation}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, Occupation: text })
+                }
+              />
+
+              <Text style={styles.inputLabel}>Mobile Number *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Mobile Number"
+                value={editedCustomer.MobileNumber}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, MobileNumber: text })
+                }
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+
+              <Text style={styles.inputLabel}>Referral Code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Referral Code"
+                value={editedCustomer.MyRefferalCode}
+                onChangeText={(text) =>
+                  setEditedCustomer({ ...editedCustomer, MyRefferalCode: text })
+                }
+              />
+
+              <Text style={styles.inputLabel}>District</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={editedCustomer.District}
+                  onValueChange={handleDistrictChange}
+                  style={styles.picker}
+                  dropdownIconColor="#000"
+                >
+                  <Picker.Item label="Select District" value="" />
+                  {districts.map((district) => (
+                    <Picker.Item
+                      key={district.parliament}
+                      label={district.parliament}
+                      value={district.parliament}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.inputLabel}>Constituency</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={editedCustomer.Contituency}
+                  onValueChange={(itemValue) => {
+                    setEditedCustomer({
+                      ...editedCustomer,
+                      Contituency: itemValue,
+                    });
+                  }}
+                  style={styles.picker}
+                  dropdownIconColor="#000"
+                  enabled={!!editedCustomer.District}
+                >
+                  <Picker.Item label="Select Constituency" value="" />
+                  {constituencies.map((constituency) => (
+                    <Picker.Item
+                      key={constituency.name}
+                      label={constituency.name}
+                      value={constituency.name}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveEditedCustomer}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+
+  return isMobile ? renderMobileView() : renderWebView();
 }
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f2f2f2",
-    paddingHorizontal: 10,
   },
-  scrollContainer: {
-    paddingBottom: 20,
+  splitContainer: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  leftPanel: {
+    flex: 1,
+  },
+  mobileHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 15,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 15,
   },
   heading: {
     fontSize: 20,
     fontWeight: "bold",
-    textAlign: "left",
-    marginVertical: 15,
-    paddingLeft: 10,
     color: "#333",
   },
   searchContainer: {
-    paddingHorizontal: 10,
-    marginBottom: 15,
+    paddingHorizontal: 15,
+    marginVertical: 15,
   },
   searchInput: {
     borderWidth: 1,
@@ -717,23 +1211,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   cardContainer: {
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+  },
+  webCardContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingBottom: 20,
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    width: width > 600 ? "30%" : "100%",
     paddingVertical: 20,
     paddingHorizontal: 15,
-    alignItems: "center",
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 3,
-    marginBottom: 15,
+    width: Platform.OS === "web" ? "32%" : "100%",
+  },
+  assignedCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
   },
   doneCard: {
     borderLeftWidth: 5,
@@ -751,11 +1255,11 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginBottom: 10,
     backgroundColor: "#ddd",
+    alignSelf: "center",
   },
   infoContainer: {
     width: "100%",
     alignItems: "flex-start",
-    paddingHorizontal: 10,
   },
   row: {
     flexDirection: "row",
@@ -772,6 +1276,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 14,
     color: "#333",
+    flex: 1,
   },
   doneStatus: {
     color: "#4CAF50",
@@ -827,6 +1332,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    maxHeight: height * 0.9,
   },
   modalTitle: {
     fontSize: 20,
@@ -886,5 +1392,59 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  uploadSection: {
+    width: "100%",
+    marginBottom: 15,
+  },
+  photoContainer: {
+    alignItems: "center",
+  },
+  uploadedImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "#2196F3",
+  },
+  uploadOptions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  uploadButton: {
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
+    width: "45%",
+  },
+  uploadButtonText: {
+    marginTop: 5,
+    fontSize: 12,
+    color: "#555",
+  },
+  removeButton: {
+    backgroundColor: "#ff4444",
+    padding: 8,
+    borderRadius: 5,
+  },
+  removeButtonText: {
+    color: "white",
+    fontSize: 12,
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  smallCallButton: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 15,
+    padding: 3,
+    marginLeft: 5,
+  },
+  scrollContainer: {
+    flexGrow: 1,
   },
 });
