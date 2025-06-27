@@ -121,10 +121,9 @@ const CoreUpdateProfile = ({
           contentContainerStyle={styles.scrollContainer}
           nestedScrollEnabled={true}
         >
-          <View style={styles.card}>
-            <View style={styles.register_main}>
               <Text style={styles.register_text}>Edit Details</Text>
-            </View>
+            <View style={styles.register_main}></View>
+          <View style={styles.card}>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
                 Mobile number already exists.
@@ -148,7 +147,7 @@ const CoreUpdateProfile = ({
                     <FontAwesome
                       name="user"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -170,7 +169,7 @@ const CoreUpdateProfile = ({
                     <MaterialIcons
                       name="phone"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -191,7 +190,7 @@ const CoreUpdateProfile = ({
                     <MaterialIcons
                       name="location-on"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -209,7 +208,7 @@ const CoreUpdateProfile = ({
                     <MaterialIcons
                       name="work"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -231,7 +230,7 @@ const CoreUpdateProfile = ({
                     <MaterialIcons
                       name="lock"
                       size={20}
-                      color="#E82E5F"
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -259,7 +258,7 @@ const CoreUpdateProfile = ({
             {isLoading && (
               <ActivityIndicator
                 size="large"
-                color="#E82E5F"
+                color="#3E5C76"
                 style={styles.loadingIndicator}
               />
             )}
@@ -274,23 +273,26 @@ const CoreUpdateProfile = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
+    width:"100%",
+    height:"60%",
+    borderRadius: 30,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#fff",
+    paddingVertical: 10,
+    backgroundColor: "#D8E3E7",
     borderRadius: 30,
   },
   register_main: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#D8E3E7",
     width: Platform.OS === "web" ? "100%" : 260,
-    height: 40,
+    height: 10,
     borderRadius: 20,
   },
   register_text: {
@@ -298,8 +300,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     alignContent: "center",
-    fontSize: 20,
-    color: "#fff",
+    fontSize: 24,
+    color: "black",
+    fontFamily: "OpenSanssemibold",
   },
   card: {
     display: "flex",
@@ -361,7 +364,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: "#191919",
+    color: "#3E5C76",
   },
   row: {
     flexDirection: "row",
@@ -370,13 +373,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   registerButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 15,
   },
   cancelButton: {
-    backgroundColor: "#424242",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 15,

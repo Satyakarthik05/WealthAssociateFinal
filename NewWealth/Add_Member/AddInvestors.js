@@ -178,8 +178,7 @@ const AddInvestor = ({ closeModal }) => {
         setFilteredData(
           assemblies.filter((item) =>
             item.name.toLowerCase().includes(text.toLowerCase())
-          )
-        );
+        ));
         break;
       default:
         setFilteredData([]);

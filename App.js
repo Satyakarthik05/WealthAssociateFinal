@@ -276,7 +276,7 @@ export default function App() {
             case "Investor":
               setInitialRoute("Main");
               break;
-            case "Coremember":
+            case "CoreMember":
               setInitialRoute("Main");
               break;
             case "SkilledLabour":
@@ -393,17 +393,17 @@ export default function App() {
         <Stack.Screen
           name="AddRegionalWealthAssociate"
           component={Rrwa}
-          options={{ presentation: "modal" }}
+          options={{ headerShown:false}}
         />
         <Stack.Screen
           name="AddValueWealthAssociate"
           component={RegisterValue}
-          options={{ presentation: "modal" }}
+          options={{  headerShown:false }}
         />
         <Stack.Screen
           name="AddExecutiveWealthAssociate"
           component={Rewa}
-          options={{ presentation: "modal" }}
+          options={{ headerShown:false  }}
         />
         <Stack.Screen
           name="PropertyCard"
@@ -413,7 +413,7 @@ export default function App() {
         <Stack.Screen
           name="addwealthass"
           component={Addwealthassociate}
-          options={{ presentation: "modal" }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="RegisterCustomer"

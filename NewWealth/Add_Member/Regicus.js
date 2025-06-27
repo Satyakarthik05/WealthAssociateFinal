@@ -167,7 +167,6 @@ const RegisterExecute = ({ closeModal }) => {
     Keyboard.dismiss();
     setBottomSheetType(type);
     setSearchTerm("");
-
     switch (type) {
       case "district":
         setFilteredData(districts);
@@ -184,7 +183,6 @@ const RegisterExecute = ({ closeModal }) => {
       default:
         setFilteredData([]);
     }
-
     setBottomSheetVisible(true);
     setTimeout(() => {
       searchInputRef.current?.focus();

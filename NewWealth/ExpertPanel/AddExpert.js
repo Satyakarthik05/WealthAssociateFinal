@@ -441,30 +441,17 @@ const AddExpertForm = ({ closeModal }) => {
               {photo ? (
                 <View style={styles.photoContainer}>
                   <Image source={{ uri: photo }} style={styles.uploadedImage} />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => setPhoto(null)}
-                  >
+                  <TouchableOpacity style={styles.removeButton} onPress={() => setPhoto(null)}>
                     <Text style={styles.removeButtonText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.uploadOptions}>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={selectImageFromGallery}
-                  >
-                    <MaterialIcons
-                      name="photo-library"
-                      size={24}
-                      color="#555"
-                    />
+                  <TouchableOpacity style={styles.uploadButton} onPress={selectImageFromGallery}>
+                    <MaterialIcons name="photo-library" size={24} color="#555" />
                     <Text style={styles.uploadButtonText}>Gallery</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={takePhotoWithCamera}
-                  >
+                  <TouchableOpacity style={styles.uploadButton} onPress={takePhotoWithCamera}>
                     <MaterialIcons name="camera-alt" size={24} color="#555" />
                     <Text style={styles.uploadButtonText}>Camera</Text>
                   </TouchableOpacity>
@@ -564,9 +551,7 @@ const AddExpertForm = ({ closeModal }) => {
                       style={styles.input}
                       placeholder={`Enter ${label}`}
                       value={additionalFields[key] || ""}
-                      onChangeText={(text) =>
-                        handleAdditionalFieldChange(key, text)
-                      }
+                      onChangeText={(text) => handleAdditionalFieldChange(key, text)}
                     />
                   </View>
                 ))}
@@ -585,8 +570,8 @@ const AddExpertForm = ({ closeModal }) => {
                   <Text style={styles.addText}>Add</Text>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
+              <TouchableOpacity 
+                style={styles.cancelButton} 
                 onPress={() => navigation.goBack()}
               >
                 <Text style={styles.cancelText}>Cancel</Text>

@@ -13,13 +13,15 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
+  FlatList,
 } from "react-native";
-import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 const RegisterEx = ({ closeModal }) => {
   const [fullname, setFullname] = useState("");
@@ -37,10 +39,10 @@ const RegisterEx = ({ closeModal }) => {
   const [constituencySearch, setConstituencySearch] = useState("");
   const [expertiseSearch, setExpertiseSearch] = useState("");
   const [experienceSearch, setExperienceSearch] = useState("");
-  const [showDistrictList, setShowDistrictList] = useState(false);
-  const [showConstituencyList, setShowConstituencyList] = useState(false);
-  const [showExpertiseList, setShowExpertiseList] = useState(false);
-  const [showExperienceList, setShowExperienceList] = useState(false);
+  const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [showConstituencyModal, setShowConstituencyModal] = useState(false);
+  const [showExpertiseModal, setShowExpertiseModal] = useState(false);
+  const [showExperienceModal, setShowExperienceModal] = useState(false);
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
   const [expertiseOptions, setExpertiseOptions] = useState([]);
@@ -51,33 +53,6 @@ const RegisterEx = ({ closeModal }) => {
   const districtRef = useRef(null);
 
   const navigation = useNavigation();
-
-  // Fetch all districts and constituencies from the API
-  const fetchDistrictsAndConstituencies = async () => {
-    try {
-      const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
-      const data = await response.json();
-      setDistricts(data); // Set the fetched data to districts
-    } catch (error) {
-      console.error("Error fetching districts and constituencies:", error);
-    }
-  };
-
-  // Fetch expertise
-  const fetchExpertise = async () => {
-    try {
-      const response = await fetch(`${API_URL}/discons/expertise`);
-      const data = await response.json();
-      setExpertiseOptions(data);
-    } catch (error) {
-      console.error("Error fetching expertise:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchDistrictsAndConstituencies();
-    fetchExpertise();
-  }, []);
 
   const experienceOptions = [
     { name: "0-1 years", code: "01" },
@@ -90,20 +65,14 @@ const RegisterEx = ({ closeModal }) => {
     { name: "25+ years", code: "08" },
   ];
 
-  // Filter districts based on search input
   const filteredDistricts = districts.filter((item) =>
     item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
   );
 
-  // Filter constituencies based on the selected district
-  const filteredConstituencies =
-    districts
-      .find((item) => item.parliament === district)
-      ?.assemblies.filter((assembly) =>
-        assembly.name.toLowerCase().includes(constituencySearch.toLowerCase())
-      ) || [];
+  const filteredConstituencies = constituencies.filter((item) =>
+    item.name.toLowerCase().includes(constituencySearch.toLowerCase())
+  );
 
-  // Filter expertise and experience
   const filteredExpertise = expertiseOptions.filter((item) =>
     item.name.toLowerCase().includes(expertiseSearch.toLowerCase())
   );
@@ -112,7 +81,26 @@ const RegisterEx = ({ closeModal }) => {
     item.name.toLowerCase().includes(experienceSearch.toLowerCase())
   );
 
-  // Fetch agent details
+  const fetchDistrictsAndConstituencies = async () => {
+    try {
+      const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
+      const data = await response.json();
+      setDistricts(data);
+    } catch (error) {
+      console.error("Error fetching districts and constituencies:", error);
+    }
+  };
+
+  const fetchExpertise = async () => {
+    try {
+      const response = await fetch(`${API_URL}/discons/expertise`);
+      const data = await response.json();
+      setExpertiseOptions(data);
+    } catch (error) {
+      console.error("Error fetching expertise:", error);
+    }
+  };
+
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -130,8 +118,21 @@ const RegisterEx = ({ closeModal }) => {
   };
 
   useEffect(() => {
+    fetchDistrictsAndConstituencies();
+    fetchExpertise();
     getDetails();
   }, []);
+
+  useEffect(() => {
+    if (district) {
+      const selectedDistrict = districts.find(
+        (item) => item.parliament === district
+      );
+      if (selectedDistrict) {
+        setConstituencies(selectedDistrict.assemblies);
+      }
+    }
+  }, [district]);
 
   useEffect(() => {
     if (Details.MyRefferalCode) {
@@ -217,19 +218,97 @@ const RegisterEx = ({ closeModal }) => {
     }
   };
 
+  const renderDistrictItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setDistrict(item.parliament);
+        setShowDistrictModal(false);
+        setDistrictSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.parliament}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderConstituencyItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setConstituency(item.name);
+        setShowConstituencyModal(false);
+        setConstituencySearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderExpertiseItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setExpertise(item.name);
+        setShowExpertiseModal(false);
+        setExpertiseSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderExperienceItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setExperience(item.name);
+        setShowExperienceModal(false);
+        setExperienceSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const handleCancel = () => {
+    if (closeModal) {
+      closeModal();
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.card}>
-            <View style={styles.register_main}>
-              <Text style={styles.register_text}>
-                Register Regional Wealth Associate
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContainer,
+            (width < 450 || Platform.OS === 'android') && styles.smallScreenScrollContainer
+          ]}
+          style={styles.scrollView}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              onPress={handleCancel}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#2B2D42" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.screenTitle}>
+                REGISTER REGIONAL {"\n"} WEALTH ASSOCIATE
               </Text>
             </View>
+          </View>
+          <View style={styles.card}>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
                 Mobile number already exists.
@@ -247,6 +326,7 @@ const RegisterEx = ({ closeModal }) => {
                       placeholder="Full name"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setFullname}
+                      value={fullname}
                       returnKeyType="next"
                       onSubmitEditing={() => mobileRef.current.focus()}
                     />
@@ -267,15 +347,10 @@ const RegisterEx = ({ closeModal }) => {
                       placeholder="Mobile Number"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setMobile}
+                      value={mobile}
                       keyboardType="number-pad"
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current.focus()}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                     />
                     <MaterialIcons
                       name="phone"
@@ -294,14 +369,9 @@ const RegisterEx = ({ closeModal }) => {
                       placeholder="Email"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setEmail}
+                      value={email}
                       returnKeyType="next"
                       onSubmitEditing={() => districtRef.current.focus()}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                     />
                     <MaterialIcons
                       name="email"
@@ -317,118 +387,75 @@ const RegisterEx = ({ closeModal }) => {
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Parliament</Text>
-                  <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowDistrictModal(true)}
+                  >
                     <TextInput
                       ref={districtRef}
                       style={styles.input}
-                      placeholder="Search Parliament"
+                      placeholder="Select Parliament"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={districtSearch}
-                      onChangeText={(text) => {
-                        setDistrictSearch(text);
-                        setShowDistrictList(true);
-                      }}
-                      onFocus={() => setShowDistrictList(true)}
+                      value={district}
+                      editable={false}
+                      pointerEvents="none"
                     />
-                    {showDistrictList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredDistricts.map((item) => (
-                            <TouchableOpacity
-                              key={item.parliament}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setDistrict(item.parliament);
-                                setDistrictSearch(item.parliament);
-                                setShowDistrictList(false);
-                                setConstituencySearch(""); // Reset constituency search
-                                setConstituency(""); // Reset selected constituency
-                              }}
-                            >
-                              <Text>{item.parliament}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Assembly</Text>
-                  <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowConstituencyModal(true)}
+                    disabled={!district}
+                  >
                     <TextInput
                       style={styles.input}
-                      placeholder="Search Assembly"
+                      placeholder={
+                        district
+                          ? "Select Assembly"
+                          : "Select parliament first"
+                      }
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={constituencySearch}
-                      onChangeText={(text) => {
-                        setConstituencySearch(text);
-                        setShowConstituencyList(true);
-                      }}
-                      onFocus={() => {
-                        setShowConstituencyList(true);
-                        setShowDistrictList(false);
-                      }}
+                      value={constituency}
+                      editable={false}
+                      pointerEvents="none"
                     />
-                    {showConstituencyList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredConstituencies.map((item, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setConstituency(item.name);
-                                setConstituencySearch(item.name);
-                                setShowConstituencyList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Experience</Text>
-                  <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowExperienceModal(true)}
+                  >
                     <TextInput
                       style={styles.input}
                       placeholder="Select Experience"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={experienceSearch}
-                      onChangeText={(text) => {
-                        setExperienceSearch(text);
-                        setShowExperienceList(true);
-                      }}
-                      onFocus={() => {
-                        setShowExperienceList(true);
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                      }}
+                      value={experience}
+                      editable={false}
+                      pointerEvents="none"
                     />
-                    {showExperienceList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredExperience.map((item) => (
-                            <TouchableOpacity
-                              key={item.code}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setExperience(item.name);
-                                setExperienceSearch(item.name);
-                                setShowExperienceList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -436,41 +463,25 @@ const RegisterEx = ({ closeModal }) => {
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Expertise</Text>
-                  <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowExpertiseModal(true)}
+                  >
                     <TextInput
                       style={styles.input}
                       placeholder="Select Expertise"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={expertiseSearch}
-                      onChangeText={(text) => {
-                        setExpertiseSearch(text);
-                        setShowExpertiseList(true);
-                      }}
-                      onFocus={() => {
-                        setShowExpertiseList(true);
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExperienceList(false);
-                      }}
+                      value={expertise}
+                      editable={false}
+                      pointerEvents="none"
                     />
-                    {showExpertiseList && (
-                      <View style={styles.dropdownContainer}>
-                        {filteredExpertise.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setExpertise(item.name);
-                              setExpertiseSearch(item.name);
-                              setShowExpertiseList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Location</Text>
@@ -480,12 +491,7 @@ const RegisterEx = ({ closeModal }) => {
                       placeholder="Location"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setLocation}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
+                      value={location}
                     />
                     <MaterialIcons
                       name="location-on"
@@ -503,14 +509,8 @@ const RegisterEx = ({ closeModal }) => {
                       placeholder="Referral Code"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setReferralCode}
-                      editable={false}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                       value={referralCode}
+                      editable={false}
                     />
                     <MaterialIcons
                       name="card-giftcard"
@@ -534,7 +534,7 @@ const RegisterEx = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={() => navigation.goBack()}
+                onPress={handleCancel}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -549,8 +549,225 @@ const RegisterEx = ({ closeModal }) => {
             )}
           </View>
         </ScrollView>
-        {/* <StatusBar style="auto" /> */}
       </KeyboardAvoidingView>
+
+      {/* District Modal */}
+      <Modal
+        visible={showDistrictModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDistrictModal(false)}
+      >
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Parliament</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search parliament..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setDistrictSearch}
+                    value={districtSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredDistricts}
+                  renderItem={renderDistrictItem}
+                  keyExtractor={(item) => item._id}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowDistrictModal(false);
+                    setDistrictSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Constituency Modal */}
+      <Modal
+        visible={showConstituencyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowConstituencyModal(false)}
+      >
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Assemblies</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search assemblies..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setConstituencySearch}
+                    value={constituencySearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredConstituencies}
+                  renderItem={renderConstituencyItem}
+                  keyExtractor={(item, index) => index.toString()}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowConstituencyModal(false);
+                    setConstituencySearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Expertise Modal */}
+      <Modal
+        visible={showExpertiseModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExpertiseModal(false)}
+      >
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Expertise</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search expertise..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setExpertiseSearch}
+                    value={expertiseSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredExpertise}
+                  renderItem={renderExpertiseItem}
+                  keyExtractor={(item) => item.code}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowExpertiseModal(false);
+                    setExpertiseSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Experience Modal */}
+      <Modal
+        visible={showExperienceModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExperienceModal(false)}
+      >
+        <View style={styles.modalOuterContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardAvoidingView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Experience</Text>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search experience..."
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    onChangeText={setExperienceSearch}
+                    value={experienceSearch}
+                    autoFocus={true}
+                  />
+                  <MaterialIcons
+                    name="search"
+                    size={24}
+                    color="#E82E5F"
+                    style={styles.searchIcon}
+                  />
+                </View>
+                <FlatList
+                  data={filteredExperience}
+                  renderItem={renderExperienceItem}
+                  keyExtractor={(item) => item.code}
+                  style={styles.modalList}
+                  keyboardShouldPersistTaps="handled"
+                />
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowExperienceModal(false);
+                    setExperienceSearch("");
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <StatusBar style="auto" />
     </View>
   );
 };
@@ -558,50 +775,51 @@ const RegisterEx = ({ closeModal }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
+
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#fff",
-    // borderRadius: 30,
+    paddingBottom: 20,
   },
-  register_main: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E82E5F",
-    width: Platform.OS === "web" ? "100%" : "100%",
-    height: 50,
-    borderRadius: 20,
+  smallScreenScrollContainer: {
+    paddingHorizontal: 10,
+    paddingTop: 20,
   },
-  register_text: {
-    display: "flex",
-    justifyContent: "center",
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    alignContent: "center",
-    fontSize: 20,
-    color: "#ccc",
+    width: "100%",
+    paddingHorizontal: 20,
+    marginTop: Platform.OS === "ios" ? "4%" : 20,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   card: {
-    top:-20,
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
-    backgroundColor: "#FFFFFF",
-    padding: 10,
-    // borderRadius: 25,
+    width: width < 450 ? "95%" : Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    backgroundColor: "#FDFDFD",
+    padding: 20,
+    borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
     alignItems: "center",
+    margin: 20,
+    marginBottom:70,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
-    paddingBottom:30,
   },
   webInputWrapper: {
     width: "100%",
@@ -610,17 +828,13 @@ const styles = StyleSheet.create({
     gap: 20,
     marginTop: 25,
   },
-  scrollView: {
-    maxHeight: 200,
-  },
   inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    flexDirection: width < 450 || Platform.OS === 'android' ? "column" : "row",
     justifyContent: "space-between",
-    gap: 5,
+    gap: 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "30%",
+    width: width < 450 || Platform.OS === 'android' ? "100%" : "30%",
     position: "relative",
     zIndex: 1,
   },
@@ -647,41 +861,39 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     top: 13,
+    color: "#3E5C76",
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#191919",
+    marginBottom: 8,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     width: "100%",
     marginTop: 20,
+    gap: 15,
   },
   registerButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
   },
   cancelButton: {
-    backgroundColor: "#424242",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "400",
-  },
-  loginText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: "#E82E5F",
-  },
-  loginLink: {
-    fontWeight: "bold",
+    fontWeight: "500",
+    textAlign: "center",
   },
   loadingIndicator: {
     marginTop: 20,
@@ -692,26 +904,81 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "center",
   },
-  dropdownContainer: {
-    position: "absolute",
-    bottom: "100%",
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    backgroundColor: "#FFF",
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 5,
-    backgroundColor: "#e6708e",
+  screenTitle: {
+    fontWeight: "700",
+    fontSize: 17,
+    color: "#2B2D42",
+    textAlign: "center",
   },
-  list: {
-    maxHeight: 150,
+  // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: height * 0.7,
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2B2D42",
+  },
+  searchContainer: {
+    position: "relative",
+    marginBottom: 15,
+  },
+  searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
   },
   listItem: {
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    borderBottomColor: "#eee",
+  },
+  listItemText: {
+    fontSize: 16,
+  },
+  closeButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

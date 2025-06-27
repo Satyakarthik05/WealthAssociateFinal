@@ -29,7 +29,7 @@ const PostProperty = ({ closeModal }) => {
   const { width, height } = useWindowDimensions();
   const isMobileView = Platform.OS !== "web" || width < 450;
   const fontsLoaded = useFontsLoader();
-
+  
   // State declarations
   const [propertyType, setPropertyType] = useState("");
   const [location, setLocation] = useState("");
@@ -974,6 +974,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
+   
   },
   input: {
     flex: 1,
@@ -1063,7 +1064,7 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   postButton: {
-    flex: 1,
+    flex: 1, 
     marginRight: 10,
     backgroundColor: "#3E5C76",
     borderRadius: 25,
