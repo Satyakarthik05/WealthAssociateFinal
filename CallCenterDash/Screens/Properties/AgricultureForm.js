@@ -10,7 +10,6 @@ import {
   ScrollView,
 } from "react-native";
 import { API_URL } from "../../../data/ApiUrl";
-// import CheckBox from "@react-native-community/checkbox";
 
 const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
   const [formData, setFormData] = useState({
@@ -19,7 +18,12 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
     rrsr: "",
     fmb: "",
     surveyNumber: "",
-    boundaries: "",
+    boundaries: {
+      east: "",
+      west: "",
+      north: "",
+      south: "",
+    },
     extent: "",
     exactLocation: "",
   });
@@ -34,7 +38,12 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
         rrsr: initialData.rrsr || "",
         fmb: initialData.fmb || "",
         surveyNumber: initialData.surveyNumber || "",
-        boundaries: initialData.boundaries || "",
+        boundaries: initialData.boundaries || {
+          east: "",
+          west: "",
+          north: "",
+          south: "",
+        },
         extent: initialData.extent || "",
         exactLocation: initialData.exactLocation || "",
       });
@@ -43,6 +52,16 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
 
   const handleOption = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleBoundaryChange = (direction, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      boundaries: {
+        ...prev.boundaries,
+        [direction]: value,
+      },
+    }));
   };
 
   const handleSubmit = async () => {
@@ -98,7 +117,6 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
         <Text style={styles.heading}>Agriculture Details</Text>
         <Text style={styles.propertyId}>Property ID: {propertyId}</Text>
 
-        {/* Yes/No Fields */}
         {["passBook", "oneB", "rrsr", "fmb"].map((item) => (
           <View key={item} style={styles.optionRow}>
             <Text style={styles.label}>
@@ -145,7 +163,6 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
           </View>
         ))}
 
-        {/* Survey Number */}
         <Text style={styles.label}>Survey Number</Text>
         <TextInput
           style={styles.input}
@@ -155,17 +172,36 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
           editable={!isSubmitting}
         />
 
-        {/* Boundaries */}
         <Text style={styles.label}>Boundaries</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter Boundaries"
-          value={formData.boundaries}
-          onChangeText={(text) => handleOption("boundaries", text)}
+          placeholder="East "
+          value={formData.boundaries.east}
+          onChangeText={(text) => handleBoundaryChange("east", text)}
+          editable={!isSubmitting}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="West "
+          value={formData.boundaries.west}
+          onChangeText={(text) => handleBoundaryChange("west", text)}
+          editable={!isSubmitting}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="North "
+          value={formData.boundaries.north}
+          onChangeText={(text) => handleBoundaryChange("north", text)}
+          editable={!isSubmitting}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="South "
+          value={formData.boundaries.south}
+          onChangeText={(text) => handleBoundaryChange("south", text)}
           editable={!isSubmitting}
         />
 
-        {/* Extent */}
         <Text style={styles.label}>Extent (in Sq. Ft or Acres)</Text>
         <TextInput
           style={styles.input}
@@ -175,7 +211,6 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
           editable={!isSubmitting}
         />
 
-        {/* Exact Location */}
         <Text style={styles.label}>Exact Location</Text>
         <TextInput
           style={styles.input}
@@ -185,7 +220,6 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
           editable={!isSubmitting}
         />
 
-        {/* Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.submitButton, isSubmitting && styles.disabledButton]}
@@ -253,6 +287,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
+    marginBottom: 5,
   },
   checkOption: {
     flexDirection: "row",

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import React from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,16 +9,20 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  Dimensions,
+  Switch,
+  Alert,
+  Linking,
+  AppState,
+  Animated,
 } from "react-native";
 import { API_URL } from "../data/ApiUrl";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CustomModal from "../Components/CustomModal";
 import ViewApprovedProperties from "./Screens/Properties/ViewApprovedProperties";
 import Viewallagents from "./Screens/Agent/ViewAllAgents";
 import NewExperts from "./ExpertPanel/NewExperts";
-
-// Importing components
 import Dashboard from "./Screens/Callcentre";
 import ViewAgents from "./Screens/Agent/ViewAgents";
 import ViewCustomers from "./Screens/Customer/View_customers";
@@ -32,8 +35,69 @@ import ViewAllInvesters from "./Screens/View/ViewAllInvestors";
 import AllSkilledLabours from "./Screens/View/AllSkilledLabours";
 import ViewNri from "./Screens/View/ViewNri";
 import ExpertPanel from "./ExpertPanel/ExpertRoute";
+import io from "socket.io-client";
+import logo1 from "./assets/logo.png";
+import { Audio } from "expo-av";
+import * as Notifications from "expo-notifications";
+import * as BackgroundFetch from "expo-background-fetch";
+import * as TaskManager from "expo-task-manager";
+import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
+const isMobile = width < 768;
+const isWeb = Platform.OS === "web";
+
+const BACKGROUND_FETCH_TASK = "dashboard-notification-task";
+
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/callexe/newrequests`, {
+      headers: { token },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.count > 0) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "New Requests",
+            body: `You have ${data.count} new requests to review`,
+            sound: "default",
+          },
+          trigger: null,
+        });
+      }
+    }
+    return BackgroundFetch.Result.NewData;
+  } catch (error) {
+    return BackgroundFetch.Result.Failed;
+  }
+});
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+const getAuthToken = async () => {
+  try {
+    const token = await AsyncStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    return token;
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    throw error;
+  }
+};
 
 const CallCenterDashboard = () => {
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(!isMobile);
   const [expandedItems, setExpandedItems] = useState({});
   const [isViewCustVisible, setIsViewCustVisible] = useState(false);
   const [isViewAgentVisible, setIsViewAgentVisible] = useState(false);
@@ -52,30 +116,320 @@ const CallCenterDashboard = () => {
   const [isViewallagents, setViewallagents] = useState(false);
   const [isExpertPanel, setExpertPanel] = useState(false);
   const [isNewExperts, setNewExperts] = useState(false);
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] =
+    useState(true);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Toggle status function
-  const toggleStatus = async () => {
+  const [notificationSettings, setNotificationSettings] = useState({
+    agents: false,
+    customers: false,
+    properties: false,
+    requestedProperties: false,
+    skilled: false,
+    investors: false,
+    expertRequests: false,
+    expertRegistrations: false,
+    expertCallRequests: false,
+  });
+
+  const [newNotifications, setNewNotifications] = useState({
+    agents: [],
+    customers: [],
+    properties: [],
+    requestedProperties: [],
+    skilled: [],
+    investors: [],
+    expertRequests: [],
+    expertRegistrations: [],
+    expertCallRequests: [],
+  });
+
+  const [notificationCounts, setNotificationCounts] = useState({
+    agents: 0,
+    customers: 0,
+    properties: 0,
+    requestedProperties: 0,
+    skilled: 0,
+    investors: 0,
+    expertRequests: 0,
+    expertRegistrations: 0,
+    expertCallRequests: 0,
+  });
+
+  const navigation = useNavigation();
+  const soundRef = useRef(null);
+  const soundIntervalRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const audioSourceRef = useRef(null);
+  const processedNotificationIds = useRef(new Set());
+  const [appState, setAppState] = useState(AppState.currentState);
+  const socketRef = useRef(null);
+  const isFirstRender = useRef(true);
+
+  // Track initial login when component mounts
+  useEffect(() => {
+    const trackInitialLogin = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+        if (callexecutiveId) {
+          await fetch(
+            `${API_URL}/callexe/${callexecutiveId}/update-login-time`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                token: `${token}` || "",
+              },
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Error tracking initial login:", error);
+      }
+    };
+
+    trackInitialLogin();
+    getDetails();
+  }, []);
+
+  // Track logout when component unmounts or app goes to background
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState) => {
+      if (
+        appState.match(/active/) &&
+        nextAppState.match(/inactive|background/)
+      ) {
+        try {
+          const token = await AsyncStorage.getItem("authToken");
+          const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+          if (callexecutiveId) {
+            await fetch(
+              `${API_URL}/callexe/${callexecutiveId}/update-logout-time`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  token: `${token}` || "",
+                },
+              }
+            );
+          }
+        } catch (error) {
+          console.error("Error tracking logout:", error);
+        }
+      }
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+
+    return () => {
+      subscription.remove();
+      if (isActive) {
+        trackLogout();
+      }
+    };
+  }, [isActive]);
+
+  const trackLogout = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
       const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
 
-      const response = await fetch(
-        `${API_URL}/callexe/${callexecutiveId}/toggle-status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            token: ` ${token}` || "",
-          },
+      if (callexecutiveId) {
+        await fetch(
+          `${API_URL}/callexe/${callexecutiveId}/update-logout-time`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              token: `${token}` || "",
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error tracking logout:", error);
+    }
+  };
+
+  // Initialize background fetch and notifications
+  useEffect(() => {
+    const registerBackgroundTask = async () => {
+      try {
+        await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+          minimumInterval: 15 * 60,
+          stopOnTerminate: false,
+          startOnBoot: true,
+        });
+      } catch (err) {
+        console.log("Background Fetch failed to register", err);
+      }
+    };
+
+    registerBackgroundTask();
+
+    const requestPermissions = async () => {
+      await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowAnnouncements: true,
+        },
+      });
+    };
+
+    requestPermissions();
+  }, []);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const socket = io(API_URL, {
+      transports: ["websocket"],
+      reconnectionAttempts: 5,
+    });
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  // Setup socket event listeners
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
+
+    const handleNewNotification = (type, data) => {
+      if (!processedNotificationIds.current.has(data._id)) {
+        processedNotificationIds.current.add(data._id);
+
+        setNewNotifications((prev) => ({
+          ...prev,
+          [type]: [
+            {
+              ...data,
+              type,
+              createdAt: new Date().toISOString(),
+            },
+            ...prev[type],
+          ],
+        }));
+
+        setNotificationCounts((prev) => ({
+          ...prev,
+          [type]: prev[type] + 1,
+        }));
+
+        if (isActive && notificationSettings[type]) {
+          playNotificationSound();
         }
-      );
+      }
+    };
+
+    const handleAssignedByOther = (data) => {
+      const { type, id } = data;
+      
+      setNewNotifications(prev => ({
+        ...prev,
+        [type]: prev[type].filter(item => item._id !== id)
+      }));
+
+      setNotificationCounts(prev => ({
+        ...prev,
+        [type]: Math.max(0, prev[type] - 1)
+      }));
+
+      // Stop sound if no more notifications
+      const total = Object.values(notificationCounts).reduce((sum, count) => sum + count, 0);
+      if (total <= 0) {
+        stopNotificationSound();
+      }
+    };
+
+    const notificationHandlers = {
+      new_agent: (data) => handleNewNotification("agents", data.agent),
+      new_customer: (data) => handleNewNotification("customers", data.customer),
+      new_property: (data) =>
+        handleNewNotification("properties", data.property),
+      new_requested_property: (data) =>
+        handleNewNotification("requestedProperties", data.property),
+      new_skilled_labor: (data) => handleNewNotification("skilled", data.labor),
+      new_investor: (data) => handleNewNotification("investors", data.investor),
+      new_requestExpert: (data) =>
+        handleNewNotification("expertRequests", data.expert),
+      new_Expert: (data) =>
+        handleNewNotification("expertRegistrations", data.expert),
+      new_requestedExpert: (data) =>
+        handleNewNotification("expertCallRequests", data.expert),
+      assigned_by_other: handleAssignedByOther
+    };
+
+    Object.entries(notificationHandlers).forEach(([event, handler]) => {
+      socket.on(event, handler);
+    });
+
+    return () => {
+      Object.keys(notificationHandlers).forEach((event) => {
+        socket.off(event);
+      });
+    };
+  }, [isActive, notificationSettings, notificationCounts]);
+
+  const toggleStatus = async () => {
+    const newStatus = !isActive;
+    
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      // Disable all notifications if going inactive
+      const newNotificationSettings = newStatus 
+        ? notificationSettings 
+        : Object.keys(notificationSettings).reduce((acc, key) => {
+            acc[key] = false;
+            return acc;
+          }, {});
+
+      const endpoint = newStatus
+        ? `${API_URL}/callexe/${callexecutiveId}/update-login-time`
+        : `${API_URL}/callexe/${callexecutiveId}/update-logout-time`;
+
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          token: `${token}` || "",
+        },
+        body: JSON.stringify({ 
+          status: newStatus ? "active" : "inactive",
+          notificationSettings: newNotificationSettings
+        }),
+      });
 
       const result = await response.json();
 
       if (response.ok) {
-        setIsActive(result.status === "active");
-        await AsyncStorage.setItem("userStatus", result.status);
+        setIsActive(newStatus);
+        setNotificationSettings(newNotificationSettings);
+        await AsyncStorage.setItem(
+          "userStatus",
+          newStatus ? "active" : "inactive"
+        );
+        
+        if (!newStatus) {
+          stopNotificationSound();
+        }
       } else {
         console.error("Failed to toggle status:", result.message);
       }
@@ -84,24 +438,62 @@ const CallCenterDashboard = () => {
     }
   };
 
-  // Check initial status on component mount
-  useEffect(() => {
-    const checkInitialStatus = async () => {
-      try {
-        const status = await AsyncStorage.getItem("userStatus");
-        if (status) {
-          setIsActive(status === "active");
-        }
-      } catch (error) {
-        console.error("Error checking initial status:", error);
-      }
+  const toggleNotificationSetting = async (type) => {
+    if (!isActive) {
+      Alert.alert(
+        "Error",
+        "Please activate your status first to change notification settings"
+      );
+      return;
+    }
+
+    const newSettings = {
+      ...notificationSettings,
+      [type]: !notificationSettings[type],
     };
 
-    checkInitialStatus();
-  }, []);
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      setNotificationSettings(newSettings);
+
+      const response = await fetch(
+        `${API_URL}/callexe/${callexecutiveId}/notification-settings`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            token: `${token}` || "",
+          },
+          body: JSON.stringify({
+            notificationSettings: newSettings,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        setNotificationSettings(notificationSettings);
+        throw new Error("Failed to update settings");
+      }
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      Alert.alert("Error", "Failed to update notification settings");
+    }
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarExpanded((prev) => !prev);
+  };
+
+  const toggleMenuItem = (title) => {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
 
   const handleSubItemClick = (subItem) => {
-    // Reset all views
     setIsViewCustVisible(false);
     setIsViewAgentVisible(false);
     setIsViewPostPropVisible(false);
@@ -116,6 +508,10 @@ const CallCenterDashboard = () => {
     setViewallagents(false);
     setExpertPanel(false);
     setNewExperts(false);
+
+    if (isMobile) {
+      setIsSidebarExpanded(false);
+    }
 
     switch (subItem) {
       case "Dashboard":
@@ -217,6 +613,513 @@ const CallCenterDashboard = () => {
     setNewExperts(false);
   };
 
+  const getNavigationScreen = (type) => {
+    switch (type) {
+      case "agents":
+        return "View Agents";
+      case "customers":
+        return "View Customers";
+      case "properties":
+        return "View Posted Properties";
+      case "requestedProperties":
+        return "View Requested Properties";
+      case "skilled":
+        return "View Skilled Resource";
+      case "investors":
+        return "View Investors";
+      case "expertRequests":
+      case "expertCallRequests":
+        return "Expert Panel Requests";
+      case "expertRegistrations":
+        return "ExpertPanel";
+      default:
+        return "Dashboard";
+    }
+  };
+
+  const renderNotificationCard = (item, type) => {
+    let title, name, phone, location;
+    switch (type) {
+      case "agents":
+        title = "New Agent";
+        name = item.FullName || "No name";
+        phone = item.MobileNumber || "No phone";
+        location = item.District || "No location";
+        break;
+      case "customers":
+        title = "New Customer";
+        name = item.FullName || "No name";
+        phone = item.MobileNumber || "No phone";
+        location = item.District || "No location";
+        break;
+      case "properties":
+        title = "New Property";
+        name = item.propertyType || "No title";
+        phone = item.PostedBy || "No phone";
+        location =
+          `${item.location || ""}, ${item.Constituency || ""}`.trim() ||
+          "No location";
+        break;
+      case "requestedProperties":
+        title = "Requested Property";
+        name = item.propertyTitle || "No title";
+        phone = item.PostedBy || "No phone";
+        location = item.location || "No location";
+        break;
+      case "skilled":
+        title = "New Skilled Labor";
+        name = item.FullName || "No name";
+        phone = item.MobileNumber || "No phone";
+        location = item.District || "No location";
+        break;
+      case "investors":
+        title = "New Investor";
+        name = item.FullName || "No name";
+        phone = item.MobileNumber || "No phone";
+        location = item.District || "No location";
+        break;
+      case "expertRequests":
+        title = "Expert Request";
+        name = item.expertType || "No type";
+        phone = item.WantedBy || "No requester";
+        location = item.reason || "No reason provided";
+        break;
+      case "expertRegistrations":
+        title = "Expert Registration";
+        name = item.name || "No name";
+        phone = item.mobile || "No phone";
+        location = item.expertType || "No type";
+        break;
+      case "expertCallRequests":
+        title = "Expert Call Request";
+        name = item.Name || "No name";
+        phone = item.MobileNumber || "No phone";
+        location = item.ExpertType || "No type";
+        break;
+      default:
+        return null;
+    }
+
+    return (
+      <View style={styles.notificationCard} key={`${type}-${item._id}`}>
+        <View style={styles.notificationCardHeader}>
+          <Text style={styles.newBadge}>{title}</Text>
+          <Text style={styles.notificationTime}>
+            {new Date(item.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+        <View style={styles.notificationCardBody}>
+          <Image
+            source={item.photo ? { uri: `${API_URL}${item.photo}` } : logo1}
+            style={styles.notificationAvatar}
+            onError={(e) =>
+              console.log("Error loading image:", e.nativeEvent.error)
+            }
+          />
+          <View style={styles.notificationInfo}>
+            <Text style={styles.notificationName}>{name}</Text>
+            <View style={styles.phoneRow}>
+              <Text style={styles.notificationDetail}>
+                <MaterialIcons name="phone" size={14} color="#555" /> {phone}
+              </Text>
+              {phone && (
+                <TouchableOpacity
+                  style={styles.smallCallButton}
+                  onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+                >
+                  <Ionicons name="call" size={16} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.notificationDetail}>
+              <MaterialIcons name="location-on" size={14} color="#555" />{" "}
+              {location}
+            </Text>
+
+            <View style={styles.notificationButtons}>
+              <TouchableOpacity
+                style={styles.acceptButton}
+                onPress={() => {
+                  handleAcceptNotification(type, item._id);
+                  handleSubItemClick(getNavigationScreen(type));
+                }}
+              >
+                <Ionicons name="checkmark" size={18} color="white" />
+                <Text style={styles.buttonText}> Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rejectButton}
+                onPress={() => handleRejectNotification(type, item._id)}
+              >
+                <Ionicons name="close" size={18} color="white" />
+                <Text style={styles.buttonText}> Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderNotificationSettings = () => (
+    <View style={styles.notificationSettingsContainer}>
+      <TouchableOpacity
+        style={styles.settingsHeader}
+        onPress={toggleNotificationSettings}
+      >
+        <Text style={styles.settingsTitle}>Notification Settings</Text>
+        <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+          <Ionicons name="chevron-down" size={24} color="#555" />
+        </Animated.View>
+      </TouchableOpacity>
+
+      {showNotificationSettings && (
+        <>
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Agents");
+              }}
+            >
+              <Text>Agents</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.agents && isActive}
+              onValueChange={() => toggleNotificationSetting("agents")}
+              disabled={!isActive}
+            />
+            {notificationCounts.agents > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.agents}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Customers");
+              }}
+            >
+              <Text>Customers</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.customers && isActive}
+              onValueChange={() => toggleNotificationSetting("customers")}
+              disabled={!isActive}
+            />
+            {notificationCounts.customers > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.customers}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Posted Properties");
+              }}
+            >
+              <Text>Properties</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.properties && isActive}
+              onValueChange={() => toggleNotificationSetting("properties")}
+              disabled={!isActive}
+            />
+            {notificationCounts.properties > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.properties}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Requested Properties");
+              }}
+            >
+              <Text>Requested Properties</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.requestedProperties && isActive}
+              onValueChange={() =>
+                toggleNotificationSetting("requestedProperties")
+              }
+              disabled={!isActive}
+            />
+            {notificationCounts.requestedProperties > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.requestedProperties}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Skilled Resource");
+              }}
+            >
+              <Text>Skilled Resources</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.skilled && isActive}
+              onValueChange={() => toggleNotificationSetting("skilled")}
+              disabled={!isActive}
+            />
+            {notificationCounts.skilled > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.skilled}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("View Investors");
+              }}
+            >
+              <Text>Investors</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.investors && isActive}
+              onValueChange={() => toggleNotificationSetting("investors")}
+              disabled={!isActive}
+            />
+            {notificationCounts.investors > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.investors}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("Expert Panel Requests");
+              }}
+            >
+              <Text>Expert Requests</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.expertRequests && isActive}
+              onValueChange={() => toggleNotificationSetting("expertRequests")}
+              disabled={!isActive}
+            />
+            {notificationCounts.expertRequests > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.expertRequests}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("ExpertPanel");
+              }}
+            >
+              <Text>Expert Registrations</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.expertRegistrations && isActive}
+              onValueChange={() =>
+                toggleNotificationSetting("expertRegistrations")
+              }
+              disabled={!isActive}
+            />
+            {notificationCounts.expertRegistrations > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.expertRegistrations}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingLabel}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleSubItemClick("NewExperts");
+              }}
+            >
+              <Text>Expert Call Requests</Text>
+            </TouchableOpacity>
+            <Switch
+              value={notificationSettings.expertCallRequests && isActive}
+              onValueChange={() =>
+                toggleNotificationSetting("expertCallRequests")
+              }
+              disabled={!isActive}
+            />
+            {notificationCounts.expertCallRequests > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {notificationCounts.expertCallRequests}
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
+    </View>
+  );
+
+  const renderNotifications = () => {
+    const totalNotifications = Object.values(notificationCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    if (totalNotifications === 0 || !isActive) return null;
+
+    return (
+      <View style={styles.notificationsContainer}>
+        <Text style={styles.sectionTitle}>
+          New Requests ({totalNotifications})
+        </Text>
+
+        {notificationCounts.agents > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Agents ({notificationCounts.agents})
+            </Text>
+            {newNotifications.agents.map((agent) =>
+              renderNotificationCard(agent, "agents")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.customers > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Customers ({notificationCounts.customers})
+            </Text>
+            {newNotifications.customers.map((customer) =>
+              renderNotificationCard(customer, "customers")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.properties > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Properties ({notificationCounts.properties})
+            </Text>
+            {newNotifications.properties.map((property) =>
+              renderNotificationCard(property, "properties")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.requestedProperties > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Requested Properties ({notificationCounts.requestedProperties})
+            </Text>
+            {newNotifications.requestedProperties.map((property) =>
+              renderNotificationCard(property, "requestedProperties")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.skilled > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Skilled Resources ({notificationCounts.skilled})
+            </Text>
+            {newNotifications.skilled.map((labor) =>
+              renderNotificationCard(labor, "skilled")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.investors > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Investors ({notificationCounts.investors})
+            </Text>
+            {newNotifications.investors.map((investor) =>
+              renderNotificationCard(investor, "investors")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.expertRequests > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Expert Requests ({notificationCounts.expertRequests})
+            </Text>
+            {newNotifications.expertRequests.map((request) =>
+              renderNotificationCard(request, "expertRequests")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.expertRegistrations > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Expert Registrations ({notificationCounts.expertRegistrations})
+            </Text>
+            {newNotifications.expertRegistrations.map((expert) =>
+              renderNotificationCard(expert, "expertRegistrations")
+            )}
+          </View>
+        )}
+
+        {notificationCounts.expertCallRequests > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Expert Call Requests ({notificationCounts.expertCallRequests})
+            </Text>
+            {newNotifications.expertCallRequests.map((call) =>
+              renderNotificationCard(call, "expertCallRequests")
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -230,16 +1133,37 @@ const CallCenterDashboard = () => {
       setDetails(userDetails);
       AsyncStorage.setItem("callexecutiveId", userDetails._id);
 
-      // Base menu items that everyone can see
+      // Set notification settings from backend or use defaults
+      setNotificationSettings(
+        userDetails.notificationSettings || {
+          agents: false,
+          customers: false,
+          properties: false,
+          requestedProperties: false,
+          skilled: false,
+          investors: false,
+          expertRequests: false,
+          expertRegistrations: false,
+          expertCallRequests: false,
+        }
+      );
+
+      // Set initial active status
+      setIsActive(userDetails.status === "active");
+
       const baseMenuItems = [
         {
-          title: "View Approved Properties",
+          title: "Dashboard",
           icon: "home-outline",
+          subItems: ["Dashboard"],
+        },
+        {
+          title: "View Approved Properties",
+          icon: "checkmark-done-outline",
           subItems: ["ViewApprovedProperties"],
         },
       ];
 
-      // Add role-specific menu items
       switch (userDetails.assignedType) {
         case "Agent_Wealth_Associate":
           baseMenuItems.push({
@@ -258,7 +1182,7 @@ const CallCenterDashboard = () => {
         case "Property":
           baseMenuItems.push({
             title: "Properties",
-            icon: "home-outline",
+            icon: "business-outline",
             subItems: ["View Posted Properties", "View Requested Properties"],
           });
           break;
@@ -270,21 +1194,20 @@ const CallCenterDashboard = () => {
           });
           break;
         default:
-          // Admin or full access
           baseMenuItems.push(
             {
               title: "Agents",
               icon: "person-outline",
-              subItems: ["View Agents"],
+              subItems: ["View Agents", "View Agents Contacts"],
             },
             {
               title: "Customers",
               icon: "people-outline",
-              subItems: ["View Customers"],
+              subItems: ["View Customers", "View Customer Contacts"],
             },
             {
               title: "Properties",
-              icon: "home-outline",
+              icon: "business-outline",
               subItems: ["View Posted Properties", "View Requested Properties"],
             },
             {
@@ -295,7 +1218,6 @@ const CallCenterDashboard = () => {
           );
       }
 
-      // Add View section that everyone can see
       baseMenuItems.push({
         title: "View",
         icon: "eye-outline",
@@ -313,21 +1235,246 @@ const CallCenterDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    getDetails();
-  }, []);
+  const loadSound = async () => {
+    try {
+      if (isWeb) {
+        audioContextRef.current = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        return;
+      }
 
-  // Flatten all subItems for the bottom navigation
-  const allSubItems = menuItems.flatMap(item => item.subItems);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/siren.mp3")
+      );
+      soundRef.current = sound;
+    } catch (error) {
+      console.error("Error loading sound:", error);
+    }
+  };
+
+  const playNotificationSound = async () => {
+    try {
+      if (soundIntervalRef.current) return;
+
+      if (
+        (isWeb && !audioContextRef.current) ||
+        (!isWeb && !soundRef.current)
+      ) {
+        await loadSound();
+      }
+
+      if (isWeb) {
+        const response = await fetch(require("../assets/siren.mp3"));
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContextRef.current.decodeAudioData(
+          arrayBuffer
+        );
+
+        const playSound = () => {
+          audioSourceRef.current = audioContextRef.current.createBufferSource();
+          audioSourceRef.current.buffer = audioBuffer;
+          audioSourceRef.current.connect(audioContextRef.current.destination);
+          audioSourceRef.current.start();
+
+          audioSourceRef.current.onended = () => {
+            if (soundIntervalRef.current) {
+              setTimeout(playSound, 500);
+            }
+          };
+        };
+
+        soundIntervalRef.current = true;
+        playSound();
+
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("New Request", {
+            body: "You have new requests to review",
+          });
+        }
+      } else {
+        if (soundRef.current) {
+          const playLoop = async () => {
+            try {
+              await soundRef.current.replayAsync();
+
+              if (soundIntervalRef.current) {
+                setTimeout(playLoop, 3000);
+              }
+            } catch (error) {
+              console.error("Error in play loop:", error);
+            }
+          };
+
+          soundIntervalRef.current = true;
+          await playLoop();
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "New Request",
+              body: "You have new requests to review",
+              sound: "default",
+            },
+            trigger: null,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error playing sound:", error);
+    }
+  };
+
+  const stopNotificationSound = () => {
+    soundIntervalRef.current = false;
+
+    if (isWeb) {
+      if (audioSourceRef.current) {
+        audioSourceRef.current.stop();
+        audioSourceRef.current = null;
+      }
+    } else {
+      if (soundRef.current) {
+        soundRef.current.stopAsync();
+      }
+    }
+  };
+
+  const handleAcceptNotification = async (type, id) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const executiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(`${API_URL}/callexe/${type}/${id}/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({ executiveId }),
+      });
+
+      if (response.ok) {
+        setNewNotifications((prev) => ({
+          ...prev,
+          [type]: prev[type].filter((item) => item._id !== id),
+        }));
+
+        setNotificationCounts((prev) => ({
+          ...prev,
+          [type]: Math.max(0, prev[type] - 1),
+        }));
+
+        const total =
+          Object.values(notificationCounts).reduce(
+            (sum, count) => sum + count,
+            0
+          ) - 1;
+
+        if (total <= 0) {
+          stopNotificationSound();
+        }
+
+        Alert.alert("Success", `${type} accepted successfully`);
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.message || "Failed to accept");
+      }
+    } catch (error) {
+      console.error("Error accepting notification:", error);
+      Alert.alert("Error", "Failed to accept. Please try again.");
+    }
+  };
+
+  const handleRejectNotification = async (type, id) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const executiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(`${API_URL}/callexe/${type}/${id}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({ executiveId }),
+      });
+
+      if (response.ok) {
+        setNewNotifications((prev) => ({
+          ...prev,
+          [type]: prev[type].filter((item) => item._id !== id),
+        }));
+
+        setNotificationCounts((prev) => ({
+          ...prev,
+          [type]: Math.max(0, prev[type] - 1),
+        }));
+
+        const total =
+          Object.values(notificationCounts).reduce(
+            (sum, count) => sum + count,
+            0
+          ) - 1;
+
+        if (total <= 0) {
+          stopNotificationSound();
+        }
+
+        Alert.alert("Success", `${type} rejected successfully`);
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.message || "Failed to reject");
+      }
+    } catch (error) {
+      console.error("Error rejecting notification:", error);
+      Alert.alert("Error", "Failed to reject. Please try again.");
+    }
+  };
+
+  const fetchNewRequests = async () => {
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`${API_URL}/callexe/newrequests`, {
+        headers: { token },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Process the new requests data
+      }
+    } catch (error) {
+      console.error("Error fetching new requests:", error);
+    }
+  };
+
+  // Toggle notification settings visibility with animation
+  const toggleNotificationSettings = () => {
+    Animated.timing(rotateAnim, {
+      toValue: showNotificationSettings ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    setShowNotificationSettings(!showNotificationSettings);
+  };
+
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
 
   return (
     <View style={styles.container}>
-      {/* Status Bar Adjustment for Android */}
       {Platform.OS === "android" && (
         <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       )}
 
-      {/* Top Navbar */}
       <View style={styles.navbar}>
         <TouchableOpacity onPress={resetToDashboard}>
           <Image
@@ -337,16 +1484,6 @@ const CallCenterDashboard = () => {
         </TouchableOpacity>
         <View style={styles.sear_icons}>
           <View style={styles.rightIcons}>
-            <Image
-              source={require("../CallCenterDash/assets/usflag.png")}
-              style={styles.icon}
-            />
-            <Text style={styles.language}>English</Text>
-            <Ionicons name="moon-outline" size={24} color="#000" />
-            <Ionicons name="notifications-outline" size={24} color="#000" />
-            <Ionicons name="person-circle-outline" size={30} color="#000" />
-
-            {/* Status Toggle Button */}
             <TouchableOpacity
               onPress={toggleStatus}
               style={styles.toggleContainer}
@@ -369,6 +1506,23 @@ const CallCenterDashboard = () => {
               </Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={styles.notificationBadgeContainer}>
+              <Ionicons name="notifications" size={24} color="#333" />
+              {Object.values(notificationCounts).reduce(
+                (sum, count) => sum + count,
+                0
+              ) > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {Object.values(notificationCounts).reduce(
+                      (sum, count) => sum + count,
+                      0
+                    )}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
             {details && (
               <Text style={styles.userName}>{details.name || "User"}</Text>
             )}
@@ -376,89 +1530,174 @@ const CallCenterDashboard = () => {
         </View>
       </View>
 
-      {/* Main Content Area */}
-      <View style={styles.contentArea}>
-        <View style={styles.container}>
-          <ScrollView>
-            <View style={styles.userContent}>
-              {details && (
-                <>
-                  <Text style={styles.usersContentText}>
-                    Welcome Back:{" "}
-                    <Text style={{ color: "#E82E5F" }}>
-                      {details.name || "User"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.usersContentText}>
-                    Phone number:{" "}
-                    <Text style={{ color: "#E82E5F" }}>
-                      {details.phone || "N/A"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.usersContentText}>
-                    Role:{" "}
-                    <Text style={{ color: "#E82E5F" }}>
-                      {details.assignedType || "N/A"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.usersContentText}>
-                    Status:{" "}
-                    <Text style={{ color: isActive ? "#4CAF50" : "#9E9E9E" }}>
-                      {isActive ? "Active" : "Inactive"}
-                    </Text>
-                  </Text>
-                </>
-              )}
-              {(Platform.OS === "android" || Platform.OS === "ios") && (
-                <TouchableOpacity
-                  onPress={toggleStatus}
-                  style={styles.toggleContainer}
-                >
-                  <View
-                    style={[
-                      styles.toggleTrack,
-                      isActive ? styles.toggleActive : styles.toggleInactive,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.toggleThumb,
-                        isActive ? styles.thumbActive : styles.thumbInactive,
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.toggleText}>
-                    {isActive ? "Active" : "Inactive"}
-                  </Text>
-                </TouchableOpacity>
-              )}
+      <View style={styles.mainContent}>
+        {(!isMobile || isSidebarExpanded) && (
+          <View
+            style={[
+              styles.sidebar,
+              isMobile && styles.mobileSidebar,
+              isMobile && isSidebarExpanded && styles.expandedMobileSidebar,
+            ]}
+          >
+            <ScrollView style={styles.sidebarScroll}>
+              <FlatList
+                data={menuItems}
+                keyExtractor={(item) => item.title}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <View style={styles.menuItemContainer}>
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        if (item.subItems.length === 1) {
+                          handleSubItemClick(item.subItems[0]);
+                          if (isMobile) setIsSidebarExpanded(false);
+                        } else {
+                          toggleMenuItem(item.title);
+                        }
+                      }}
+                    >
+                      <Ionicons name={item.icon} size={24} color="#555" />
+                      <Text style={styles.menuText}>{item.title}</Text>
+                      {item.subItems.length > 1 && (
+                        <Ionicons
+                          name={
+                            expandedItems[item.title]
+                              ? "chevron-up-outline"
+                              : "chevron-down-outline"
+                          }
+                          size={16}
+                          color="#555"
+                          style={styles.chevronIcon}
+                        />
+                      )}
+                    </TouchableOpacity>
 
-              <ScrollView style={{ height: "auto" }}>
+                    {expandedItems[item.title] && item.subItems && (
+                      <View style={styles.subMenuContainer}>
+                        {item.subItems.map((sub, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.subMenuItem}
+                            onPress={() => {
+                              handleSubItemClick(sub);
+                              if (isMobile) setIsSidebarExpanded(false);
+                            }}
+                          >
+                            <Text style={styles.subMenuText}>{sub}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+              />
+              <Text style={styles.lastUpdated}>
+                Last Updated: {new Date().toLocaleDateString()}
+              </Text>
+            </ScrollView>
+          </View>
+        )}
+
+        <View
+          style={[
+            styles.contentArea,
+            isMobile && isSidebarExpanded && styles.contentAreaHidden,
+          ]}
+        >
+          {isWeb ? (
+            <div style={{ height: "100%", overflowY: "auto" }}>
+              <View style={styles.userContent}>
+                {details && (
+                  <>
+                    <Text style={styles.usersContentText}>
+                      Welcome Back:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.name || "User"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Phone number:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.phone || "N/A"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Role:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.assignedType || "N/A"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Status:{" "}
+                      <Text style={{ color: isActive ? "#4CAF50" : "#9E9E9E" }}>
+                        {isActive ? "Active" : "Inactive"}
+                      </Text>
+                    </Text>
+
+                    {renderNotificationSettings()}
+                    {renderNotifications()}
+                  </>
+                )}
                 {renderContent()}
-              </ScrollView>
-            </View>
-          </ScrollView>
+              </View>
+            </div>
+          ) : (
+            <ScrollView style={styles.contentScroll}>
+              <View style={styles.userContent}>
+                {details && (
+                  <>
+                    <Text style={styles.usersContentText}>
+                      Welcome Back:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.name || "User"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Phone number:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.phone || "N/A"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Role:{" "}
+                      <Text style={{ color: "#E82E5F" }}>
+                        {details.assignedType || "N/A"}
+                      </Text>
+                    </Text>
+                    <Text style={styles.usersContentText}>
+                      Status:{" "}
+                      <Text style={{ color: isActive ? "#4CAF50" : "#9E9E9E" }}>
+                        {isActive ? "Active" : "Inactive"}
+                      </Text>
+                    </Text>
+
+                    {renderNotificationSettings()}
+                    {renderNotifications()}
+                  </>
+                )}
+                {renderContent()}
+              </View>
+            </ScrollView>
+          )}
         </View>
       </View>
 
-      {/* Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.bottomNavContent}
+      {isMobile && (
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            isSidebarExpanded && styles.toggleButtonExpanded,
+          ]}
+          onPress={toggleSidebar}
         >
-          {allSubItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.bottomNavItem}
-              onPress={() => handleSubItemClick(item)}
-            >
-              <Text style={styles.bottomNavText}>{item}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+          <Ionicons
+            name={isSidebarExpanded ? "close-outline" : "menu-outline"}
+            size={30}
+            color="#000"
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -467,8 +1706,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
-    width: "100%",
-    paddingTop: Platform.OS === "android" ? 0 : StatusBar.currentHeight,
+    ...(isWeb && {
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+    }),
   },
   navbar: {
     flexDirection: "row",
@@ -483,56 +1725,147 @@ const styles = StyleSheet.create({
     width: 100,
     height: 60,
     resizeMode: "contain",
-    marginLeft: Platform.OS === "web" ? "0px" : "25%",
+    left: 50,
   },
   sear_icons: {
-    display: "flex",
     flexDirection: "row",
     justifyContent: "space-between",
   },
   rightIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: Platform.OS === "web" ? 0 : "10%",
-    gap: Platform.OS === "web" ? 10 : 0,
-  },
-  icon: {
-    width: 20,
-    height: 15,
-    marginRight: 5,
-  },
-  language: {
-    marginRight: 10,
-    color: "#555",
+    gap: 10,
   },
   userName: {
     marginLeft: 10,
     fontWeight: "bold",
     color: "#555",
   },
+  mainContent: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  sidebar: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRightWidth: 1,
+    borderColor: "#ddd",
+    width: 250,
+  },
+  mobileSidebar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 100,
+    elevation: 100,
+    width: width * 0.8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 5,
+      height: 0,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  expandedMobileSidebar: {
+    width: width * 0.8,
+  },
+  sidebarScroll: {
+    flex: 1,
+  },
+  menuItemContainer: {
+    marginBottom: 5,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+  },
+  menuText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+    flex: 1,
+    marginLeft: 10,
+  },
+  chevronIcon: {
+    marginLeft: "auto",
+  },
+  subMenuContainer: {
+    marginLeft: 20,
+    borderLeftWidth: 2,
+    borderLeftColor: "#E82E5F",
+    paddingLeft: 10,
+  },
+  subMenuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 5,
+  },
+  subMenuText: {
+    fontSize: 14,
+    color: "#555",
+    paddingVertical: 5,
+  },
+  lastUpdated: {
+    marginTop: 20,
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
   contentArea: {
     flex: 1,
     backgroundColor: "#F0F5F5",
-    ...(Platform.OS === "web" && { padding: 5 }),
-    marginBottom: 60, // Add margin to accommodate bottom nav
+    ...(isWeb && {
+      height: "calc(100vh - 80px)",
+      overflow: "auto",
+    }),
+  },
+  contentAreaHidden: {
+    opacity: 0.3,
+  },
+  contentScroll: {
+    flex: 1,
+    ...(isWeb && {
+      height: "100%",
+      overflowY: "auto",
+    }),
   },
   userContent: {
     backgroundColor: "#fff",
-    display: "flex",
-    flexDirection: Platform === "web" ? "row" : "column",
-    height: "auto",
     padding: 15,
+    margin: 10,
+    borderRadius: 5,
   },
   usersContentText: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
   },
-  // Toggle button styles
+  toggleButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 101,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  toggleButtonExpanded: {
+    left: width * 0.8 - 40,
+  },
   toggleContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginRight: 10,
+    left: 40,
+    top: 10,
   },
   toggleTrack: {
     width: 50,
@@ -564,33 +1897,188 @@ const styles = StyleSheet.create({
     color: "#555",
     fontWeight: "bold",
   },
-  // Bottom navigation styles
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    height: 60,
+  notificationSettingsContainer: {
+    marginVertical: 20,
+    padding: 15,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+  },
+  settingsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  settingsTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  settingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  settingLabel: {
+    flex: 1,
+    paddingVertical: 10,
+  },
+  countBadge: {
+    backgroundColor: "#E82E5F",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 10,
+  },
+  countText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  notificationCard: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: "hidden",
+  },
+  notificationCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f0f7ff",
+    paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  bottomNavContent: {
-    alignItems: 'center',
-    paddingHorizontal: 10,
+  newBadge: {
+    backgroundColor: "#2196F3",
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  bottomNavItem: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginHorizontal: 5,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+  notificationTime: {
+    fontSize: 12,
+    color: "#666",
   },
-  bottomNavText: {
+  notificationCardBody: {
+    padding: 10,
+    flexDirection: "row",
+  },
+  notificationAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 10,
+    backgroundColor: "#ddd",
+  },
+  notificationInfo: {
+    flex: 1,
+  },
+  notificationName: {
+    fontWeight: "bold",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  notificationDetail: {
     fontSize: 14,
-    color: '#555',
-    fontWeight: '500',
+    color: "#555",
+    marginBottom: 5,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  smallCallButton: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 15,
+    padding: 3,
+    marginLeft: 5,
+  },
+  notificationButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  acceptButton: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 5,
+    justifyContent: "center",
+  },
+  rejectButton: {
+    backgroundColor: "#F44336",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 5,
+    justifyContent: "center",
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  notificationBadgeContainer: {
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    right: -8,
+    top: -8,
+    backgroundColor: "red",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notificationBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  notificationsContainer: {
+    marginTop: 20,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+    padding: 15,
+  },
+  notificationSection: {
+    marginBottom: 15,
+  },
+  subSectionTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 15,
   },
 });
 

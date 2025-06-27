@@ -11,6 +11,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  FlatList,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -47,29 +48,26 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
   }, [currentImageIndex, property?.images]);
 
   const formatImages = (property) => {
-    if (!property) return [];
+    if (!property) return [require("../../assets/logo.png")];
 
-    // Handle array of newImageUrls
-    if (
-      Array.isArray(property.newImageUrls) &&
-      property.newImageUrls.length > 0
-    ) {
-      return property.newImageUrls.map((url) => ({
-        uri: url, // Assuming URLs are already complete
-      }));
+    if (Array.isArray(property.images)) {
+      return property.images.map((img) => {
+        if (typeof img === "string") return { uri: img };
+        if (img.uri) return img;
+        return require("../../assets/logo.png");
+      });
     }
 
-    // Handle single image as string
     if (typeof property.newImageUrls === "string") {
       return [{ uri: property.newImageUrls }];
     }
 
-    // Handle images array if passed directly
-    if (Array.isArray(property.images)) {
-      return property.images;
+    if (Array.isArray(property.newImageUrls)) {
+      return property.newImageUrls
+        .filter((url) => url && typeof url === "string")
+        .map((url) => ({ uri: url }));
     }
 
-    // Fallback to default image
     return [require("../../assets/logo.png")];
   };
 
@@ -99,46 +97,44 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
 
   const loadProperty = async () => {
     try {
-      // First check if we have a property ID from route params (from notification)
+      setLoading(true);
+
       if (route?.params?.propertyId) {
         const propertyData = await fetchPropertyDetails(
           route.params.propertyId
         );
         setProperty({
           ...propertyData,
-          images: formatImages(propertyData), // Updated here
+          images: formatImages(propertyData),
         });
         return;
       }
 
-      // Then try to get from route.params.property
       if (route?.params?.property) {
         const propertyFromRoute = route.params.property;
 
-        // If we don't have full details, fetch them
         if (!propertyFromRoute._id && propertyFromRoute.id) {
           const fullDetails = await fetchPropertyDetails(propertyFromRoute.id);
           setProperty({
             ...propertyFromRoute,
             ...fullDetails,
-            images: formatImages(fullDetails), // Updated here
+            images: formatImages(fullDetails),
           });
         } else {
           setProperty({
             ...propertyFromRoute,
-            images: formatImages(propertyFromRoute), // Updated here
+            images: formatImages(propertyFromRoute),
           });
         }
         return;
       }
 
-      // If not in route.params, try to load from AsyncStorage
       const storedProperty = await AsyncStorage.getItem("currentProperty");
       if (storedProperty) {
         const parsedProperty = JSON.parse(storedProperty);
         setProperty({
           ...parsedProperty,
-          images: formatImages(parsedProperty), // Updated here
+          images: formatImages(parsedProperty),
         });
       }
     } catch (error) {
@@ -149,7 +145,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Update the handleShare function
   const handleShare = async () => {
     try {
       if (!property) {
@@ -158,7 +153,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       }
 
       const shareData = {
-        photo: property.images?.[0]?.uri || null, // Uses the formatted images array
+        photo: property.images?.[0]?.uri || null,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
@@ -182,11 +177,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
 
     return unsubscribe;
   }, [navigation]);
-
-  useEffect(() => {
-    loadProperty();
-    fetchUserDetails();
-  }, [route.params?.propertyId]);
 
   const fetchUserDetails = async () => {
     try {
@@ -302,46 +292,53 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       .replace(/^./, (str) => str.toUpperCase())
       .trim();
 
-  const renderDynamicValue = (value, indent = 0) => {
-    if (value === null || value === undefined)
-      return <Text style={styles.dynamicDataValue}>N/A</Text>;
+  const formatValue = (val) => {
+    if (val === null || val === undefined) return "N/A";
+    if (typeof val === "boolean") return val ? "Yes" : "No";
+    if (Array.isArray(val)) return val.join(", ");
+    return val.toString();
+  };
 
-    if (Array.isArray(value)) {
-      if (value.length === 0)
-        return <Text style={styles.dynamicDataValue}>Empty</Text>;
+  const renderNestedDetails = (data, level = 0) => {
+    if (typeof data !== "object" || data === null) {
       return (
-        <View style={{ marginLeft: indent * 10 }}>
-          {value.map((item, index) => (
-            <View key={index} style={styles.arrayItem}>
-              <Text style={styles.dynamicDataValue}>{index + 1}.</Text>
-              {renderDynamicValue(item, indent + 1)}
-            </View>
-          ))}
-        </View>
+        <Text style={[styles.nestedValue, { marginLeft: 15 * level }]}>
+          {formatValue(data)}
+        </Text>
       );
     }
 
-    if (typeof value === "object") {
-      return (
-        <View style={{ marginLeft: indent * 10 }}>
-          {Object.entries(value).map(([subKey, subValue]) => (
-            <View key={subKey} style={styles.nestedItem}>
-              <Text style={styles.dynamicDataKey}>{formatKey(subKey)}:</Text>
-              <View style={styles.dynamicDataValueContainer}>
-                {renderDynamicValue(subValue, indent + 1)}
-              </View>
-            </View>
-          ))}
-        </View>
-      );
-    }
+    return (
+      <View style={[styles.nestedContainer, { marginLeft: 15 * level }]}>
+        {Object.entries(data).map(([nestedKey, nestedValue]) => (
+          <View key={nestedKey} style={styles.nestedItem}>
+            <Text style={styles.nestedLabel}>{formatKey(nestedKey)}:</Text>
+            {renderNestedDetails(nestedValue, level + 1)}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
-    if (typeof value === "boolean")
-      return (
-        <Text style={styles.dynamicDataValue}>{value ? "Yes" : "No"}</Text>
-      );
+  const renderDynamicDataItem = ({ item }) => {
+    const [key, value] = item;
 
-    return <Text style={styles.dynamicDataValue}>{value.toString()}</Text>;
+    return (
+      <View style={styles.specificationItem}>
+        {typeof value === "object" && value !== null ? (
+          <View style={styles.nestedParent}>
+            <Text style={styles.specificationTitle}>{formatKey(key)}:</Text>
+            {renderNestedDetails(value)}
+          </View>
+        ) : (
+          <View style={styles.specificationRow}>
+            <Text style={styles.specificationTitle}>{formatKey(key)}:</Text>
+            <Text style={styles.specificationValue}>{formatValue(value)}</Text>
+          </View>
+        )}
+        <View style={styles.separator} />
+      </View>
+    );
   };
 
   const renderImageSlider = () => {
@@ -414,6 +411,13 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     );
   }
 
+  // Prepare dynamic data for display
+  const dynamicData = property.dynamicData
+    ? Object.entries(property.dynamicData).filter(
+        ([_, value]) => value !== null && value !== undefined && value !== ""
+      )
+    : [];
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -450,31 +454,16 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
               <Text style={styles.detailText}>Posted on: {formattedDate}</Text>
             </View>
 
-            {property?.propertyDetails && (
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <Text style={styles.descriptionText}>
-                  {property.propertyDetails.toString()}
-                </Text>
-              </View>
-            )}
-
-            {property?.dynamicData &&
-              Object.keys(property.dynamicData).length > 0 && (
-                <View style={styles.dynamicDataContainer}>
-                  <Text style={styles.sectionTitle}>Additional Details</Text>
-                  {Object.entries(property.dynamicData).map(([key, value]) => (
-                    <View key={key} style={styles.dynamicDataRow}>
-                      <Text style={styles.dynamicDataKey}>
-                        {formatKey(key)}:
-                      </Text>
-                      <View style={styles.dynamicDataValueContainer}>
-                        {renderDynamicValue(value)}
-                      </View>
-                    </View>
+            {dynamicData.length > 0 && (
+              <View style={styles.specificationsContainer}>
+                <Text style={styles.sectionTitle}>Property Specifications</Text>
+                <View style={styles.specificationsTable}>
+                  {dynamicData.map((item, index) => (
+                    <View key={index}>{renderDynamicDataItem({ item })}</View>
                   ))}
                 </View>
-              )}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -491,7 +480,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           style={[styles.actionButton, { backgroundColor: "#D81B60" }]}
           onPress={handleEnquiry}
         >
-          {/* <FontAwesome name="envelope" size={20} color="white" /> */}
           <Text style={styles.actionButtonText}>Enquiry Now</Text>
         </TouchableOpacity>
       </View>
@@ -572,7 +560,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
-    paddingBottom: "10%",
+    paddingBottom: "20%",
+    top: 20,
   },
   scrollContent: {
     paddingBottom: 80,
@@ -616,21 +605,31 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 15,
+    backgroundColor: "white",
+    margin: 10,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
   title: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#222",
+    flex: 1,
   },
   price: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#444",
+    color: "#D81B60",
   },
   detailSection: {
     marginTop: 10,
@@ -649,38 +648,65 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginVertical: 10,
+    color: "#333",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 5,
   },
-  descriptionContainer: {},
-  descriptionText: {
-    fontSize: 14,
-    color: "#555",
+  specificationsContainer: {
+    marginTop: 15,
   },
-  dynamicDataContainer: {
-    marginTop: 10,
+  specificationsTable: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    overflow: "hidden",
   },
-  dynamicDataRow: {
-    marginBottom: 10,
+  specificationItem: {
+    backgroundColor: "#fff",
   },
-  dynamicDataKey: {
+  specificationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+  },
+  specificationTitle: {
     fontWeight: "bold",
     color: "#333",
+    width: "40%",
   },
-  dynamicDataValueContainer: {
-    marginLeft: 5,
-  },
-  dynamicDataValue: {
+  specificationValue: {
     color: "#555",
+    flex: 1,
+    textAlign: "right",
   },
-  arrayItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+  nestedParent: {
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+  },
+  nestedContainer: {
+    marginTop: 5,
   },
   nestedItem: {
     marginBottom: 5,
   },
+  nestedLabel: {
+    fontWeight: "600",
+    color: "#444",
+  },
+  nestedValue: {
+    color: "#555",
+    marginTop: 2,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginHorizontal: 15,
+  },
   buttonContainer: {
     position: "absolute",
-    bottom: "8%",
+    bottom: "15%",
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -694,13 +720,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 5,
+    width: "45%",
+    justifyContent: "center",
   },
   actionButtonText: {
     color: "white",
     marginLeft: 10,
     fontSize: 16,
+    fontWeight: "bold",
   },
   modalContainer: {
     flex: 1,
@@ -719,26 +748,30 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     marginBottom: 10,
+    borderRadius: 40,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
+    color: "#333",
   },
   modalText: {
     fontSize: 14,
     color: "#555",
     marginBottom: 5,
+    textAlign: "center",
   },
   closeButton: {
-    marginTop: 10,
+    marginTop: 15,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: "#ccc",
+    backgroundColor: "#D81B60",
     borderRadius: 5,
   },
   closeButtonText: {
-    color: "#333",
+    color: "white",
+    fontWeight: "bold",
   },
   callButton: {
     flexDirection: "row",
@@ -752,6 +785,7 @@ const styles = StyleSheet.create({
   callButtonText: {
     color: "white",
     marginLeft: 10,
+    fontWeight: "bold",
   },
   loadingContainer: {
     flex: 1,

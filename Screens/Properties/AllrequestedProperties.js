@@ -20,7 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import logo6 from "../../assets/Land.jpg";
 import logo7 from "../../assets/residntial.jpg";
-import logo8 from "../../assets/commercial.jpeg";
+import logo8 from "../../assets/commercial.jpg";
 import logo9 from "../../assets/villa.jpg";
 import logo10 from "../../assets/house.png";
 import logo11 from "../../assets/logo.png";

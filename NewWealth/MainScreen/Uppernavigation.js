@@ -16,12 +16,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useWindowDimensions } from "react-native";
 
-import LoadingScreen from "./Loadingscreen";
+export let exportedFullName = "";
+export let exportedMobileNumber = "";
 
 // Cache for user data
 let userDataCache = null;
 let lastFetchTime = 0;
-const CACHE_EXPIRY_TIME = 5 * 60 * 1000;
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
 
 export const clearHeaderCache = () => {
   userDataCache = null;
@@ -30,8 +31,7 @@ export const clearHeaderCache = () => {
 
 const Header = () => {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions(); // Add this to get screen width
-
+  const { width } = useWindowDimensions();
   const route = useRoute();
   const [showBackButton, setShowBackButton] = useState(false);
   const [userData, setUserData] = useState({
@@ -73,6 +73,27 @@ const Header = () => {
       iconActive: "star",
     },
   ];
+
+  const checkAuthAndNavigate = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main Screen" }],
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Error checking auth:", error);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main Screen" }],
+      });
+      return false;
+    }
+  }, [navigation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -145,24 +166,44 @@ const Header = () => {
   }, []);
 
   const fetchUserDetails = useCallback(async () => {
-    const now = Date.now();
-    if (userDataCache && now - lastFetchTime < CACHE_EXPIRY_TIME) {
-      setUserData({
-        details: userDataCache.details,
-        userType: userDataCache.userType,
-        loading: false,
-      });
-      return;
-    }
-
     try {
+      // First check authentication
+      const isAuthenticated = await checkAuthAndNavigate();
+      if (!isAuthenticated) return;
+
+      const now = Date.now();
+      
+      // Check AsyncStorage first
+      const cachedUserData = await AsyncStorage.getItem("userDetails");
+      if (cachedUserData) {
+        const parsedData = JSON.parse(cachedUserData);
+        userDataCache = {
+          details: parsedData,
+          userType: parsedData.userType,
+        };
+        lastFetchTime = now;
+        
+        setUserData({
+          details: parsedData,
+          userType: parsedData.userType,
+          loading: false,
+        });
+        return;
+      }
+
+      // If no cached data or cache expired, proceed with API fetch
       const [token, userType] = await Promise.all([
         AsyncStorage.getItem("authToken"),
         AsyncStorage.getItem("userType"),
       ]);
 
       if (!token || !userType) {
-        setUserData((prev) => ({ ...prev, loading: false }));
+        await AsyncStorage.removeItem("authToken");
+        await AsyncStorage.removeItem("userType");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main Screen" }],
+        });
         return;
       }
 
@@ -194,12 +235,23 @@ const Header = () => {
       }
 
       const response = await fetch(endpoint, { headers: { token } });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      
+      if (response.status === 401) {
+        // Token expired or invalid
+        await AsyncStorage.removeItem("authToken");
+        await AsyncStorage.removeItem("userType");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Main Screen" }],
+        });
+        return;
+      }
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
 
-      // Check if user is agent and has AgentType "ValueAssociate"
+   
       if (
         (userType === "WealthAssociate" || userType === "ReferralAssociate") &&
         details.AgentType === "ValueAssociate"
@@ -208,24 +260,27 @@ const Header = () => {
         await AsyncStorage.setItem("userTypevalue", "ValueAssociate");
       }
 
-      userDataCache = { details, userType: finalUserType };
+      // Store user details in AsyncStorage
+      const mobileNumber = details.MobileNumber || details.MobileIN || details.Number;
+      exportedFullName = details?.FullName || details?.Name || "User";
+      exportedMobileNumber = mobileNumber || "";
+
+      const userDataToStore = {
+        ...details,
+        userType: finalUserType,
+        mobileNumber,
+      };
+
+      await AsyncStorage.setItem("userDetails", JSON.stringify(userDataToStore));
+      userDataCache = { details: userDataToStore, userType: finalUserType };
       lastFetchTime = now;
 
-      // Store user details in AsyncStorage including mobile number
-      const mobileNumber =
-        details.MobileNumber || details.MobileIN || details.Number;
-      if (mobileNumber) {
-        await AsyncStorage.setItem(
-          "userDetails",
-          JSON.stringify({
-            ...details,
-            userType: finalUserType,
-            mobileNumber,
-          })
-        );
-      }
+      setUserData({ 
+        details: userDataToStore, 
+        userType: finalUserType, 
+        loading: false 
+      });
 
-      setUserData({ details, userType: finalUserType, loading: false });
 
       if (
         [
@@ -236,16 +291,20 @@ const Header = () => {
           "ReferralAssociate",
         ].includes(finalUserType)
       ) {
-        if (details.ReferredBy)
-          await fetchReferredDetails(details.ReferredBy, null);
+        if (details.ReferredBy) await fetchReferredDetails(details.ReferredBy, null);
       } else if (details.AddedBy) {
         await fetchReferredDetails(null, details.AddedBy);
       }
     } catch (error) {
       console.error("Header data fetch failed:", error);
-      setUserData((prev) => ({ ...prev, loading: false }));
+      await AsyncStorage.removeItem("authToken");
+      await AsyncStorage.removeItem("userType");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main Screen" }],
+      });
     }
-  }, [fetchReferredDetails]);
+  }, [checkAuthAndNavigate, fetchReferredDetails, navigation]);
 
   useEffect(() => {
     fetchUserDetails();
@@ -302,15 +361,6 @@ const Header = () => {
     "CoreMember",
     "ReferralAssociate",
   ].includes(userData.userType);
-
-  if (userData.loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color="#555" />
-        {/* <LoadingScreen/> */}
-      </View>
-    );
-  }
 
   const handleTabPress = (screenName) => {
     setActiveTab(screenName);
@@ -432,7 +482,8 @@ const Header = () => {
       </View>
     </View>
   );
-};
+      }
+
 const styles = StyleSheet.create({
   headerWrapper: {
     width: "100%",
@@ -442,7 +493,7 @@ const styles = StyleSheet.create({
     top: 20,
     padding: 0,
     margin: 0,
-    overflow: "hidden", // 🔥 just to be safe
+    overflow: "hidden",
     borderRadius: 0,
   },
   container: {
@@ -531,17 +582,9 @@ const styles = StyleSheet.create({
         width: "100%",
       },
     }),
-
     overflow: "hidden",
     backgroundColor: "#FDFDFD",
-    alignSelf: "center", // to center 80% width on web
-  },
-  headerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    height: 70,
-    backgroundColor: "#FDFDFD", // Your header color
+    alignSelf: "center",
   },
   profileInitials: {
     color: "white",

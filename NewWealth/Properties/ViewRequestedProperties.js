@@ -18,7 +18,7 @@ const { width } = Dimensions.get("window");
 import { API_URL } from "../../data/ApiUrl";
 import logo1 from "../../assets/Land.jpg";
 import logo2 from "../../assets/residntial.jpg";
-import logo3 from "../../assets/commercial.jpeg";
+import logo3 from "../../assets/commercial.jpg";
 import logo4 from "../../assets/villa.jpg";
 import logo5 from "../../assets/house.png";
 

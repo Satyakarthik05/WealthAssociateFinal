@@ -75,6 +75,9 @@ import ViewLikedProperties from "./NewWealth/Properties/ViewLikedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
 import myAgents from "./NewWealth/Myagents/Myagents";
 import LoadingScreen from "./NewWealth/MainScreen/Loadingscreen";
+import RentalPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/Rental";
+import callexestatus from "./NewWealth/MainScreen/CallExecutivesstatus";
+import Analytics from "./NewWealth/MainScreen/Analytics";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -368,6 +371,8 @@ export default function App() {
         <Stack.Screen name="regiinvestor" component={reginvestor} />
         <Stack.Screen name="addexpert" component={Addexpert} />
         <Stack.Screen name="liked" component={ViewLikedProperties} />
+        <Stack.Screen name="callexestatus" component={callexestatus} />
+        <Stack.Screen name="analytics" component={Analytics} />
 
         <Stack.Screen
           name="allreqprop"
@@ -641,6 +646,13 @@ export default function App() {
             {() => (
               <PersistentLayout>
                 <RegularProperties />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="rentalprop">
+            {() => (
+              <PersistentLayout>
+                <RentalPropertiesScreen />
               </PersistentLayout>
             )}
           </Stack.Screen>
