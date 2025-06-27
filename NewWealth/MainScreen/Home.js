@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottieView from "lottie-react-native";
+import LottiePlayer from "@lottiefiles/react-lottie-player";
 
 import { API_URL } from "../../data/ApiUrl";
 import { getCategorizedProperties } from "./PropertyStock";

@@ -25,7 +25,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottieView from "lottie-react-native";
+import LottiePlayer from "@lottiefiles/react-lottie-player";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import RNPickerSelect from "react-native-picker-select";
 
@@ -39,7 +39,8 @@ import LazyImage from "../components/home/LazyImage";
 const { width, height } = Dimensions.get("window");
 const PROPERTIES_PER_PAGE = 20;
 const IS_WEB = Platform.OS === "web";
-const IS_SMALL_VIEWPORT = width < 450 || (Platform.OS === 'web' && window.innerWidth < 450);
+const IS_SMALL_VIEWPORT =
+  width < 450 || (Platform.OS === "web" && window.innerWidth < 450);
 
 const ViewAllProperties = ({ route }) => {
   const [loading, setLoading] = useState(true);
@@ -81,13 +82,13 @@ const ViewAllProperties = ({ route }) => {
 
   useEffect(() => {
     const updateViewportWidth = () => {
-      const newWidth = Platform.OS === 'web' ? window.innerWidth : width;
+      const newWidth = Platform.OS === "web" ? window.innerWidth : width;
       setViewportWidth(newWidth);
     };
 
-    if (Platform.OS === 'web') {
-      window.addEventListener('resize', updateViewportWidth);
-      return () => window.removeEventListener('resize', updateViewportWidth);
+    if (Platform.OS === "web") {
+      window.addEventListener("resize", updateViewportWidth);
+      return () => window.removeEventListener("resize", updateViewportWidth);
     }
   }, []);
 
@@ -943,9 +944,9 @@ const ViewAllProperties = ({ route }) => {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <LottieView
-          source={require("../../assets/animations/home[1].json")}
-          autoPlay
+        <LottiePlayer
+          src={require("../../assets/animations/home[1].json")}
+          autoplay
           loop
           style={{ width: 200, height: 200 }}
         />
@@ -968,19 +969,28 @@ const ViewAllProperties = ({ route }) => {
           ref={scrollViewRef}
           style={styles.propertyScrollView}
           contentContainerStyle={styles.propertyGridContainer}
-           showsVerticalScrollIndicator={false}
-           showsHorizontalScrollIndicator={false}
-          
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
         >
           {renderHeader()}
           {renderPagination()}
 
           {paginatedProperties.length > 0 ? (
-            <View style={isSmallViewport ? styles.mobilePropertyListContainer : styles.webPropertyListContainer}>
+            <View
+              style={
+                isSmallViewport
+                  ? styles.mobilePropertyListContainer
+                  : styles.webPropertyListContainer
+              }
+            >
               {paginatedProperties.map((item) => (
                 <View
                   key={item._id}
-                  style={isSmallViewport ? styles.mobilePropertyItem : styles.webPropertyItem}
+                  style={
+                    isSmallViewport
+                      ? styles.mobilePropertyItem
+                      : styles.webPropertyItem
+                  }
                 >
                   <RenderPropertyCard property={item} />
                 </View>
@@ -1044,6 +1054,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
     paddingBottom: Platform.OS === "web" ? "45%" : "20%",
+    // height:400
   },
   contentContainer: {
     flex: 1,
@@ -1054,6 +1065,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#D8E3E7",
+    height: 700,
   },
   searchFilterContainer: {
     flexDirection: "row",
@@ -1122,9 +1134,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   webPropertyListContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     paddingHorizontal: 15,
     paddingBottom: 20,
   },
@@ -1133,11 +1145,11 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   webPropertyItem: {
-    width: '32%',
+    width: "32%",
     marginBottom: 15,
   },
   mobilePropertyItem: {
-    width: '100%',
+    width: "100%",
     marginBottom: 15,
   },
   emptyContainer: {
@@ -1198,7 +1210,7 @@ const styles = StyleSheet.create({
   filterScrollContainer: {
     maxHeight: height * 0.6,
     paddingHorizontal: 5,
-    backgroundColor:"#fff"
+    backgroundColor: "#fff",
   },
   filterSection: {
     marginBottom: 25,
@@ -1312,17 +1324,17 @@ const styles = StyleSheet.create({
   },
   propertyScrollView: {
     width: "100%",
-    backgroundColor:"#fff",
+    backgroundColor: "#fff",
     ...Platform.select({
-    web: {
-      overflow: 'hidden',
-      scrollbarWidth: 'none',  // For Firefox
-      msOverflowStyle: 'none', // For IE and Edge
-      '&::-webkit-scrollbar': {
-        display: 'none',      // For Chrome, Safari, and Opera
+      web: {
+        overflow: "hidden",
+        scrollbarWidth: "none", // For Firefox
+        msOverflowStyle: "none", // For IE and Edge
+        "&::-webkit-scrollbar": {
+          display: "none", // For Chrome, Safari, and Opera
+        },
       },
-    },
-  }),
+    }),
   },
   propertyGridContainer: {
     paddingBottom: 20,

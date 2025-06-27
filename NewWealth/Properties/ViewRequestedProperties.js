@@ -64,25 +64,35 @@ const RequestedProperties = () => {
         }
       );
       const data = await response.json();
-      const formattedProperties = data.reverse().map((item) => ({
+      
+      // Check if data exists and is an array
+      if (!data || !Array.isArray(data)) {
+        setProperties([]);
+        setLoading(false);
+        return;
+      }
+
+      const formattedProperties = data.length > 0 ? data.reverse().map((item) => ({
         id: item._id,
         title: item.propertyTitle,
         type: item.propertyType,
-        ExactLocation:item.islocation,
+        ExactLocation: item.islocation,
         location: item.location,
-        budget: `₹${item.Budget.toLocaleString()}`,
+        budget: `₹${item.Budget?.toLocaleString()}`,
         image: getImageByPropertyType(item.propertyType),
-      }));
+      })) : [];
+      
       setProperties(formattedProperties);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching properties:", error);
+      setProperties([]);
       setLoading(false);
     }
   };
 
   const getImageByPropertyType = (propertyType) => {
-    switch (propertyType.toLowerCase()) {
+    switch (propertyType?.toLowerCase()) {
       case "land":
         return logo1;
       case "residential":
@@ -148,8 +158,12 @@ const RequestedProperties = () => {
       <Text style={styles.heading}>Requested Properties</Text>
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e91e63" />
+          <ActivityIndicator size="large" color="#3E5C76" />
           <Text style={styles.loadingText}>Fetching properties...</Text>
+        </View>
+      ) : properties.length === 0 ? (
+        <View style={styles.noPropertiesContainer}>
+          <Text style={styles.noPropertiesText}>No properties requested yet</Text>
         </View>
       ) : (
         <View style={styles.grid}>
@@ -157,17 +171,15 @@ const RequestedProperties = () => {
             <View key={item.id} style={styles.card}>
               <Image source={item.image} style={styles.image} />
               <View style={styles.details}>
-                {/* Property ID Display - Added this section */}
                 <View style={styles.idContainer}>
                   <View style={styles.idBadge}>
                     <Text style={styles.idText}>ID: {getLastFourChars(item.id)}</Text>
                   </View>
                 </View>
-                
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.text}>Type: {item.type}</Text>
-                 <Text style={styles.text}>Constituency: {item.location}</Text>
-                               <Text style={styles.text}>ExactLocation: {item.ExactLocation}</Text>
+                <Text style={styles.text}>Constituency: {item.location}</Text>
+                <Text style={styles.text}>ExactLocation: {item.ExactLocation}</Text>
                 <Text style={styles.text}>Budget: {item.budget}</Text>
                 <TouchableOpacity
                   style={styles.editButton}
@@ -244,7 +256,8 @@ const styles = StyleSheet.create({
   heading: { 
     fontSize: 20, 
     fontWeight: "bold", 
-    marginBottom: 15 
+    marginBottom: 15, 
+    color:"#3E5C76"
   },
   grid: { 
     flexDirection: "row", 
@@ -269,7 +282,6 @@ const styles = StyleSheet.create({
   details: { 
     padding: 10 
   },
-  // New styles for ID display
   idContainer: {
     alignItems: "flex-end",
     marginBottom: 5,
@@ -343,6 +355,16 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     color: "#666",
+  },
+  noPropertiesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  noPropertiesText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 

@@ -469,6 +469,10 @@ const SuppliersVendors = () => {
     navigation.navigate("AddSupplier");
   };
 
+  // const handleBackPress = () => {
+  //   navigation.navigate.;
+  // };
+
   const shouldShowAddButton = () => {
     return userType === "CoreMember" || agentType === "RegionalWealthAssociate";
   };
@@ -568,6 +572,9 @@ const SuppliersVendors = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack() }style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+        </TouchableOpacity>
         <Text style={styles.title}>Suppliers & Vendors</Text>
         {shouldShowAddButton() && (
           <TouchableOpacity onPress={handleAddSupplier}>
@@ -618,10 +625,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  backButton: {
+    marginRight: 10,
+  },
   title: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
+    textAlign: 'center',
   },
   addButtonBox: {
     flexDirection: "row",
@@ -641,7 +653,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: "#666",
+    color: "black",
     marginBottom: 20,
   },
   scrollContainer: {

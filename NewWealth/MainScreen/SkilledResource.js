@@ -248,12 +248,15 @@ const SkilledResources = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
+          <TouchableOpacity onPress={() => navigation.goBack() }style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+                </TouchableOpacity>
           <Text style={styles.title}>Skilled Resources</Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={handleAddSkilledUser}
           >
-            <Text style={styles.addButtonText}>Add Skilled User</Text>
+            <Text style={styles.addButtonText}>Add {"\n"}Skilled User</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.subtitle}>
@@ -321,9 +324,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#2c3e50",
+    // 
   },
   addButton: {
     backgroundColor: "#3E5C76",
@@ -335,11 +339,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+     marginTop:"15",
+     marginLeft:"5",
+
   },
   addButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "600",
+    textAlign:"center"
+   
   },
   subtitle: {
     fontSize: 16,

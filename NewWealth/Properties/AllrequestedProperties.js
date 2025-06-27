@@ -21,7 +21,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import logo11 from "../../assets/logo.png";
 
-const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
 
 const ViewAllRequestedProperties = ({ navigation }) => {
@@ -35,21 +34,19 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const [userType, setUserType] = useState("");
-  const [windowWidth, setWindowWidth] = useState(width);
+  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"));
 
   useEffect(() => {
-    const updateDimensions = () => {
-      const { width } = Dimensions.get("window");
-      setWindowWidth(width);
+    const updateDimensions = ({ window }) => {
+      setWindowDimensions(window);
     };
 
-    Dimensions.addEventListener('change', updateDimensions);
+    const subscription = Dimensions.addEventListener('change', updateDimensions);
     return () => {
-      Dimensions.removeEventListener('change', updateDimensions);
+      subscription?.remove();
     };
   }, []);
 
-  // Enhanced property type image mapping
   const getImageByPropertyType = (propertyType) => {
     switch (propertyType.toLowerCase()) {
       case "flat(apartment)":
@@ -118,7 +115,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 
       const data = await response.json();
 
-      // Handle different response structures based on user type
       if (type === "WealthAssociate" || type === "ReferralAssociate") {
         setAgentLocation(data.Contituency || "");
         if (data.ReferredBy) {
@@ -213,7 +209,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
           item.location?.toLowerCase().includes(agentLocation.toLowerCase()),
       }));
 
-      // Sort with agent's location first
       const sortedProperties = [...formattedProperties].sort((a, b) => {
         if (a.isInMyLocation && !b.isInMyLocation) return -1;
         if (!a.isInMyLocation && b.isInMyLocation) return 1;
@@ -293,7 +288,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 
       if (response.ok) {
         Alert.alert("Success", "Property match request sent to admin");
-        fetchPropertiess(); // Refresh the list
+        fetchPropertiess();
       } else {
         Alert.alert("Error", data.message || "Failed to submit match");
       }
@@ -314,8 +309,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   }, [agentLocation]);
 
   const renderPropertyCards = () => {
-    if (isWeb && windowWidth >= 450) {
-      // Web layout - 3 cards per row when width >= 450px
+    if (isWeb && windowDimensions.width >= 450) {
       const rows = [];
       for (let i = 0; i < filteredProperties.length; i += 3) {
         const rowProperties = filteredProperties.slice(i, i + 3);
@@ -331,7 +325,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
       }
       return rows;
     } else {
-      // Mobile layout or web when width < 450px - 1 card per row
       return filteredProperties.map((item, index) => (
         <View key={index} style={styles.propertyCard}>
           {renderPropertyCard(item)}
@@ -386,7 +379,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         )}
       </View>
 
-      <View style={[styles.searchContainer, windowWidth < 450 && styles.smallScreenSearchContainer]}>
+      <View style={[styles.searchContainer, windowDimensions.width < 450 && styles.smallScreenSearchContainer]}>
         <View style={styles.searchInputContainer}>
           <Ionicons
             name="search"
@@ -401,7 +394,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
             onChangeText={handleSearch}
           />
         </View>
-        <View style={[styles.filterContainer, windowWidth < 450 && styles.smallScreenFilterContainer]}>
+        <View style={[styles.filterContainer, windowDimensions.width < 450 && styles.smallScreenFilterContainer]}>
           <Picker
             selectedValue={filterType}
             style={styles.filterPicker}
@@ -419,7 +412,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#E91E63" />
+          <ActivityIndicator size="large" color="#3E5C76" />
           <Text style={styles.loadingText}>Loading properties...</Text>
         </View>
       ) : filteredProperties.length === 0 ? (
@@ -443,7 +436,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, windowWidth < 450 && styles.smallScreenModalContainer]}>
+          <View style={[styles.modalContainer, windowDimensions.width < 450 && styles.smallScreenModalContainer]}>
             {referredInfo ? (
               <>
                 <Image source={logo11} style={styles.agentLogo} />

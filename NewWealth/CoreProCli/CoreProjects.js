@@ -46,7 +46,7 @@ const CoreProjects = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#D81B60" />
+        <ActivityIndicator size="large" color="#3E5C76" />
       </View>
     );
   }

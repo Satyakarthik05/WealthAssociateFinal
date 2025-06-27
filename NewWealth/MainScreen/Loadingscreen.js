@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Dimensions, Text, Animated } from "react-native";
-import LottieView from "lottie-react-native";
+import LottiePlayer from "@lottiefiles/react-lottie-player";
 
 const LoadingScreen = () => {
   const bounceValue = useRef(new Animated.Value(0)).current;
@@ -24,9 +24,9 @@ const LoadingScreen = () => {
 
   return (
     <View style={styles.container}>
-      <LottieView
-        source={require("../../assets/animations/home[1].json")}
-        autoPlay
+      <LottiePlayer
+        src={require("../../assets/animations/home[1].json")}
+        autoplay
         loop
         style={styles.animation}
       />
@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
     height: 200,
   },
   text: {
-    // marginTop: 20,
     fontSize: 10,
     fontWeight: "600",
     color: "#333",
