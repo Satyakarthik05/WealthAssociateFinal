@@ -14,7 +14,7 @@ import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
-import LottiePlayer from '@lottiefiles/react-lottie-player';
+import LottieView from "lottie-react-native";
 
 import MyAgents from "../Myagents/Myagents";
 import MyCustomersScreen from "../Mycustomers/MyCustomers";
@@ -153,9 +153,9 @@ export default function Add_Member() {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <LottiePlayer
-          src={require("../../assets/animations/agentanimation.json")}
-          autoplay
+        <LottieView
+          source={require("../../assets/animations/agentanimation.json")}
+          autoPlay
           loop
           style={{ width: 300, height: 300 }}
         />

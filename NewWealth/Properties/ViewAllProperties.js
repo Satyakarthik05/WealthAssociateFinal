@@ -25,7 +25,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottiePlayer from "@lottiefiles/react-lottie-player";
+import LottieView from "lottie-react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import RNPickerSelect from "react-native-picker-select";
 
@@ -39,8 +39,7 @@ import LazyImage from "../components/home/LazyImage";
 const { width, height } = Dimensions.get("window");
 const PROPERTIES_PER_PAGE = 20;
 const IS_WEB = Platform.OS === "web";
-const IS_SMALL_VIEWPORT =
-  width < 450 || (Platform.OS === "web" && window.innerWidth < 450);
+const IS_SMALL_SCREEN = width < 450;
 
 const ViewAllProperties = ({ route }) => {
   const [loading, setLoading] = useState(true);
@@ -73,27 +72,12 @@ const ViewAllProperties = ({ route }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [tabContentWidth, setTabContentWidth] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(width);
 
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
   const scrollViewRef = useRef(null);
   const tabScrollViewRef = useRef(null);
-
-  useEffect(() => {
-    const updateViewportWidth = () => {
-      const newWidth = Platform.OS === "web" ? window.innerWidth : width;
-      setViewportWidth(newWidth);
-    };
-
-    if (Platform.OS === "web") {
-      window.addEventListener("resize", updateViewportWidth);
-      return () => window.removeEventListener("resize", updateViewportWidth);
-    }
-  }, []);
-
-  const isSmallViewport = viewportWidth < 450;
 
   useEffect(() => {
     if (!loading) {
@@ -533,7 +517,6 @@ const ViewAllProperties = ({ route }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.pageNumbersContainer}
         >
           {Array.from(
@@ -667,7 +650,6 @@ const ViewAllProperties = ({ route }) => {
             ref={tabScrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.tabContainer}
             onScroll={handleTabScroll}
             scrollEventThrottle={16}
@@ -782,7 +764,7 @@ const ViewAllProperties = ({ route }) => {
               onPress={scrollTabsRight}
               activeOpacity={0.7}
             >
-              <Ionicons name="chevron-forward" size={24} color="#fff" />
+              <Ionicons name="chevron-forward" size={24} color="#E91E63" />
             </TouchableOpacity>
           )}
         </View>
@@ -828,7 +810,7 @@ const ViewAllProperties = ({ route }) => {
               <View
                 style={[
                   styles.filterModalContent,
-                  isSmallViewport
+                  IS_SMALL_SCREEN
                     ? styles.smallScreenModal
                     : styles.largeScreenModal,
                 ]}
@@ -839,7 +821,6 @@ const ViewAllProperties = ({ route }) => {
                 <ScrollView
                   style={styles.filterScrollContainer}
                   showsVerticalScrollIndicator={false}
-                  showsHorizontalScrollIndicator={false}
                 >
                   <View style={styles.filterSection}>
                     <Text style={styles.filterLabel}>Property Type</Text>
@@ -862,7 +843,7 @@ const ViewAllProperties = ({ route }) => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#3E5C76"
+                          color="#E91E63"
                         />
                       )}
                     />
@@ -889,7 +870,7 @@ const ViewAllProperties = ({ route }) => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#3E5C76"
+                          color="#E91E63"
                         />
                       )}
                     />
@@ -961,16 +942,15 @@ const ViewAllProperties = ({ route }) => {
       filterCriteria,
       resetFilters,
       applyFilters,
-      isSmallViewport,
     ]
   );
 
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <LottiePlayer
-          src={require("../../assets/animations/home[1].json")}
-          autoplay
+        <LottieView
+          source={require("../../assets/animations/home[1].json")}
+          autoPlay
           loop
           style={{ width: 200, height: 200 }}
         />
@@ -993,27 +973,17 @@ const ViewAllProperties = ({ route }) => {
           ref={scrollViewRef}
           style={styles.propertyScrollView}
           contentContainerStyle={styles.propertyGridContainer}
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
         >
           {renderHeader()}
           {renderPagination()}
 
           {paginatedProperties.length > 0 ? (
-            <View
-              style={
-                isSmallViewport
-                  ? styles.mobilePropertyListContainer
-                  : styles.webPropertyListContainer
-              }
-            >
+            <View style={styles.propertyListContainer}>
               {paginatedProperties.map((item) => (
                 <View
                   key={item._id}
                   style={
-                    isSmallViewport
-                      ? styles.mobilePropertyItem
-                      : styles.webPropertyItem
+                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
                   }
                 >
                   <RenderPropertyCard property={item} />
@@ -1078,19 +1048,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
     paddingBottom: Platform.OS === "web" ? "45%" : "20%",
-    // height:400
   },
   contentContainer: {
     flex: 1,
     width: "100%",
-   
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#D8E3E7",
-    height: 700,
   },
   searchFilterContainer: {
     flexDirection: "row",
@@ -1155,22 +1122,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 5,
     padding: 8,
-    backgroundColor: "#3E5C76",
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderRadius: 20,
   },
-  webPropertyListContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 15,
-    paddingBottom: 20,
-  },
-  mobilePropertyListContainer: {
+  propertyListContainer: {
     paddingHorizontal: 15,
     paddingBottom: 20,
   },
   webPropertyItem: {
     width: "32%",
+    marginRight: "1%",
     marginBottom: 15,
   },
   mobilePropertyItem: {
@@ -1235,7 +1196,6 @@ const styles = StyleSheet.create({
   filterScrollContainer: {
     maxHeight: height * 0.6,
     paddingHorizontal: 5,
-    backgroundColor: "#fff",
   },
   filterSection: {
     marginBottom: 25,
@@ -1275,7 +1235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   resetFilterButton: {
-    backgroundColor: "#3E5C76",
+    backgroundColor: "#f0f0f0",
     flex: 1,
     marginRight: 10,
     padding: 12,
@@ -1296,7 +1256,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetFilterButtonText: {
-    color: "#fff",
+    color: "#666",
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,
@@ -1349,17 +1309,6 @@ const styles = StyleSheet.create({
   },
   propertyScrollView: {
     width: "100%",
-    backgroundColor: "#fff",
-    ...Platform.select({
-      web: {
-        overflow: "hidden",
-        scrollbarWidth: "none", // For Firefox
-        msOverflowStyle: "none", // For IE and Edge
-        "&::-webkit-scrollbar": {
-          display: "none", // For Chrome, Safari, and Opera
-        },
-      },
-    }),
   },
   propertyGridContainer: {
     paddingBottom: 20,

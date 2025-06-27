@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import LottiePlayer from "@lottiefiles/react-lottie-player";
+import LottieView from "lottie-react-native";
 
 import { API_URL } from "../../data/ApiUrl";
 import { getCategorizedProperties } from "./PropertyStock";
@@ -48,7 +48,7 @@ const HomeScreen = () => {
     approvedProperties: [],
     wealthProperties: [],
     listedProperties: [],
-    rentalProperties:[]
+    rentalProperties: [],
   });
 
   const navigation = useNavigation();
@@ -655,7 +655,7 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-       
+
         {propertyCategories.rentalProperties.length > 0 && (
           <>
             <SectionHeader
