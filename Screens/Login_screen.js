@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
+ 
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +23,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import logo1 from "../assets/logo2.png";
 import logo2 from "../assets/logosub.png";
+import NetInfo from "@react-native-community/netinfo";
 
 export default function LoginScreen() {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -30,6 +32,7 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginType, setLoginType] = useState("");
+  const [isConnected, setIsConnected] = useState(true);
   const navigation = useNavigation();
   const [adminData, setAdminData] = useState(null);
   const [clickCount, setClickCount] = useState(0);
@@ -49,9 +52,49 @@ export default function LoginScreen() {
   };
 
   useEffect(() => {
+    // Subscribe to network state updates
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+      if (!state.isConnected) {
+        Alert.alert(
+          "No Internet Connection",
+          "Please turn on your internet connection to continue",
+          [
+            {
+              text: "OK",
+              onPress: () => console.log("OK Pressed"),
+            },
+          ]
+        );
+      }
+    });
+
     fetchAdminData();
     getLoginType();
+
+    return () => {
+      // Unsubscribe to network state updates
+      unsubscribe();
+    };
   }, []);
+
+  const checkInternetConnection = async () => {
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+      Alert.alert(
+        "No Internet Connection",
+        "Please turn on your internet connection to continue",
+        [
+          {
+            text: "OK",
+            onPress: () => console.log("OK Pressed"),
+          },
+        ]
+      );
+      return false;
+    }
+    return true;
+  };
 
   const getLoginType = async () => {
     try {
@@ -65,6 +108,8 @@ export default function LoginScreen() {
   };
 
   const fetchAdminData = async () => {
+    if (!(await checkInternetConnection())) return;
+
     try {
       const response = await fetch(`${API_URL}/admindata`);
       if (!response.ok) {
@@ -74,13 +119,15 @@ export default function LoginScreen() {
       setAdminData(data);
     } catch (error) {
       console.error("Error fetching admin data:", error);
-      Alert.alert("Error", "Failed to fetch admin data.");
+      Alert.alert("Error", "Server Busy try again later");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogin = async () => {
+    if (!(await checkInternetConnection())) return;
+
     if (
       mobileNumber === `${adminData?.UserName}` &&
       password === `${adminData?.Password}`
@@ -250,6 +297,15 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 )}
 
+                {!isConnected && (
+                  <View style={styles.offlineContainer}>
+                    <Text style={styles.offlineText}>
+                      No internet connection. Please check your network
+                      settings.
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.header}>
                   <Image
                     source={logo2}
@@ -282,6 +338,7 @@ export default function LoginScreen() {
                         onChangeText={setMobileNumber}
                         keyboardType="phone-pad"
                         autoCapitalize="none"
+                        editable={isConnected}
                       />
                       <Icon
                         name="call-outline"
@@ -303,10 +360,12 @@ export default function LoginScreen() {
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
+                        editable={isConnected}
                       />
                       <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
                         style={styles.eyeIcon}
+                        disabled={!isConnected}
                       >
                         <Icon
                           name={
@@ -324,9 +383,10 @@ export default function LoginScreen() {
                       style={[
                         styles.loginButton,
                         loading && styles.disabledButton,
+                        !isConnected && styles.disabledButton,
                       ]}
                       onPress={handleLogin}
-                      disabled={loading}
+                      disabled={loading || !isConnected}
                     >
                       {loading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
@@ -338,8 +398,14 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       style={styles.forgotPassword}
                       onPress={() => navigation.navigate("Forgetpassword")}
+                      disabled={!isConnected}
                     >
-                      <Text style={styles.forgotPasswordText}>
+                      <Text
+                        style={[
+                          styles.forgotPasswordText,
+                          !isConnected && { color: "#999" },
+                        ]}
+                      >
                         Forgot your password?
                       </Text>
                     </TouchableOpacity>
@@ -531,5 +597,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 16,
     paddingHorizontal: 16,
+  },
+  offlineContainer: {
+    backgroundColor: "#FFEBEE",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  offlineText: {
+    color: "#D32F2F",
+    textAlign: "center",
+    fontFamily: "Cairo-SemiBold",
   },
 });
