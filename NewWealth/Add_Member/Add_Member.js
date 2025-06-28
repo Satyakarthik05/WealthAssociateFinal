@@ -523,9 +523,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 16,
     textAlign: "center",
     color: "#555",
+    fontFamily: "OpenSanssemibold",
     paddingHorizontal: 2,
   },
   tabsContainer: {
@@ -612,6 +613,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     flex: 1,
+    fontFamily: "OpenSanssemibold",
   },
   modalCancelButton: {
     padding: 15,

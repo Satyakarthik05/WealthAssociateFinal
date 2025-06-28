@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  useWindowDimensions,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
@@ -21,9 +22,9 @@ import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
-const { width } = Dimensions.get("window");
-
 const NRI_Profile = ({ onDetailsUpdates }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 450 || Platform.OS !== "web";
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -207,7 +208,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
           text: "OK",
           onPress: async () => {
             Alert.alert(
-              "Your delete account request is successfuly submited our executive will reach  you out soon to confirm"
+              "Your delete account request is successfuly submited our executive will reach you out soon to confirm"
             );
           },
         },
@@ -217,8 +218,23 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.scrollContainer,
+        { paddingBottom: isMobile ? 100 : 60 },
+      ]}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            width: isMobile ? "100%" : "80%",
+            padding: isMobile ? 10 : 20,
+          },
+        ]}
+      >
         <Text style={styles.agentProfileText}>NRI Profile</Text>
         {loading ? (
           <ActivityIndicator
@@ -254,9 +270,19 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                   </TouchableOpacity>
                 )}
               </View>
+              <Text style={styles.profileName}>{Details.Name}</Text>
             </View>
             <View style={styles.profileCard}>
-              <View style={styles.profileForm}>
+              <View
+                style={[
+                  styles.profileForm,
+                  {
+                    flexDirection: isMobile ? "column" : "row",
+                    flexWrap: isMobile ? "nowrap" : "wrap",
+                    justifyContent: isMobile ? "flex-start" : "space-between",
+                  },
+                ]}
+              >
                 {profileFields.map(({ label, icon, key }) => (
                   <CustomInput
                     key={key}
@@ -264,6 +290,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                     icon={icon}
                     value={Details[key]}
                     labelStyle={styles.label}
+                    isMobile={isMobile}
                   />
                 ))}
               </View>
@@ -290,12 +317,9 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                 <Text style={styles.buttonTexts}>Delete Your Account </Text>
               </TouchableOpacity>
             </View>
-            {/* // Update the CustomModal usage to include proper animation */}
             <CustomModal
               isVisible={modalVisible}
               closeModal={() => setModalVisible(false)}
-              animationType="slide"
-              style={styles.modal}
             >
               <Modify_Deatils
                 closeModal={() => {
@@ -315,14 +339,19 @@ const profileFields = [
   { label: "Full Name", icon: "user", key: "Name" },
   { label: "MobileIN", icon: "phone", key: "MobileIN" },
   { label: "Locality", icon: "map", key: "Locality" },
-  { label: "Country", icon: "briefcase", key: "Country" },
+  { label: "Country", icon: "map", key: "Country" },
   { label: "Occupation", icon: "briefcase", key: "Occupation" },
 ];
 
-const CustomInput = ({ label, icon, value }) => (
-  <View style={styles.inputWrapper}>
+const CustomInput = ({ label, icon, value, isMobile }) => (
+  <View style={[styles.inputWrapper, { width: isMobile ? "100%" : "30%" }]}>
     <Text style={styles.inputLabel}>{label}</Text>
-    <View style={styles.inputContainer}>
+    <View
+      style={[
+        styles.inputContainer,
+        { width: isMobile ? "100%" : "100%" },
+      ]}
+    >
       <TextInput
         style={styles.input}
         value={value || "-"}
@@ -336,13 +365,16 @@ const CustomInput = ({ label, icon, value }) => (
 
 const styles = StyleSheet.create({
   agentProfileText: {
-    fontWeight: "600",
+    fontWeight: "bold",
     fontSize: 20,
-    // paddingBottom: "20%",
+    marginBottom: 10,
+    fontFamily: "OpenSanssemibold",
   },
   scrollContainer: {
     flexGrow: 1,
-    // paddingBottom: "10%",
+    backgroundColor: "#D8E3E7",
+    paddingTop: 20,
+    paddingBottom: 100,
   },
   container: {
     flex: 1,
@@ -357,9 +389,9 @@ const styles = StyleSheet.create({
     flexWrap: Platform.OS === "web" ? "wrap" : "nowrap",
     justifyContent: Platform.OS === "web" ? "space-between" : "flex-start",
     width: "100%",
-    fontWeight: "600",
+    fontWeight: 600,
+    backgroundColor: "FDFDFD",
     fontSize: 16,
-    backgroundColor: "#FDFDFD",
   },
   inputWrapper: {
     width: Platform.OS === "web" ? "30%" : "100%",
@@ -371,6 +403,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 10,
     borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
     width: Platform.OS === "web" ? "100%" : 240,
   },
@@ -395,9 +431,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   buttonContainer: {
-    display: "flex",
     flexDirection: "row",
     justifyContent: "space-evenly",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 10,
   },
   label: {
     fontSize: 40,
@@ -406,14 +444,18 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 10,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 10,
   },
   loader: {
     marginTop: 50,
   },
   profileHeader: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 5,
   },
   profileCard: {
     width: Platform.OS === "web" ? "80%" : "100%",
@@ -447,11 +489,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-  },
-  modal: {
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 0,
   },
 });
 

@@ -233,7 +233,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingTop: 60,
+            paddingTop: 80,
             minHeight: "100%",
             paddingBottom: 120,
             alignItems: "center",
@@ -250,10 +250,10 @@ const RequestedPropertyForm = ({ closeModal }) => {
             style={[
               styles.formContainer,
               {
-                width: isMobileView ? "90%" : "40%",
+                width: isMobileView ? "85%" : "35%",
                 backgroundColor: "#fff",
                 padding: 16,
-                borderRadius: 10,
+                borderRadius: 30,
                 elevation: 5,
                 shadowColor: "#000",
                 shadowOpacity: 0.1,
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    borderRadius: 5,
+    borderRadius: 20,
     paddingBottom: 40,
     padding: 30,
     paddingRight: 30,
@@ -489,14 +489,13 @@ const styles = StyleSheet.create({
     height: "100vh",
   },
   title: {
-    fontSize: 21,
-    fontWeight: "400",
+    fontSize: 20,
+    fontWeight: "bold",
     textAlign: "center",
     color: "#2B2D42",
     backgroundColor: "#D8E3E7",
     width: "115%",
-    left: -21,
-    height: 45,
+    height: 50,
     top: 0,
     borderRadius: 20,
     display: "flex",
@@ -507,7 +506,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 20,
     shadowOffset: { width: 0, height: 1 },
@@ -517,10 +516,10 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   label: {
-    fontSize: 12,
+    fontSize: 16,
     marginBottom: 8,
     color: "#2B2D42",
-    fontWeight: "500",
+    fontFamily: "OpenSanssemibold",
   },
   inputContainer: {
     flexDirection: "row",

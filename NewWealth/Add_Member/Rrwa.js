@@ -893,6 +893,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "500",
+    fontFamily: "OpenSanssemibold",
     textAlign: "center",
   },
   loadingIndicator: {
@@ -933,11 +934,12 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'ios' ? 200 : 0,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",
     color: "#2B2D42",
+    fontFamily: "OpenSanssemibold",
   },
   searchContainer: {
     position: "relative",

@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   backButton: {
-    backgroundColor: "#A9BCD0",
+    backgroundColor: "#3E5C76",
     paddingTop: 14, // increased top padding
     paddingBottom: 12,
     paddingHorizontal: 24,
@@ -225,17 +225,19 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#282D42",
+    color: "white",
     textAlign: "center",
     textTransform: "uppercase",
     letterSpacing: 0.6,
+    fontFamily: "OpenSanssemibold",
   },
   header: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
     width: "100%",
+    fontFamily: "OpenSanssemibold",
   },
   scrollView: {
     width: "100%",
@@ -269,18 +271,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   expertName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
+    fontFamily: "OpenSanssemibold",
   },
   expertDetails: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#555",
     textAlign: "center",
+    fontFamily: "OpenSanssemibold",
   },
   label: {
-    fontWeight: "bold",
+    fontWeight: "normal",
     color: "#333",
+    fontFamily: "OpenSanssemibold",
   },
   noExperts: {
     textAlign: "center",
@@ -303,11 +308,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
     width: "100%",
+    fontFamily: "OpenSanssemibold",
   },
   requestButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+    fontFamily: "OpenSanssemibold",
   },
   bottomSpacing: {
     height: 20,

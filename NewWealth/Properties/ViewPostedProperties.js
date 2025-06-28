@@ -262,7 +262,7 @@ const ViewPostedProperties = () => {
                 <MaterialIcons
                   name={showFilterList ? "arrow-drop-up" : "arrow-drop-down"}
                   size={24}
-                  color="#E82E5F"
+                  color="#3E5C76"
                   style={styles.icon}
                 />
               </TouchableOpacity>
@@ -287,7 +287,7 @@ const ViewPostedProperties = () => {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E82E5F" style={styles.loader} />
+        <ActivityIndicator size="large" color="#3E5C76" style={styles.loader} />
       ) : properties.length === 0 ? (
         <Text>No properties available.</Text>
       ) : (
@@ -428,8 +428,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   filterButton: {
-    width: "100%",
-    height: 47,
+    // width: "100%",
+    width: Platform.OS === "web"  ? "230%" : "100%",
+    height: 37,
     backgroundColor: "#FFF",
     borderRadius: 10,
     paddingHorizontal: 10,
@@ -458,6 +459,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+    width: Platform.OS === "web"  ? "280%" : "100%",
     backgroundColor: "#FFF",
     borderColor: "#ccc",
     borderWidth: 1,

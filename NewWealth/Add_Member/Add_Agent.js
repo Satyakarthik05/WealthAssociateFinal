@@ -625,7 +625,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignContent: "center",
     fontSize: 20,
-    color: "#ccc",
+    color: "black",
+    fontFamily: "OpenSanssemibold",
   },
   card: {
     display: "flex",
@@ -692,6 +693,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     color: "#191919",
+    fontFamily: "OpenSanssemibold",
   },
   row: {
     flexDirection: "row",
@@ -713,13 +715,15 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "400",
+    fontFamily: "OpenSanssemibold",
   },
   loginText: {
     marginTop: 20,
     fontSize: 16,
     color: "#E82E5F",
+    fontFamily: "OpenSanssemibold",
   },
   loginLink: {
     fontWeight: "bold",
