@@ -151,8 +151,8 @@ export const getCategorizedProperties = async () => {
     (property) => getPropertyTag(property.createdAt) === "Listed Property"
   );
   const rentalProperties = properties.filter(
-    (property) => property.propertyType && 
-    property.propertyType.toUpperCase() === "RENTAL"
+    (property) =>
+      property.propertyType && property.propertyType.toUpperCase() === "RENTAL"
   );
 
   return {
