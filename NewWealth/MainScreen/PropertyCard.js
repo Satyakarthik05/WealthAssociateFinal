@@ -8,92 +8,176 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import ViewShot from "react-native-view-shot";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { ActivityIndicator } from "react-native";
+import { exportedFullName, exportedMobileNumber } from "../MainScreen/Uppernavigation";
+
+console.log("Name:", exportedFullName);
+console.log("Mobile:", exportedMobileNumber);
+
 
 const PropertyCard = () => {
   const route = useRoute();
+  const navigation = useNavigation();
+  const viewShotRef = useRef();
+
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [agentImage, setAgentImage] = useState(null);
-  const viewShotRef = useRef();
-  const navigation = useNavigation();
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [agentImage, setAgentImage] = useState(require("../../assets/man.png"));
+  const [isSharing, setIsSharing] = useState(false);
+  const [userData, setUserData] = useState({
+    FullName: "Wealth Associate",
+    mobile: "",
+  });
 
   useEffect(() => {
-    const loadProperty = async () => {
+    const getUserDetails = async () => {
       try {
-        setLoading(true);
-
-        // First try to get property from AsyncStorage
-        const storedProperty = await AsyncStorage.getItem("sharedProperty");
-        if (storedProperty) {
-          setProperty(JSON.parse(storedProperty));
-          return;
+        const storedData = await AsyncStorage.getItem("userDetails");
+        console.log("Stored user details:", storedData);
+        if (storedData !== null) {
+          const parsedData = JSON.parse(storedData);
+          setUserData({
+            FullName: parsedData.FullName || "Wealth Associate",
+            mobile: parsedData.MobileNumber || parsedData.mobileNumber || "",
+          });
         }
-
-        // If not in AsyncStorage, use route params
-        if (route.params?.property) {
-          setProperty(route.params.property);
-        }
-      } catch (error) {
-        console.error("Error loading property:", error);
-        Alert.alert("Error", "Failed to load property details");
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error("Failed to load user details", e);
       }
     };
 
-    loadProperty();
-
-    const fetchAgentImage = async () => {
-      try {
-        const imageUri = await AsyncStorage.getItem("agentImage");
-        if (imageUri) {
-          setAgentImage({ uri: imageUri });
-        } else {
-          setAgentImage(require("../../assets/man.png"));
-        }
-      } catch (error) {
-        console.error("Error fetching agent image:", error);
-        setAgentImage(require("../../assets/man.png"));
-      }
-    };
-
-    fetchAgentImage();
+    getUserDetails();
   }, []);
 
-  const handleShare = async () => {
+  const loadData = async () => {
     try {
-      const uri = await viewShotRef.current.capture();
-      await Sharing.shareAsync(uri);
+      setLoading(true);
+      
+      // Load property data
+      const storedProperty = await AsyncStorage.getItem("sharedProperty");
+      if (storedProperty) {
+        const parsedProperty = JSON.parse(storedProperty);
+        console.log("Loaded property from storage:", parsedProperty);
+        setProperty(parsedProperty);
+      } else if (route.params?.property) {
+        console.log("Loaded property from route params:", route.params.property);
+        setProperty(route.params.property);
+      }
+
+      // Load agent image
+      try {
+        const savedAgentImage = await AsyncStorage.getItem("agentImage");
+        if (savedAgentImage) {
+          const fileExists = await FileSystem.getInfoAsync(savedAgentImage);
+          if (fileExists.exists) {
+            console.log("Loading agent image from storage:", savedAgentImage);
+            setAgentImage({ uri: savedAgentImage });
+            return;
+          }
+        }
+        
+        // If no saved image, check if property has photo
+        if (property?.photo) {
+          console.log("Loading agent image from property:", property.photo);
+          setAgentImage({ uri: property.photo });
+        }
+      } catch (imageError) {
+        console.error("Error loading agent image:", imageError);
+        setAgentImage(require("../../assets/man.png"));
+      }
     } catch (error) {
-      console.error("Error sharing:", error);
+      console.error("Error loading data:", error);
+      Alert.alert("Error", "Failed to load property details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [route.params?.property]);
+
+  const handleShare = async () => {
+    if (!viewShotRef.current) {
+      Alert.alert("Error", "Sharing component not ready");
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      const uri = await viewShotRef.current.capture({
+        format: "jpg",
+        quality: 0.9,
+      });
+
+      if (!uri) throw new Error("Failed to capture image");
+
+      const fileUri = FileSystem.cacheDirectory + "shared-property.jpg";
+      await FileSystem.copyAsync({ from: uri, to: fileUri });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          "Sharing Not Available",
+          "Sharing is not supported on this device"
+        );
+        return;
+      }
+
+      const { propertyType, location, price, fullName, mobile, PostedBy } = property || {};
+      const contactName = fullName || userData.FullName;
+      const contactNumber = mobile || PostedBy || userData.mobile;
+
+      const message = `Check out this ${propertyType || "property"} in ${
+        location || "a great location"
+      } for ₹${price || "contact for price"}\n\nContact: ${contactName} (${contactNumber})`;
+
+      await Sharing.shareAsync(fileUri, {
+        dialogTitle: "Property For Sale",
+        mimeType: "image/jpeg",
+        UTI: "image/jpeg",
+        message: message,
+      });
+    } catch (error) {
+      console.error("Sharing failed:", error);
       Alert.alert("Error", "Failed to share property");
+    } finally {
+      setIsSharing(false);
     }
   };
 
   const handleCall = () => {
-    if (property?.mobile) {
-      Linking.openURL(`tel:${property.mobile}`);
-    } else if (property?.PostedBy) {
-      Linking.openURL(`tel:${property.PostedBy}`);
+    const phoneNumber = property?.mobile || property?.PostedBy || userData.mobile;
+    if (phoneNumber) {
+      Linking.openURL(`tel:${phoneNumber}`);
     } else {
       Alert.alert("Info", "Phone number not available");
     }
   };
 
+  const handleAppStorePress = (isIOS) => {
+    Linking.openURL(
+      isIOS
+        ? "https://apps.apple.com/in/app/wealth-associate/id6743356719"
+        : "https://play.google.com/store/apps/details?id=com.wealthassociates.alpha"
+    );
+  };
+
   const handleCancel = async () => {
     try {
-      // Remove the stored property when closing
       await AsyncStorage.removeItem("sharedProperty");
       navigation.goBack();
     } catch (error) {
-      console.error("Error removing property from storage:", error);
+      console.error("Error removing property:", error);
       navigation.goBack();
     }
   };
@@ -109,7 +193,14 @@ const PropertyCard = () => {
   if (!property) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.noPropertyText}>No property data found</Text>
+        <Text style={styles.noPropertyText}>No property data available</Text>
+        <Text style={styles.debugText}>
+          User Data: {JSON.stringify(userData, null, 2)}
+        </Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
+          <FontAwesome name="refresh" size={16} color="#fff" />
+          <Text style={styles.refreshButtonText}>Refresh</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.closeButton} onPress={handleCancel}>
           <Text style={styles.closeButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -122,9 +213,9 @@ const PropertyCard = () => {
     location = "Location not specified",
     price = "Price not available",
     propertyType = "Property",
+    fullName = exportedFullName,
+    mobile = userData.mobile,
     PostedBy = "",
-    fullName = "Wealth Associate",
-    mobile = "",
   } = property;
 
   return (
@@ -149,11 +240,34 @@ const PropertyCard = () => {
             <Text style={styles.forSaleText}>PROPERTY FOR SALE</Text>
 
             {/* Property Image */}
-            <Image
-              source={{ uri: photo || "https://via.placeholder.com/300" }}
-              style={styles.propertyImage}
-              defaultSource={require("../../assets/logosub.png")}
-            />
+            <View style={styles.imageContainer}>
+              {imageLoading && (
+                <ActivityIndicator
+                  size="large"
+                  color="#1a237e"
+                  style={styles.loadingIndicator}
+                />
+              )}
+              <Image
+                source={{ uri: photo || "https://via.placeholder.com/300" }}
+                style={styles.propertyImage}
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => setImageLoading(false)}
+                onError={() => {
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+                defaultSource={require("../../assets/logosub.png")}
+              />
+              {imageError && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Image not available</Text>
+                </View>
+              )}
+              <View style={styles.priceTag}>
+                <Text style={styles.priceText}>₹{price}</Text>
+              </View>
+            </View>
 
             {/* Property Details */}
             <View style={styles.detailsContainer}>
@@ -163,7 +277,25 @@ const PropertyCard = () => {
               <Text style={styles.location}>
                 LOCATION: {location.toUpperCase()}
               </Text>
-              <Text style={styles.price}>₹{price}</Text>
+            </View>
+
+            {/* Agent Info */}
+            <View style={styles.agentInfo}>
+              <Image
+                source={agentImage}
+                style={styles.agentImage}
+                onError={() => {
+                  console.log("Error loading agent image, falling back to default");
+                  setAgentImage(require("../../assets/man.png"));
+                }}
+                defaultSource={require("../../assets/man.png")}
+              />
+              <View style={styles.agentDetails}>
+                <Text style={styles.agentName}>{exportedFullName}</Text>
+                <Text style={styles.agentPhone}>
+                  {mobile || PostedBy || userData.mobile || "Contact for details"}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -171,14 +303,22 @@ const PropertyCard = () => {
           <View style={styles.footer}>
             <Text style={styles.downloadText}>DOWNLOAD OUR APP</Text>
             <View style={styles.appButtons}>
-              <TouchableOpacity style={styles.appButton}>
-                <FontAwesome name="android" size={16} color="#000" />
-                <Text style={styles.buttonText}>Play Store</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.appButton}>
-                <FontAwesome name="apple" size={16} color="#000" />
-                <Text style={styles.buttonText}>App Store</Text>
-              </TouchableOpacity>
+              {[false, true].map((isIOS, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.appButton}
+                  onPress={() => handleAppStorePress(isIOS)}
+                >
+                  <FontAwesome
+                    name={isIOS ? "apple" : "android"}
+                    size={16}
+                    color="#000"
+                  />
+                  <Text style={styles.buttonText}>
+                    {isIOS ? "App Store" : "Play Store"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </ViewShot>
@@ -188,9 +328,23 @@ const PropertyCard = () => {
           <TouchableOpacity style={styles.callButton} onPress={handleCancel}>
             <Text style={styles.callButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <FontAwesome name="whatsapp" size={16} color="#fff" />
-            <Text style={styles.shareButtonText}>Share</Text>
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={handleShare}
+            disabled={isSharing}
+          >
+            {isSharing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <FontAwesome name="whatsapp" size={16} color="#fff" />
+                <Text style={styles.shareButtonText}>Share</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.callAgentButton} onPress={handleCall}>
+            <FontAwesome name="phone" size={16} color="#fff" />
+            <Text style={styles.callButtonText}>Call</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -201,32 +355,56 @@ const PropertyCard = () => {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    paddingVertical: 10,
-    paddingBottom: "20%",
+    paddingBottom: "50%",
+    paddingTop:"10%"
   },
   container: {
-    width: 330,
-    marginLeft: 17,
+    width: "90%",
+    alignSelf: "center",
     flex: 1,
     backgroundColor: "#f5f5f5",
-    paddingHorizontal: 10,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
   noPropertyText: {
     fontSize: 16,
     color: "#666",
     marginBottom: 20,
+    textAlign: "center",
+  },
+  debugText: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 10,
+    textAlign: "center",
   },
   closeButton: {
     backgroundColor: "#D81B60",
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     width: "50%",
     alignItems: "center",
+    marginTop: 10,
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1a237e",
+    padding: 12,
+    borderRadius: 8,
+    width: "50%",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  refreshButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+    marginLeft: 6,
   },
   closeButtonText: {
     color: "white",
@@ -246,16 +424,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    marginLeft: -9,
-    bottom: 15,
     width: 120,
     height: 120,
-  },
-  tagline: {
-    color: "#fff",
-    fontSize: 10,
-    fontStyle: "italic",
-    marginTop: 2,
+    marginTop: -15,
   },
   content: {
     padding: 15,
@@ -265,33 +436,61 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "white",
     textAlign: "center",
-    marginBottom: 10,
     textTransform: "uppercase",
     backgroundColor: "#1a237e",
     height: 50,
-    width: 350,
+    width: "110%",
     lineHeight: 50,
     marginTop: -48,
     marginLeft: -20,
+  },
+  imageContainer: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  loadingIndicator: {
+    position: "absolute",
+    zIndex: 1,
   },
   propertyImage: {
     width: "100%",
     height: 180,
     borderRadius: 5,
-    marginBottom: 10,
-
-    // Shadow for iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-
-    // Shadow for Android
     elevation: 5,
   },
-
+  errorContainer: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#eee",
+    width: "100%",
+    height: 180,
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+  },
+  priceTag: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  priceText: {
+    color: "white",
+    fontWeight: "bold",
+  },
   detailsContainer: {
-    marginBottom: -15,
+    marginBottom: 15,
   },
   propertyType: {
     fontSize: 14,
@@ -306,17 +505,34 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: "uppercase",
   },
-  price: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "green", // white text
-    textAlign: "center",
-    marginVertical: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+  agentInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1a237e",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
   },
-
+  agentImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  agentDetails: {
+    flex: 1,
+  },
+  agentName: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  agentPhone: {
+    color: "#fff",
+    fontSize: 12,
+  },
   footer: {
     backgroundColor: "#e8eaf6",
     padding: 10,
@@ -351,49 +567,49 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
-    marginBottom: 10,
+    marginTop: 10,
   },
   callButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "red",
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     flex: 1,
     marginRight: 5,
     justifyContent: "center",
-  },
-  callButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
   },
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#25D366",
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     flex: 1,
-    marginLeft: 5,
+    marginHorizontal: 5,
     justifyContent: "center",
   },
   callAgentButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#2196F3",
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     flex: 1,
     marginLeft: 5,
     justifyContent: "center",
   },
-  shareButtonText: {
+  callButtonText: {
     color: "#fff",
-    marginLeft: 6,
     fontWeight: "bold",
     fontSize: 14,
+    marginLeft: 6,
+  },
+  shareButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+    marginLeft: 6,
   },
 });
 

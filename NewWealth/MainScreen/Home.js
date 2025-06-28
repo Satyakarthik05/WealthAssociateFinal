@@ -48,6 +48,7 @@ const HomeScreen = () => {
     approvedProperties: [],
     wealthProperties: [],
     listedProperties: [],
+    rentalProperties: [],
   });
 
   const navigation = useNavigation();
@@ -362,7 +363,7 @@ const HomeScreen = () => {
       case "agriculture land":
         return require("../../assets/agriculture.jpeg");
       case "commercial property":
-        return require("../../assets/commercial.jpeg");
+        return require("../../assets/commercial.jpg");
       case "commercial land":
         return require("../../assets/commland.jpeg");
       default:
@@ -557,9 +558,7 @@ const HomeScreen = () => {
               </Text>
             </Animated.View>
           )}
-
         <ActionButtons navigation={navigation} />
-
         {propertyCategories.regularProperties.length > 0 && (
           <>
             <SectionHeader
@@ -584,7 +583,6 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-
         {propertyCategories.approvedProperties.length > 0 && (
           <>
             <SectionHeader
@@ -609,7 +607,6 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-
         {propertyCategories.wealthProperties.length > 0 && (
           <>
             <SectionHeader
@@ -634,7 +631,6 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-
         {propertyCategories.listedProperties.length > 0 && (
           <>
             <SectionHeader
@@ -660,6 +656,30 @@ const HomeScreen = () => {
           </>
         )}
 
+        {propertyCategories.rentalProperties.length > 0 && (
+          <>
+            <SectionHeader
+              title="Rental Properties"
+              onViewAll={() => navigation.navigate("rentalprop")}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {propertyCategories.rentalProperties
+                .slice(0, 10)
+                .map((property, index) => (
+                  <View
+                    key={`rental-${property._id || index}`}
+                    style={{ marginHorizontal: 5 }}
+                  >
+                    <RenderPropertyCard property={property} />
+                  </View>
+                ))}
+            </ScrollView>
+          </>
+        )}
         <SectionHeader
           title="Requested Properties"
           onViewAll={() => navigation.navigate("allreqprop")}
@@ -681,7 +701,6 @@ const HomeScreen = () => {
             ))}
           </ScrollView>
         )}
-
         {coreClients.length > 0 && (
           <>
             <SectionHeader title="Core Clients" />
@@ -707,7 +726,6 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-
         {coreProjects.length > 0 && (
           <>
             <SectionHeader title="Core Projects" />
@@ -734,7 +752,6 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-
         {valueprojects.length > 0 && (
           <>
             <SectionHeader title="Value Projects" />

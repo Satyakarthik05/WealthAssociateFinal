@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -10,11 +10,17 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Platform,
+  Linking,
 } from "react-native";
 import { API_URL } from "../../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function AllSkilledLabours() {
   const [agents, setAgents] = useState([]);
@@ -28,76 +34,243 @@ export default function AllSkilledLabours() {
     SelectSkill: "",
     MobileNumber: "",
     Location: "",
+    CallStatus: "",
   });
   const [filters, setFilters] = useState({
     location: "",
     skill: "",
+    callStatus: "",
   });
   const [uniqueLocations, setUniqueLocations] = useState([]);
   const [uniqueSkills, setUniqueSkills] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [executiveId, setExecutiveId] = useState(null);
+  const [executiveName, setExecutiveName] = useState("");
 
-  // Fetch skilled labours
   useEffect(() => {
-    const fetchSkilledLabours = async () => {
+    const getExecutiveInfo = async () => {
       try {
-        const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${API_URL}/skillLabour/list`, {
-          method: "GET",
-          headers: {
-            token: `${token}` || "",
-          },
-        });
+        const storedId = await AsyncStorage.getItem("callexecutiveId");
+        const storedName = await AsyncStorage.getItem("callexecutiveName");
 
-        const data = await response.json();
-        if (response.ok && Array.isArray(data.skilledLabours)) {
-          setAgents(data.skilledLabours);
-          setFilteredAgents(data.skilledLabours);
-          
-          // Extract unique locations
-          const locations = [...new Set(data.skilledLabours.map(item => item.Location))];
-          setUniqueLocations(locations);
-          
-          // Extract unique skills
-          const skills = [...new Set(data.skilledLabours.map(item => item.SelectSkill))];
-          setUniqueSkills(skills);
-        } else {
-          setAgents([]);
-          setFilteredAgents([]);
+        if (storedId) {
+          setExecutiveId(storedId);
+        }
+        if (storedName) {
+          setExecutiveName(storedName);
         }
       } catch (error) {
-        console.error("Error fetching agents:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error retrieving executive info:", error);
       }
     };
 
-    fetchSkilledLabours();
+    getExecutiveInfo();
+    fetchAssignedSkilledLabours();
   }, []);
+const fetchAssignedSkilledLabours = async () => {
+  try {
+    setRefreshing(true);
+    setLoading(true);
 
-  // Apply filters when they change
+    const token = await AsyncStorage.getItem("authToken");
+
+    const response = await fetch(
+      `${API_URL}/agent/assignedskill/${executiveId}`,
+      {
+        method: "GET",
+        headers: {
+          token: token || "",
+        },
+      }
+    );
+
+    if (!response.ok) throw new Error("Failed to fetch skilled labours");
+
+    const data = await response.json();
+
+    // Check if data.data exists and is an array
+    if (!Array.isArray(data.data)) {
+      throw new Error("Invalid data format received from server");
+    }
+
+    // Sort skilled labours: first show pending labours assigned to current executive, then others
+    const sortedData = data.data.sort((a, b) => {
+      // Both assigned to current executive and pending
+      if (
+        a.assignedExecutive === executiveId &&
+        a.CallExecutiveCall !== "Done" &&
+        b.assignedExecutive === executiveId &&
+        b.CallExecutiveCall !== "Done"
+      ) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      // A is assigned to current executive and pending
+      if (a.assignedExecutive === executiveId && a.CallExecutiveCall !== "Done") {
+        return -1;
+      }
+      // B is assigned to current executive and pending
+      if (b.assignedExecutive === executiveId && b.CallExecutiveCall !== "Done") {
+        return 1;
+      }
+      // Both pending but not assigned to current executive
+      if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall !== "Done") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      // A is pending, B is done
+      if (a.CallExecutiveCall !== "Done") {
+        return -1;
+      }
+      // B is pending, A is done
+      if (b.CallExecutiveCall !== "Done") {
+        return 1;
+      }
+      // Both done
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    setAgents(sortedData);
+    setFilteredAgents(sortedData);
+
+    const locations = [
+      ...new Set(data.data.map((item) => item.Location)),
+    ];
+    setUniqueLocations(locations);
+
+    const skills = [
+      ...new Set(data.data.map((item) => item.SelectSkill)),
+    ];
+    setUniqueSkills(skills);
+  } catch (error) {
+    console.error("Error fetching skilled labours:", error);
+    Alert.alert("Error", error.message || "Failed to fetch skilled labours");
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredAgents(agents);
+    } else {
+      const filtered = agents.filter(
+        (agent) =>
+          (agent.FullName &&
+            agent.FullName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (agent.MobileNumber && agent.MobileNumber.includes(searchQuery))
+      );
+      setFilteredAgents(filtered);
+    }
+  }, [searchQuery, agents]);
+
   useEffect(() => {
     let result = [...agents];
-    
+
     if (filters.location) {
-      result = result.filter(item => item.Location === filters.location);
+      result = result.filter((item) => item.Location === filters.location);
     }
-    
+
     if (filters.skill) {
-      result = result.filter(item => item.SelectSkill === filters.skill);
+      result = result.filter((item) => item.SelectSkill === filters.skill);
     }
-    
+
+    if (filters.callStatus) {
+      if (filters.callStatus === "Done") {
+        result = result.filter((item) => item.CallStatus === "Done");
+      } else {
+        result = result.filter(
+          (item) => !item.CallStatus || item.CallStatus !== "Done"
+        );
+      }
+    }
+
     setFilteredAgents(result);
   }, [filters, agents]);
 
-  // Handle delete
+  const handleMarkAsDone = async (id) => {
+    try {
+      const confirm = await new Promise((resolve) => {
+        if (Platform.OS === "web") {
+          const result = window.confirm("Mark this call as done?");
+          resolve(result);
+        } else {
+          Alert.alert(
+            "Confirm",
+            "Mark this call as done?",
+            [
+              {
+                text: "Cancel",
+                onPress: () => resolve(false),
+                style: "cancel",
+              },
+              { text: "Confirm", onPress: () => resolve(true) },
+            ],
+            { cancelable: true }
+          );
+        }
+      });
+
+      if (!confirm) return;
+
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/skillLabour/markasdone/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({ CallStatus: "Done" }),
+      });
+
+      if (response.ok) {
+        fetchAssignedSkilledLabours();
+        Alert.alert("Success", "Call marked as done");
+      } else {
+        throw new Error("Failed to update call status");
+      }
+    } catch (error) {
+      console.error("Error marking as done:", error);
+      Alert.alert("Error", error.message || "Failed to update call status");
+    }
+  };
+
+  const handleCallSkilledLabour = async (mobileNumber) => {
+    try {
+      const callLog = {
+        number: mobileNumber,
+        timestamp: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem(
+        `callLog_${mobileNumber}`,
+        JSON.stringify(callLog)
+      );
+
+      const url = `tel:${mobileNumber}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error("Error initiating call:", error);
+      Alert.alert("Error", "Could not initiate call");
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
-      const token = await AsyncStorage.getItem("authToken");
-      if (!token) {
-        console.error("No token found in AsyncStorage");
-        return;
-      }
+      const confirm = await new Promise((resolve) => {
+        Alert.alert(
+          "Confirm",
+          "Are you sure you want to delete this skilled labour?",
+          [
+            { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
+            { text: "Delete", onPress: () => resolve(true) },
+          ]
+        );
+      });
 
+      if (!confirm) return;
+
+      const token = await AsyncStorage.getItem("authToken");
       const response = await fetch(`${API_URL}/skillLabour/delete/${id}`, {
         method: "DELETE",
         headers: {
@@ -106,18 +279,18 @@ export default function AllSkilledLabours() {
       });
 
       if (response.ok) {
-        setAgents((prevAgents) =>
-          prevAgents.filter((agent) => agent._id !== id)
-        );
+        setAgents((prev) => prev.filter((agent) => agent._id !== id));
+        setFilteredAgents((prev) => prev.filter((agent) => agent._id !== id));
+        Alert.alert("Success", "Skilled labour deleted successfully");
       } else {
-        console.error("Failed to delete agent");
+        throw new Error("Failed to delete skilled labour");
       }
     } catch (error) {
-      console.error("Error deleting agent:", error);
+      console.error("Error deleting skilled labour:", error);
+      Alert.alert("Error", error.message || "Failed to delete skilled labour");
     }
   };
 
-  // Handle edit button click
   const handleEdit = (agent) => {
     setSelectedAgent(agent);
     setFormData({
@@ -125,24 +298,18 @@ export default function AllSkilledLabours() {
       SelectSkill: agent.SelectSkill,
       MobileNumber: agent.MobileNumber,
       Location: agent.Location,
+      CallStatus: agent.CallStatus || "",
     });
     setEditModalVisible(true);
   };
 
-  // Handle form input changes
   const handleChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Handle save after editing
   const handleSave = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      if (!token) {
-        console.error("No token found in AsyncStorage");
-        return;
-      }
-
       const response = await fetch(
         `${API_URL}/skillLabour/update/${selectedAgent._id}`,
         {
@@ -156,62 +323,116 @@ export default function AllSkilledLabours() {
       );
 
       if (response.ok) {
-        const updatedAgent = await response.json();
-        setAgents((prevAgents) =>
-          prevAgents.map((agent) =>
-            agent._id === updatedAgent._id ? updatedAgent : agent
-          )
-        );
+        fetchAssignedSkilledLabours();
         setEditModalVisible(false);
+        Alert.alert("Success", "Skilled labour updated successfully");
       } else {
-        console.error("Failed to update agent");
+        throw new Error("Failed to update skilled labour");
       }
     } catch (error) {
-      console.error("Error updating agent:", error);
+      console.error("Error updating skilled labour:", error);
+      Alert.alert("Error", error.message || "Failed to update skilled labour");
     }
   };
 
-  // Handle filter change
   const handleFilterChange = (name, value) => {
     setFilters({ ...filters, [name]: value });
   };
 
-  // Reset filters
   const resetFilters = () => {
     setFilters({
       location: "",
       skill: "",
+      callStatus: "",
     });
-    setFilterModalVisible(false);
   };
 
-  // Apply filters
   const applyFilters = () => {
     setFilterModalVisible(false);
   };
 
-  // Render agent card
+  const handleRefresh = () => {
+    fetchAssignedSkilledLabours();
+  };
+
   const renderAgentCard = (item) => (
-    <View key={item._id} style={styles.card}>
+    <View
+      key={item._id}
+      style={[
+        styles.card,
+        item.CallStatus === "Done" ? styles.doneCard : styles.pendingCard,
+        item.assignedExecutive === executiveId &&
+          item.CallStatus !== "Done" &&
+          styles.assignedCard,
+      ]}
+    >
       <Image source={require("../../assets/man.png")} style={styles.avatar} />
       <View style={styles.infoContainer}>
         <View style={styles.row}>
           <Text style={styles.label}>Name</Text>
           <Text style={styles.value}>: {item.FullName}</Text>
         </View>
+
+        {item.assignedExecutive && item.assignedExecutive !== executiveId && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Assigned To</Text>
+            <Text style={styles.value}>
+              : {item.CallExecutivename || "Another Executive"}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.row}>
           <Text style={styles.label}>Skill Type</Text>
           <Text style={styles.value}>: {item.SelectSkill}</Text>
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>Mobile Number</Text>
-          <Text style={styles.value}>: {item.MobileNumber}</Text>
+          <View style={styles.phoneRow}>
+            <Text style={styles.value}>: {item.MobileNumber}</Text>
+            <TouchableOpacity
+              onPress={() => handleCallSkilledLabour(item.MobileNumber)}
+              style={styles.smallCallButton}
+            >
+              <Ionicons name="call" size={16} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>Location</Text>
           <Text style={styles.value}>: {item.Location}</Text>
         </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>referredBy</Text>
+          <Text style={styles.value}>: {item.referrerDetails.name}({item.referrerDetails.phone})</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Status</Text>
+          <Text
+            style={[
+              styles.value,
+              item.CallStatus === "Done"
+                ? styles.doneStatus
+                : styles.pendingStatus,
+            ]}
+          >
+            : {item.CallStatus === "Done" ? "Done" : "Pending"}
+          </Text>
+        </View>
+
         <View style={styles.buttonContainer}>
+          {item.CallStatus !== "Done" &&
+            item.assignedExecutive === executiveId && (
+              <TouchableOpacity
+                style={[styles.button, styles.doneButton]}
+                onPress={() => handleMarkAsDone(item._id)}
+              >
+                <Text style={styles.buttonText}>Call Done</Text>
+              </TouchableOpacity>
+            )}
           <TouchableOpacity
             style={[styles.button, styles.editButton]}
             onPress={() => handleEdit(item)}
@@ -233,17 +454,34 @@ export default function AllSkilledLabours() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.heading}>Skilled Resource</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setFilterModalVisible(true)}
-        >
-          <Text style={styles.filterButtonText}>Filter</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or mobile"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <Text style={styles.filterButtonText}>Filter</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      
-      <ScrollView contentContainerStyle={styles.gridContainer}>
+
+      <ScrollView
+        contentContainerStyle={styles.gridContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#0000ff"]}
+          />
+        }
+      >
         {loading ? (
-          <Text style={styles.emptyText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#0000ff" />
         ) : filteredAgents.length > 0 ? (
           <View style={width > 600 ? styles.rowWrapper : null}>
             {filteredAgents.map((item) => renderAgentCard(item))}
@@ -258,6 +496,7 @@ export default function AllSkilledLabours() {
         visible={editModalVisible}
         animationType="slide"
         transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -279,6 +518,7 @@ export default function AllSkilledLabours() {
               placeholder="Mobile Number"
               value={formData.MobileNumber}
               onChangeText={(text) => handleChange("MobileNumber", text)}
+              keyboardType="phone-pad"
             />
             <TextInput
               style={styles.input}
@@ -309,17 +549,50 @@ export default function AllSkilledLabours() {
         visible={filterModalVisible}
         animationType="slide"
         transparent={true}
+        onRequestClose={() => setFilterModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Filter Skilled Resources</Text>
-            
+
+            <Text style={styles.filterLabel}>Call Status:</Text>
+            <View style={styles.filterOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  filters.callStatus === "" && styles.selectedFilterOption,
+                ]}
+                onPress={() => handleFilterChange("callStatus", "")}
+              >
+                <Text style={styles.filterOptionText}>All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  filters.callStatus === "Done" && styles.selectedFilterOption,
+                ]}
+                onPress={() => handleFilterChange("callStatus", "Done")}
+              >
+                <Text style={styles.filterOptionText}>Done</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  filters.callStatus === "Pending" &&
+                    styles.selectedFilterOption,
+                ]}
+                onPress={() => handleFilterChange("callStatus", "Pending")}
+              >
+                <Text style={styles.filterOptionText}>Pending</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.filterLabel}>Location:</Text>
             <View style={styles.filterOptions}>
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  filters.location === "" && styles.selectedFilterOption
+                  filters.location === "" && styles.selectedFilterOption,
                 ]}
                 onPress={() => handleFilterChange("location", "")}
               >
@@ -330,7 +603,8 @@ export default function AllSkilledLabours() {
                   key={location}
                   style={[
                     styles.filterOption,
-                    filters.location === location && styles.selectedFilterOption
+                    filters.location === location &&
+                      styles.selectedFilterOption,
                   ]}
                   onPress={() => handleFilterChange("location", location)}
                 >
@@ -338,13 +612,13 @@ export default function AllSkilledLabours() {
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             <Text style={styles.filterLabel}>Skill Type:</Text>
             <View style={styles.filterOptions}>
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  filters.skill === "" && styles.selectedFilterOption
+                  filters.skill === "" && styles.selectedFilterOption,
                 ]}
                 onPress={() => handleFilterChange("skill", "")}
               >
@@ -355,7 +629,7 @@ export default function AllSkilledLabours() {
                   key={skill}
                   style={[
                     styles.filterOption,
-                    filters.skill === skill && styles.selectedFilterOption
+                    filters.skill === skill && styles.selectedFilterOption,
                   ]}
                   onPress={() => handleFilterChange("skill", skill)}
                 >
@@ -363,7 +637,7 @@ export default function AllSkilledLabours() {
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
@@ -392,21 +666,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingRight: 10,
+    paddingVertical: 15,
   },
   heading: {
     fontSize: 20,
     fontWeight: "bold",
-    textAlign: "left",
-    marginVertical: 15,
+    marginBottom: 15,
     paddingLeft: 10,
+  },
+  headerActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginRight: 10,
+    backgroundColor: "#fff",
   },
   filterButton: {
     backgroundColor: "#2196F3",
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 5,
   },
@@ -427,16 +713,32 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    width: width > 600 ? "35%" : "90%", // 45% on tablets, 90% on mobile
+    width: width > 600 ? "35%" : "100%",
     paddingVertical: 20,
-    paddingHorizontal: 15,
+    paddingHorizontal: 25,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.15, // Softer shadow
+    shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 3,
     marginBottom: 15,
+    left:25
+  },
+  assignedCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
+  },
+  doneCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: "#4CAF50",
+    backgroundColor: "#E8F5E9",
+  },
+  pendingCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: "#F44336",
+    backgroundColor: "#FFEBEE",
   },
   avatar: {
     width: 80,
@@ -456,13 +758,34 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     width: "100%",
   },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  smallCallButton: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 15,
+    padding: 3,
+    marginLeft: 5,
+  },
   label: {
     fontWeight: "bold",
     fontSize: 14,
     width: 120,
+    color: "#555",
   },
   value: {
     fontSize: 14,
+    color: "#333",
+    flex: 1,
+  },
+  doneStatus: {
+    color: "#4CAF50",
+    fontWeight: "bold",
+  },
+  pendingStatus: {
+    color: "#F44336",
+    fontWeight: "bold",
   },
   emptyText: {
     textAlign: "center",
@@ -483,8 +806,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  editButton: {
+  doneButton: {
     backgroundColor: "#4CAF50",
+  },
+  editButton: {
+    backgroundColor: "#2196F3",
   },
   deleteButton: {
     backgroundColor: "#F44336",
@@ -527,15 +853,11 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: "#F44336",
-    padding: 10,
-    borderRadius: 5,
     flex: 1,
     marginRight: 10,
   },
   saveButton: {
     backgroundColor: "#4CAF50",
-    padding: 10,
-    borderRadius: 5,
     flex: 1,
     marginLeft: 10,
   },

@@ -53,7 +53,7 @@ const RequestedPropertyCard = ({ item, onIHavePress }) => {
       case "agriculture land":
         return require("../../../assets/agriculture.jpeg");
       case "commercial property":
-        return require("../../../assets/commercial.jpeg");
+        return require("../../../assets/commercial.jpg");
       case "commercial land":
         return require("../../../assets/commland.jpeg");
       default:

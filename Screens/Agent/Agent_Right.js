@@ -18,7 +18,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CustomModal from "../../Components/CustomModal";
 import PostProperty from "../Properties/PostProperty";
 import RequestProperty from "../Properties/RequestProperty";
-import AddClubMember from "../Customer/Regicus";
+import AddClubMember from "../coreClients/Customer/Regicus";
 import RequestExpert from "../../NewWealth/ExpertPanel/Requested_expert";
 import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
@@ -34,13 +34,13 @@ import logo4 from "../../assets/Surya Avenue Logo[1] 1.png";
 import logo5 from "../../assets/Logo 1.png";
 import logo6 from "../../assets/Land.jpg";
 import logo7 from "../../assets/residntial.jpg";
-import logo8 from "../../assets/commercial.jpeg";
+import logo8 from "../../assets/commercial.jpg";
 import logo9 from "../../assets/villa.jpg";
 import logo10 from "../../assets/house.png";
 import logo11 from "../../assets/logo.png";
 
 // Import nested action components
-import AddCustomer from "../Customer/Regicus";
+import AddCustomer from "../coreClients/Customer/Regicus";
 import AddInvestor from "../Investors/AddInvestors";
 import AddNRI from "../NRI/AddNri";
 import AddSkilled from "../SkilledLabour/Rskill";

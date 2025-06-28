@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../data/ApiUrl";
-import logo1 from "../../assets/man.png";
+import { API_URL } from "../../../data/ApiUrl";
+import logo1 from "../../../assets/man.png";
 
 const { width } = Dimensions.get("window");
 

@@ -23,6 +23,7 @@ import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../../assets/man2.png";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
+import { Ionicons } from "@expo/vector-icons";
 
 const Agent_Profile = ({ onDetailsUpdates }) => {
   const { width } = useWindowDimensions();
@@ -343,11 +344,14 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
         showsHorizontalScrollIndicator={false} // optional, in case of horizontal scroll
       >
         <View style={[styles.container, { width: isMobile ? "100%" : "80%" }]}>
+   <TouchableOpacity onPress={() => navigation.goBack() }style={{alignContent:"flex-start",alignItems:"flex-start",alignSelf:"flex-start"}}>
+                            <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+                          </TouchableOpacity>
           <Text style={styles.agentProfileText}>Agent Profile</Text>
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="#FF3366"
+              color="#3E5C76"
               style={styles.loader}
             />
           ) : (

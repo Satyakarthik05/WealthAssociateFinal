@@ -22,19 +22,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import HouseUpdateModal from "./Flats";
 import ApartmentUpdateModal from "./AgricultureForm";
 import LandUpdateModal from "./Plotform";
+import RentalPropertyForm from "./RentalPropertyForm";
 
 const { width, height } = Dimensions.get("window");
 
-const ViewAssignedProperties = () => {
+const ViewAssignedProperties = ({ route }) => {
   // State management
   const [properties, setProperties] = useState([]);
+  const [assignedProperties, setAssignedProperties] = useState([]);
+  const [otherProperties, setOtherProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("");
   const [selectedLocationFilter, setSelectedLocationFilter] = useState("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [editedDetails, setEditedDetails] = useState({
     propertyType: "",
@@ -47,6 +49,32 @@ const ViewAssignedProperties = () => {
   const [idSearch, setIdSearch] = useState("");
   const [currentUpdateModal, setCurrentUpdateModal] = useState(null);
   const [executiveInfo, setExecutiveInfo] = useState(null);
+  const [executiveId,setExecutiveId]=useState(null);
+  const [ExecutiveName,setExecutiveName]=useState(null)
+
+  // Get the executive ID from route params
+  // const executiveId = route.params?.id;
+
+    useEffect(() => {
+    const getExecutiveInfo = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem("callexecutiveId");
+        const storedName = await AsyncStorage.getItem("callexecutiveName");
+
+        if (storedId) {
+          setExecutiveId(storedId);
+        }
+        if (storedName) {
+          setExecutiveName(storedName);
+        }
+      } catch (error) {
+        console.error("Error retrieving executive info:", error);
+      }
+    };
+
+    getExecutiveInfo();
+    // fetchAllAgents();
+  }, []);
 
   // Get auth token
   const getAuthToken = async () => {
@@ -67,7 +95,7 @@ const ViewAssignedProperties = () => {
       setLoading(true);
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}/callexe/myproperties`, {
+      const response = await fetch(`${API_URL}/agent/assignedproperties/${executiveId}`, {
         headers: { token },
       });
 
@@ -77,8 +105,14 @@ const ViewAssignedProperties = () => {
         throw new Error(result.message || "Failed to fetch properties");
       }
 
-      setProperties(result.data || []);
-      setExecutiveInfo(result.executiveInfo || null);
+      // Separate assigned and other properties
+      const allProperties = result.data || [];
+      const assigned = allProperties.filter(prop => prop.assignedExecutive === executiveId);
+      const others = allProperties.filter(prop => prop.assignedExecutive !== executiveId);
+
+      setProperties(allProperties);
+      setAssignedProperties(assigned);
+      setOtherProperties(others);
 
       // Fetch additional data if needed
       const [typesRes, constituenciesRes] = await Promise.all([
@@ -95,12 +129,14 @@ const ViewAssignedProperties = () => {
       console.error("Error fetching data:", error);
       Alert.alert("Error", error.message || "Failed to load data");
       setProperties([]);
+      setAssignedProperties([]);
+      setOtherProperties([]);
       setExecutiveInfo(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [API_URL]);
+  }, [API_URL, executiveId]);
 
   const handleApprove = async (id) => {
     const confirm = await new Promise((resolve) => {
@@ -150,22 +186,6 @@ const ViewAssignedProperties = () => {
   const handleCloseEditModal = () => {
     setIsEditModalVisible(false);
   };
-
-  useEffect(() => {
-    let intervalId;
-
-    // Only set interval if modals are NOT open
-    if (!isEditModalVisible && !isUpdateModalVisible) {
-      intervalId = setInterval(() => {
-        fetchData();
-      }, 20000);
-    }
-
-    return () => {
-      // Clear interval when component unmounts or modals open
-      clearInterval(intervalId);
-    };
-  }, [isEditModalVisible, isUpdateModalVisible]);
 
   // Initial data fetch
   useEffect(() => {
@@ -236,6 +256,9 @@ const ViewAssignedProperties = () => {
     ) {
       setCurrentUpdateModal("agriculture");
     }
+    else if(type.includes("rental")){
+      setCurrentUpdateModal("rental")
+    }
 
     setIsUpdateModalVisible(true);
   };
@@ -257,10 +280,6 @@ const ViewAssignedProperties = () => {
 
       const result = await response.json();
       if (response.ok) {
-        // Clear and restart the refresh interval
-        if (refreshInterval) clearInterval(refreshInterval);
-        setRefreshInterval(setInterval(fetchData, 10000));
-
         setProperties(
           properties.map((p) =>
             p._id === selectedProperty._id ? { ...p, ...updatedData } : p
@@ -377,25 +396,20 @@ const ViewAssignedProperties = () => {
   };
 
   const renderPropertyImage = (property) => {
-    // If 'photos' is an array with more than one image
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
+    const images = property.newImageUrls;
+
+    // If 'newImageUrls' is an array with images
+    if (Array.isArray(images) && images.length > 0) {
       return (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.imageScroll}
         >
-          {property.photo.map((photo, index) => (
+          {images.map((url, index) => (
             <Image
               key={index}
-              source={{
-                uri:
-                  typeof photo === "string"
-                    ? photo.startsWith("http")
-                      ? photo
-                      : `${API_URL}${photo}`
-                    : `${API_URL}${photo?.uri || ""}`,
-              }}
+              source={{ uri: url }}
               style={styles.image}
               resizeMode="cover"
             />
@@ -403,15 +417,11 @@ const ViewAssignedProperties = () => {
         </ScrollView>
       );
     }
-    // Single image
-    else if (property.photo && typeof property.photo === "string") {
+    // Single image (if newImageUrls is a single URL string)
+    else if (typeof images === "string" && images.startsWith("http")) {
       return (
         <Image
-          source={{
-            uri: property.photo.startsWith("http")
-              ? property.photo
-              : `${API_URL}${property.photo}`,
-          }}
+          source={{ uri: images }}
           style={styles.image}
           resizeMode="cover"
         />
@@ -458,6 +468,9 @@ const ViewAssignedProperties = () => {
             {currentUpdateModal === "agriculture" && (
               <ApartmentUpdateModal {...modalProps} />
             )}
+            {currentUpdateModal === "rental" && (
+              <RentalPropertyForm {...modalProps} />
+            )}
           </View>
         </View>
       </Modal>
@@ -482,12 +495,10 @@ const ViewAssignedProperties = () => {
       >
         <View style={styles.header}>
           <Text style={styles.heading}>My Assigned Properties</Text>
-          {executiveInfo && (
-            <Text style={styles.executiveInfo}>
-              Assigned to: {executiveInfo.name || "N/A"} (
-              {executiveInfo.phone || "N/A"})
-            </Text>
-          )}
+          
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Assigned Properties ({assignedProperties.length})</Text>
+          </View>
 
           <View style={styles.filterRow}>
             <View style={styles.filterContainer}>
@@ -539,71 +550,131 @@ const ViewAssignedProperties = () => {
 
         <View style={styles.grid}>
           {filteredProperties.length > 0 ? (
-            filteredProperties.map((property) => (
-              <View key={property._id} style={styles.card}>
-                {renderPropertyImage(property)}
+            <>
+              {/* Assigned Properties */}
+              {filteredProperties
+                .filter(prop => prop.assignedExecutive === executiveId)
+                .map((property) => (
+                  <View key={property._id} style={[styles.card, styles.assignedCard]}>
+                    {renderPropertyImage(property)}
 
-                <View style={styles.details}>
-                  <View style={styles.idContainer}>
-                    <Text style={styles.idText}>
-                      ID: {getLastFourChars(property._id)}
-                    </Text>
+                    <View style={styles.details}>
+                      <View style={styles.idContainer}>
+                        <Text style={styles.idText}>
+                          ID: {getLastFourChars(property._id)}
+                        </Text>
+                      </View>
+                      <Text style={styles.title}>
+                        {property.propertyType || "N/A"}
+                      </Text>
+                      <Text style={styles.info}>
+                        Posted by: {property.PostedBy || "N/A"}
+                      </Text>
+                      <Text style={styles.info}>
+                        Location: {property.location || "N/A"}
+                      </Text>
+                      <Text style={styles.budget}>
+                        ₹{" "}
+                        {property.price
+                          ? parseInt(property.price).toLocaleString()
+                          : "N/A"}
+                      </Text>
+                      <Text style={styles.assignedText}>
+                        Assigned on:{" "}
+                        {property.assignedAt
+                          ? new Date(property.assignedAt).toLocaleDateString()
+                          : "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
+                        style={[styles.button, styles.editButton]}
+                        onPress={() => handleEdit(property)}
+                      >
+                        <Text style={styles.buttonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.button, styles.updateButton]}
+                        onPress={() => handleUpdate(property)}
+                      >
+                        <Text style={styles.buttonText}>Update</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.button, styles.deleteButton]}
+                        onPress={() => handleDelete(property._id)}
+                      >
+                        <Text style={styles.buttonText}>Delete</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.button, styles.approveButton]}
+                        onPress={() => handleApprove(property._id)}
+                      >
+                        <Text style={styles.buttonText}>Approve</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <Text style={styles.title}>
-                    {property.propertyType || "N/A"}
-                  </Text>
-                  <Text style={styles.info}>
-                    Posted by: {property.PostedBy || "N/A"}
-                  </Text>
-                  <Text style={styles.info}>
-                    Location: {property.location || "N/A"}
-                  </Text>
-                  <Text style={styles.budget}>
-                    ₹{" "}
-                    {property.price
-                      ? parseInt(property.price).toLocaleString()
-                      : "N/A"}
-                  </Text>
-                  <Text style={styles.assignedText}>
-                    Assigned on:{" "}
-                    {property.assignedAt
-                      ? new Date(property.assignedAt).toLocaleDateString()
-                      : "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity
-                    style={[styles.button, styles.editButton]}
-                    onPress={() => handleEdit(property)}
-                  >
-                    <Text style={styles.buttonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.updateButton]}
-                    onPress={() => handleUpdate(property)}
-                  >
-                    <Text style={styles.buttonText}>Update</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.deleteButton]}
-                    onPress={() => handleDelete(property._id)}
-                  >
-                    <Text style={styles.buttonText}>Delete</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.approveButton]}
-                    onPress={() => handleApprove(property._id)}
-                  >
-                    <Text style={styles.buttonText}>Approve</Text>
-                  </TouchableOpacity>
-                </View>
+                ))}
+
+              {/* Other Properties */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Other Properties ({otherProperties.length})</Text>
               </View>
-            ))
+              
+              {filteredProperties
+                .filter(prop => prop.assignedExecutive !== executiveId)
+                .map((property) => (
+                  <View key={property._id} style={styles.card}>
+                    {renderPropertyImage(property)}
+
+                    <View style={styles.details}>
+                      <View style={styles.idContainer}>
+                        <Text style={styles.idText}>
+                          ID: {getLastFourChars(property._id)}
+                        </Text>
+                      </View>
+                      <Text style={styles.title}>
+                        {property.propertyType || "N/A"}
+                      </Text>
+                      <Text style={styles.info}>
+                        Posted by: {property.PostedBy || "N/A"}
+                      </Text>
+                      <Text style={styles.info}>
+                        Location: {property.location || "N/A"}
+                      </Text>
+                      <Text style={styles.budget}>
+                        ₹{" "}
+                        {property.price
+                          ? parseInt(property.price).toLocaleString()
+                          : "N/A"}
+                      </Text>
+                      {property.assignedExecutive && (
+                        <Text style={styles.assignedText}>
+                          Assigned to: {property.assignedExecutive.name || "N/A"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
+                        style={[styles.button, styles.editButton]}
+                        onPress={() => handleEdit(property)}
+                      >
+                        <Text style={styles.buttonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.button, styles.updateButton]}
+                        onPress={() => handleUpdate(property)}
+                      >
+                        <Text style={styles.buttonText}>Update</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+            </>
           ) : (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noResultsText}>
                 {properties.length === 0
-                  ? "No properties assigned to you"
+                  ? "No properties found"
                   : "No properties match your filters"}
               </Text>
               <TouchableOpacity
@@ -721,6 +792,17 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 15,
   },
+  sectionHeader: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
   filterRow: {
     flexDirection: Platform.OS === "web" ? "row" : "column",
     justifyContent: "space-between",
@@ -738,15 +820,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   image: {
-    width: Platform.OS==="android"||Platform.OS==="ios"?200:300,
+    width: 300,
     height: 200,
     borderRadius: 10,
     marginRight: 10,
-  },
-  executiveInfo: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 10,
   },
   filterContainer: {
     flexDirection: "row",
@@ -791,12 +868,16 @@ const styles = StyleSheet.create({
     padding: 15,
     margin: 10,
     width: Platform.OS === "web" ? "30%" : "100%",
-    maxWidth: 400,
+    minWidth: 300,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  assignedCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: '#2ecc71',
   },
   details: {
     marginBottom: 10,

@@ -1,5 +1,12 @@
-import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Ionicons,
   MaterialIcons,
@@ -7,6 +14,20 @@ import {
 } from "@expo/vector-icons";
 
 const ActionButtons = ({ navigation }) => {
+  const [userType, setUserType] = useState(null);
+
+  useEffect(() => {
+    const fetchUserType = async () => {
+      try {
+        const storedUserType = await AsyncStorage.getItem("userType");
+        setUserType(storedUserType);
+      } catch (error) {
+        console.error("Error retrieving userType:", error);
+      }
+    };
+    fetchUserType();
+  }, []);
+
   const actionButton = (
     iconName,
     label,
@@ -15,6 +36,7 @@ const ActionButtons = ({ navigation }) => {
     screenName
   ) => (
     <TouchableOpacity
+      key={label}
       style={styles.actionButtonWrapper}
       onPress={() => navigation.navigate(screenName)}
     >
@@ -26,7 +48,7 @@ const ActionButtons = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.actionRow}>
         {actionButton(
           "home",
@@ -68,13 +90,33 @@ const ActionButtons = ({ navigation }) => {
           <Text style={styles.compactButtonText}>Skilled Resources</Text>
         </TouchableOpacity>
       </View>
-    </View>
+
+      {userType === "CoreMember" && (
+        <View style={[styles.compactActionRow, { marginTop: 10 }]}>
+          <TouchableOpacity
+            style={styles.compactButton}
+            onPress={() => navigation.navigate("callexestatus")}
+          >
+            <Ionicons name="call" size={20} color="#fff" />
+            <Text style={styles.compactButtonText}>Call Exec Status</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.compactButton}
+            onPress={() => navigation.navigate("analytics")}
+          >
+            <Ionicons name="analytics" size={20} color="#fff" />
+            <Text style={styles.compactButtonText}>Analytics</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 20,
+    paddingVertical: 20,
     paddingHorizontal: 12,
   },
   actionRow: {
@@ -108,7 +150,6 @@ const styles = StyleSheet.create({
   compactActionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
   },
   compactButton: {
     flex: 1,
@@ -118,7 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3E5C76",
     borderRadius: 30,
     paddingVertical: 10,
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
     marginHorizontal: 6,
     elevation: 3,
   },

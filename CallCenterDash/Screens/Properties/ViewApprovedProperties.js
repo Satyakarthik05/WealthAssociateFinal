@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../../../data/ApiUrl";
+import logo1 from "../../../assets/logo.png";
 
 const { width } = Dimensions.get("window");
 
@@ -39,6 +40,97 @@ const ViewAllProperties = () => {
   const [propertyTypeSearch, setPropertyTypeSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [idSearch, setIdSearch] = useState("");
+
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    }
+
+    if (typeof property.photo === "string") {
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    }
+
+    return [logo1];
+  };
+
+  const PropertyImageSlider = ({ images }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+      if (images.length <= 1) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        setCurrentImageIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * width,
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentImageIndex, images.length]);
+
+    if (images.length === 0) {
+      return (
+        <Image
+          source={logo1}
+          style={styles.propertyImage}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.propertyImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const fetchPropertyTypes = async () => {
     try {
@@ -65,7 +157,12 @@ const ViewAllProperties = () => {
       const response = await fetch(`${API_URL}/properties/getApproveProperty`);
       const data = await response.json();
       if (data && Array.isArray(data)) {
-        setProperties(data);
+        setProperties(
+          data.map((property) => ({
+            ...property,
+            images: formatImages(property),
+          }))
+        );
       } else {
         console.warn("API returned empty data.");
       }
@@ -107,25 +204,21 @@ const ViewAllProperties = () => {
   });
 
   const renderPropertyImage = (property) => {
-    // If 'photos' is an array with more than one image
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
+    // Use 'newImageUrls' instead of 'photo'
+    const images = property.newImageUrls;
+
+    // If 'newImageUrls' is an array with images
+    if (Array.isArray(images) && images.length > 0) {
       return (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.imageScroll}
         >
-          {property.photo.map((photo, index) => (
+          {images.map((url, index) => (
             <Image
               key={index}
-              source={{
-                uri:
-                  typeof photo === "string"
-                    ? photo.startsWith("http")
-                      ? photo
-                      : `${API_URL}${photo}`
-                    : `${API_URL}${photo?.uri || ""}`,
-              }}
+              source={{ uri: url }}
               style={styles.image}
               resizeMode="cover"
             />
@@ -133,15 +226,11 @@ const ViewAllProperties = () => {
         </ScrollView>
       );
     }
-    // Single image
-    else if (property.photo && typeof property.photo === "string") {
+    // Single image (if newImageUrls is a single URL string)
+    else if (typeof images === "string" && images.startsWith("http")) {
       return (
         <Image
-          source={{
-            uri: property.photo.startsWith("http")
-              ? property.photo
-              : `${API_URL}${property.photo}`,
-          }}
+          source={{ uri: images }}
           style={styles.image}
           resizeMode="cover"
         />

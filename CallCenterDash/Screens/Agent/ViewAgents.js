@@ -14,7 +14,6 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
-  AppState,
   Linking,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
@@ -23,50 +22,8 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../../../data/ApiUrl";
 import logo1 from "../../../assets/man.png";
-import io from "socket.io-client";
-import { Audio } from "expo-av";
-import * as Notifications from "expo-notifications";
-import * as BackgroundFetch from "expo-background-fetch";
-import * as TaskManager from "expo-task-manager";
 
 const { width, height } = Dimensions.get("window");
-
-// Define background task
-const BACKGROUND_FETCH_TASK = "agent-notification-task";
-
-TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
-  try {
-    const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/agent/newagents`, {
-      headers: { token },
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.length > 0) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "New Agent Request",
-            body: `You have ${data.length} new agent requests`,
-            sound: "default",
-          },
-          trigger: null,
-        });
-      }
-    }
-    return BackgroundFetch.Result.NewData;
-  } catch (error) {
-    return BackgroundFetch.Result.Failed;
-  }
-});
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 const getAuthToken = async () => {
   try {
@@ -103,222 +60,34 @@ export default function ViewAgents() {
   const [constituencies, setConstituencies] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [referrerDetails, setReferrerDetails] = useState({});
   const [isSaving, setIsSaving] = useState(false);
-  const [newAgents, setNewAgents] = useState([]);
   const [executiveId, setExecutiveId] = useState(null);
-  const [sound, setSound] = useState(null);
-  const [socket, setSocket] = useState(null);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [showNewAgentsPanel, setShowNewAgentsPanel] = useState(false);
-  const [userStatus, setUserStatus] = useState("active");
-  const soundIntervalRef = useRef(null);
-  const processedAgentIdsRef = useRef(new Set());
-  const newAgentsScrollRef = useRef(null);
-  const [appState, setAppState] = useState(AppState.currentState);
+  const [executiveName, setExecutiveName] = useState("");
 
   const isMobile = Platform.OS !== "web";
 
   useEffect(() => {
-    const newSocket = io(API_URL, {
-      transports: ["websocket"],
-      reconnectionAttempts: 5,
-    });
-
-    setSocket(newSocket);
-
-    const loadSound = async () => {
-      const { sound } = await Audio.Sound.createAsync(
-        require("../../../assets/preview.mp3")
-      );
-      setSound(sound);
-    };
-
-    loadSound();
-
-    return () => {
-      newSocket.disconnect();
-      if (sound) {
-        sound.unloadAsync();
-      }
-      if (soundIntervalRef.current) {
-        clearInterval(soundIntervalRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const registerBackgroundTask = async () => {
+    const getExecutiveInfo = async () => {
       try {
-        await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
-          minimumInterval: 15 * 60,
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
-      } catch (err) {
-        console.log("Background Fetch failed to register", err);
+        const storedId = await AsyncStorage.getItem("callexecutiveId");
+        const storedName = await AsyncStorage.getItem("callexecutiveName");
+
+        if (storedId) {
+          setExecutiveId(storedId);
+        }
+        if (storedName) {
+          setExecutiveName(storedName);
+        }
+      } catch (error) {
+        console.error("Error retrieving executive info:", error);
       }
     };
 
-    registerBackgroundTask();
-
-    const loadSound = async () => {
-      await Audio.setAudioModeAsync({
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-      });
-      
-      const { sound } = await Audio.Sound.createAsync(
-        require("../../../assets/preview.mp3")
-      );
-      setSound(sound);
-    };
-
-    loadSound();
-
-    const requestPermissions = async () => {
-      await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-          allowAnnouncements: true,
-        },
-      });
-    };
-
-    requestPermissions();
-
-    const handleAppStateChange = (nextAppState) => {
-      if (appState.match(/inactive|background/) && nextAppState === 'active') {
-        fetchAssignedAgents();
-      }
-      setAppState(nextAppState);
-    };
-
-    AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-      if (soundIntervalRef.current) {
-        clearInterval(soundIntervalRef.current);
-      }
-      AppState.removeEventListener('change', handleAppStateChange);
-    };
+    getExecutiveInfo();
+    fetchAllAgents();
   }, []);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("new_agent", (data) => {
-      if (userStatus === "active" && !processedAgentIdsRef.current.has(data.agent._id)) {
-        processedAgentIdsRef.current.add(data.agent._id);
-        setNewAgents((prev) => [data.agent, ...prev]);
-        setNotificationCount((prev) => prev + 1);
-
-        playNotificationSound();
-
-        if (soundIntervalRef.current) {
-          clearInterval(soundIntervalRef.current);
-        }
-        
-        soundIntervalRef.current = setInterval(() => {
-          playNotificationSound();
-        }, 5000);
-      }
-    });
-
-    socket.on("agent_assigned", (data) => {
-      stopNotificationSound();
-      setNewAgents((prev) =>
-        prev.filter((agent) => agent._id !== data.agentId)
-      );
-      setAgents((prev) =>
-        prev.map((agent) =>
-          agent._id === data.agentId
-            ? { ...agent, assignedExecutive: data.executiveId }
-            : agent
-        )
-      );
-    });
-
-    return () => {
-      socket.off("new_agent");
-      socket.off("agent_assigned");
-    };
-  }, [socket, userStatus]);
-
-  const playNotificationSound = async () => {
-    try {
-      if (!sound) {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          require("../../../assets/siren.mp3")
-        );
-        setSound(newSound);
-        await newSound.replayAsync();
-      } else {
-        await sound.replayAsync();
-      }
-      
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "New Agent Request",
-          body: "You have a new agent to review",
-          sound: 'default',
-        },
-        trigger: null,
-      });
-    } catch (error) {
-      console.error("Error playing sound:", error);
-    }
-  };
-
-  const stopNotificationSound = () => {
-    if (soundIntervalRef.current) {
-      clearInterval(soundIntervalRef.current);
-      soundIntervalRef.current = null;
-    }
-
-    if (sound) {
-      sound.stopAsync();
-    }
-  };
-
-  const handleCallAgent = async (mobileNumber) => {
-    try {
-      const callLog = {
-        number: mobileNumber,
-        timestamp: new Date().toISOString(),
-      };
-      
-      await AsyncStorage.setItem(
-        `callLog_${mobileNumber}`,
-        JSON.stringify(callLog)
-      );
-
-      const url = `tel:${mobileNumber}`;
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error("Error initiating call:", error);
-      Alert.alert("Error", "Could not initiate call");
-    }
-  };
-
-  const fetchUserStatus = async () => {
-    try {
-      const status = await AsyncStorage.getItem("userStatus");
-      if (status) {
-        setUserStatus(status);
-      }
-    } catch (error) {
-      console.error("Error fetching user status:", error);
-    }
-  };
-
-  const fetchAssignedAgents = async () => {
+  const fetchAllAgents = async () => {
     try {
       setRefreshing(true);
       setLoading(true);
@@ -326,7 +95,7 @@ export default function ViewAgents() {
       const token = await getAuthToken();
 
       const [agentsRes, districtsRes] = await Promise.all([
-        fetch(`${API_URL}/callexe/myagents`, {
+        fetch(`${API_URL}/agent/assigned/${executiveId}`, {
           headers: {
             token: token || "",
           },
@@ -338,109 +107,64 @@ export default function ViewAgents() {
         }),
       ]);
 
-      if (!agentsRes.ok) throw new Error("Failed to fetch assigned agents");
+      if (!agentsRes.ok) throw new Error("Failed to fetch agents");
       if (!districtsRes.ok) throw new Error("Failed to fetch districts");
 
       const agentsData = await agentsRes.json();
       const districtsData = await districtsRes.json();
 
-      const assignedAgents = agentsData.data.filter(
-        (agent) => !newAgents.some((newAgent) => newAgent._id === agent._id)
-      );
-
-      const sortedAgents = assignedAgents.sort((a, b) => {
-        if (a.CallExecutiveCall === "Done" && b.CallExecutiveCall !== "Done")
-          return 1;
-        if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall === "Done")
+      // Sort agents: first show pending agents assigned to current executive, then others
+      const sortedAgents = agentsData.data.sort((a, b) => {
+        // Both assigned to current executive and pending
+        if (
+          a.assignedExecutive === executiveId &&
+          a.CallExecutiveCall !== "Done" &&
+          b.assignedExecutive === executiveId &&
+          b.CallExecutiveCall !== "Done"
+        ) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // A is assigned to current executive and pending
+        if (
+          a.assignedExecutive === executiveId &&
+          a.CallExecutiveCall !== "Done"
+        ) {
           return -1;
+        }
+        // B is assigned to current executive and pending
+        if (
+          b.assignedExecutive === executiveId &&
+          b.CallExecutiveCall !== "Done"
+        ) {
+          return 1;
+        }
+        // Both pending but not assigned to current executive
+        if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall !== "Done") {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // A is pending, B is done
+        if (a.CallExecutiveCall !== "Done") {
+          return -1;
+        }
+        // B is pending, A is done
+        if (b.CallExecutiveCall !== "Done") {
+          return 1;
+        }
+        // Both done
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
       setAgents(sortedAgents);
       setFilteredAgents(sortedAgents);
       setDistricts(districtsData || []);
-
-      sortedAgents.forEach((agent) => {
-        if (agent?.ReferredBy) {
-          fetchReferrerDetails(agent.ReferredBy);
-        }
-      });
     } catch (error) {
       console.error("Fetch error:", error);
-      Alert.alert("Error", error.message || "Failed to load assigned agents");
+      Alert.alert("Error", error.message || "Failed to load agents");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
-  const fetchReferrerDetails = async (referredBy) => {
-    if (!referredBy || referrerDetails[referredBy]) return;
-
-    try {
-      const token = await getAuthToken();
-      const response = await fetch(
-        `${API_URL}/properties/getPropertyreffered`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: token || "",
-          },
-          body: JSON.stringify({
-            referredBy: referredBy,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === "success") {
-          const details = data.referredByDetails || data.addedByDetails;
-          if (details) {
-            setReferrerDetails((prev) => ({
-              ...prev,
-              [referredBy]: {
-                name:
-                  details.name ||
-                  details.Name ||
-                  details.FullName ||
-                  "Referrer",
-                mobileNumber: details.Number || details.MobileNumber || "N/A",
-              },
-            }));
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching referrer details:", error);
-    }
-  };
-
-  useEffect(() => {
-    const getExecutiveId = async () => {
-      try {
-        const storedId = await AsyncStorage.getItem("callexecutiveId");
-        if (storedId) {
-          setExecutiveId(storedId);
-        } else {
-          console.warn("No executive ID found in AsyncStorage");
-        }
-      } catch (error) {
-        console.error(
-          "Error retrieving executive ID from AsyncStorage:",
-          error
-        );
-      }
-    };
-
-    getExecutiveId();
-    fetchAssignedAgents();
-    fetchUserStatus();
-    
-    const interval = setInterval(fetchAssignedAgents, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (searchQuery.trim() === "") {
@@ -461,7 +185,7 @@ export default function ViewAgents() {
   }, [searchQuery, agents]);
 
   const handleRefresh = async () => {
-    await fetchAssignedAgents();
+    await fetchAllAgents();
   };
 
   const handleMarkAsDone = async (agentId) => {
@@ -497,6 +221,7 @@ export default function ViewAgents() {
 
       const result = await response.json();
 
+      // Update the agent in the state
       setAgents((prevAgents) => {
         const updated = prevAgents.map((agent) =>
           agent._id === agentId
@@ -504,10 +229,39 @@ export default function ViewAgents() {
             : agent
         );
         return updated.sort((a, b) => {
-          if (a.CallExecutiveCall === "Done" && b.CallExecutiveCall !== "Done")
-            return 1;
-          if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall === "Done")
+          // Re-sort after update
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done" &&
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done"
+          ) {
             return -1;
+          }
+          if (
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return 1;
+          }
+          if (
+            a.CallExecutiveCall !== "Done" &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (a.CallExecutiveCall !== "Done") {
+            return -1;
+          }
+          if (b.CallExecutiveCall !== "Done") {
+            return 1;
+          }
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
       });
@@ -519,10 +273,38 @@ export default function ViewAgents() {
             : agent
         );
         return updated.sort((a, b) => {
-          if (a.CallExecutiveCall === "Done" && b.CallExecutiveCall !== "Done")
-            return 1;
-          if (a.CallExecutiveCall !== "Done" && b.CallExecutiveCall === "Done")
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done" &&
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (
+            a.assignedExecutive === executiveId &&
+            a.CallExecutiveCall !== "Done"
+          ) {
             return -1;
+          }
+          if (
+            b.assignedExecutive === executiveId &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return 1;
+          }
+          if (
+            a.CallExecutiveCall !== "Done" &&
+            b.CallExecutiveCall !== "Done"
+          ) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (a.CallExecutiveCall !== "Done") {
+            return -1;
+          }
+          if (b.CallExecutiveCall !== "Done") {
+            return 1;
+          }
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
       });
@@ -534,70 +316,23 @@ export default function ViewAgents() {
     }
   };
 
-  const handleAcceptAgent = async (agentId) => {
+  const handleCallAgent = async (mobileNumber) => {
     try {
-      const response = await fetch(`${API_URL}/agent/assign/${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          executiveId,
-          action: "accept",
-        }),
-      });
+      const callLog = {
+        number: mobileNumber,
+        timestamp: new Date().toISOString(),
+      };
 
-      if (!response.ok) throw new Error("Failed to accept agent");
+      await AsyncStorage.setItem(
+        `callLog_${mobileNumber}`,
+        JSON.stringify(callLog)
+      );
 
-      const result = await response.json();
-
-      stopNotificationSound();
-
-      setNotificationCount((prev) => prev - 1);
-      setNewAgents((prev) => prev.filter((agent) => agent._id !== agentId));
-
-      processedAgentIdsRef.current.add(agentId);
-
-      Alert.alert("Success", "Agent assigned to you successfully");
-
-      fetchAssignedAgents();
+      const url = `tel:${mobileNumber}`;
+      await Linking.openURL(url);
     } catch (error) {
-      console.error("Accept error:", error);
-      Alert.alert("Error", error.message || "Failed to accept agent");
-    }
-  };
-
-  const handleRejectAgent = async (agentId) => {
-    try {
-      const token = await getAuthToken();
-
-      const response = await fetch(`${API_URL}/agent/assign/${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: token || "",
-        },
-        body: JSON.stringify({
-          executiveId,
-          action: "reject",
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to reject agent");
-
-      const result = await response.json();
-
-      stopNotificationSound();
-
-      setNewAgents((prev) => prev.filter((agent) => agent._id !== agentId));
-      setNotificationCount((prev) => prev - 1);
-
-      processedAgentIdsRef.current.add(agentId);
-
-      Alert.alert("Success", "Agent rejected");
-    } catch (error) {
-      console.error("Reject error:", error);
-      Alert.alert("Error", error.message || "Failed to reject agent");
+      console.error("Error initiating call:", error);
+      Alert.alert("Error", "Could not initiate call");
     }
   };
 
@@ -829,18 +564,125 @@ export default function ViewAgents() {
     });
   };
 
-  const toggleNewAgentsPanel = () => {
-    setShowNewAgentsPanel(!showNewAgentsPanel);
-    if (notificationCount > 0 && !showNewAgentsPanel) {
-      stopNotificationSound();
-    }
-  };
+  const renderAgentCard = (agent) => (
+    <View
+      key={agent._id}
+      style={[
+        styles.card,
+        agent.CallExecutiveCall === "Done"
+          ? styles.doneCard
+          : styles.pendingCard,
+        agent.assignedExecutive === executiveId &&
+          agent.CallExecutiveCall !== "Done" &&
+          styles.assignedCard,
+      ]}
+    >
+      <Image
+        source={agent.photo ? { uri: `${API_URL}${agent.photo}` } : logo1}
+        style={styles.avatar}
+      />
+      <View style={styles.infoContainer}>
+        {agent.FullName && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Name</Text>
+            <Text style={styles.value}>: {agent.FullName}</Text>
+          </View>
+        )}
 
-  const scrollToNewAgents = () => {
-    if (newAgentsScrollRef.current && newAgents.length > 0) {
-      newAgentsScrollRef.current.scrollTo({ y: 0, animated: true });
-    }
-  };
+        {agent.assignedExecutive && agent.assignedExecutive !== executiveId && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Assigned To</Text>
+            <Text style={styles.value}>
+              : {agent.CallExecutivename || "Another Executive"}
+            </Text>
+          </View>
+        )}
+
+        {agent.District && (
+          <View style={styles.row}>
+            <Text style={styles.label}>District</Text>
+            <Text style={styles.value}>: {agent.District}</Text>
+          </View>
+        )}
+
+        {agent.Contituency && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Constituency</Text>
+            <Text style={styles.value}>: {agent.Contituency}</Text>
+          </View>
+        )}
+
+        {agent.MobileNumber && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Mobile</Text>
+            <View style={styles.phoneRow}>
+              <Text style={styles.value}>: {agent.MobileNumber}</Text>
+              <TouchableOpacity
+                onPress={() => handleCallAgent(agent.MobileNumber)}
+                style={styles.smallCallButton}
+              >
+                <Ionicons name="call" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {agent.MyRefferalCode && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Referral Code</Text>
+            <Text style={styles.value}>: {agent.MyRefferalCode}</Text>
+          </View>
+        )}
+
+        {agent.referrerDetails && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Referred By</Text>
+            <Text style={styles.value}>
+              : {agent.referrerDetails.name || "Referrer"} (
+              {agent.referrerDetails.phone || "N/A"})
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Status</Text>
+          <Text
+            style={[
+              styles.value,
+              agent.CallExecutiveCall === "Done"
+                ? styles.doneStatus
+                : styles.pendingStatus,
+            ]}
+          >
+            : {agent.CallExecutiveCall === "Done" ? "Done" : "Pending"}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.buttonContainer}>
+        {agent.CallExecutiveCall !== "Done" &&
+          agent.assignedExecutive === executiveId && (
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => handleMarkAsDone(agent._id)}
+            >
+              <Text style={styles.buttonText}>Done</Text>
+            </TouchableOpacity>
+          )}
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => handleEditAgent(agent)}
+        >
+          <Text style={styles.buttonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteAgent(agent._id)}
+        >
+          <Text style={styles.buttonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const renderMobileView = () => (
     <SafeAreaView style={styles.container}>
@@ -855,99 +697,8 @@ export default function ViewAgents() {
         }
       >
         <View style={styles.mobileHeader}>
-          <Text style={styles.heading}>My Assigned Agents</Text>
-          <TouchableOpacity
-            style={styles.notificationBadgeContainer}
-            onPress={toggleNewAgentsPanel}
-          >
-            <Ionicons name="notifications" size={24} color="#333" />
-            {notificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {notificationCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <Text style={styles.heading}>Assigned Agents</Text>
         </View>
-
-        {showNewAgentsPanel && (
-          <View style={styles.mobileNotificationPanel}>
-            <Text style={styles.notificationHeading}>New Agent Requests</Text>
-            {newAgents.length === 0 ? (
-              <View style={styles.noNotificationsContainer}>
-                <Ionicons name="notifications-off" size={40} color="#ccc" />
-                <Text style={styles.noNotifications}>No new agent requests</Text>
-              </View>
-            ) : (
-              newAgents.map((agent) => (
-                <View key={agent._id} style={styles.notificationCard}>
-                  <View style={styles.notificationCardHeader}>
-                    <Text style={styles.newBadge}>NEW</Text>
-                    <Text style={styles.notificationTime}>
-                      {new Date(agent.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.notificationCardBody}>
-                    <Image
-                      source={
-                        agent.photo
-                          ? { uri: `${API_URL}${agent.photo}` }
-                          : logo1
-                      }
-                      style={styles.notificationAvatar}
-                    />
-                    <View style={styles.notificationInfo}>
-                      <Text style={styles.notificationName}>
-                        {agent.FullName}
-                      </Text>
-                      <View style={styles.phoneRow}>
-                        <Text style={styles.notificationDetail}>
-                          <MaterialIcons name="phone" size={14} color="#555" />{" "}
-                          {agent.MobileNumber}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => handleCallAgent(agent.MobileNumber)}
-                          style={styles.callButton}
-                        >
-                          <Ionicons name="call" size={18} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.notificationDetail}>
-                        <MaterialIcons
-                          name="location-on"
-                          size={14}
-                          color="#555"
-                        />{" "}
-                        {agent.District || "N/A"}
-                      </Text>
-
-                      <View style={styles.notificationButtons}>
-                        <TouchableOpacity
-                          style={styles.acceptButton}
-                          onPress={() => handleAcceptAgent(agent._id)}
-                        >
-                          <Ionicons name="checkmark" size={18} color="white" />
-                          <Text style={styles.buttonText}> Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.rejectButton}
-                          onPress={() => handleRejectAgent(agent._id)}
-                        >
-                          <Ionicons name="close" size={18} color="white" />
-                          <Text style={styles.buttonText}> Reject</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        )}
 
         <View style={styles.searchContainer}>
           <TextInput
@@ -966,9 +717,7 @@ export default function ViewAgents() {
         ) : filteredAgents.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.noAgentsText}>
-              {searchQuery
-                ? "No matching agents found"
-                : "No agents assigned to you"}
+              {searchQuery ? "No matching agents found" : "No agents available"}
             </Text>
             <TouchableOpacity
               style={styles.refreshButton}
@@ -979,147 +728,7 @@ export default function ViewAgents() {
           </View>
         ) : (
           <View style={styles.cardContainer}>
-            {filteredAgents.map((agent) => (
-              <View
-                key={agent._id}
-                style={[
-                  styles.card,
-                  agent.CallExecutiveCall === "Done"
-                    ? styles.doneCard
-                    : styles.pendingCard,
-                ]}
-              >
-                <Image
-                  source={
-                    agent.photo ? { uri: `${API_URL}${agent.photo}` } : logo1
-                  }
-                  style={styles.avatar}
-                />
-                <View style={styles.infoContainer}>
-                  {agent.FullName && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Name</Text>
-                      <Text style={styles.value}>: {agent.FullName}</Text>
-                    </View>
-                  )}
-                  {agent.District && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>District</Text>
-                      <Text style={styles.value}>: {agent.District}</Text>
-                    </View>
-                  )}
-                  {agent.Contituency && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Constituency</Text>
-                      <Text style={styles.value}>
-                        : {agent.Contituency}
-                      </Text>
-                    </View>
-                  )}
-                  {agent.MobileNumber && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Mobile</Text>
-                      <View style={styles.phoneRow}>
-                        <Text style={styles.value}>: {agent.MobileNumber}</Text>
-                        <TouchableOpacity
-                          onPress={() => handleCallAgent(agent.MobileNumber)}
-                          style={styles.smallCallButton}
-                        >
-                          <Ionicons name="call" size={16} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                  {agent.MyRefferalCode && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Referral Code</Text>
-                      <Text style={styles.value}>
-                        : {agent.MyRefferalCode}
-                      </Text>
-                    </View>
-                  )}
-                  {agent.ReferredBy && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Referred By</Text>
-                      <Text style={styles.value}>
-                        :{" "}
-                        {referrerDetails[agent.ReferredBy]?.name ||
-                          "Loading..."}
-                        {referrerDetails[agent.ReferredBy]
-                          ?.mobileNumber && (
-                          <Text>
-                            {" "}
-                            (
-                            {referrerDetails[agent.ReferredBy].mobileNumber}
-                            )
-                          </Text>
-                        )}
-                      </Text>
-                    </View>
-                  )}
-                  {agent.AadhaarNumber && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Aadhaar</Text>
-                      <Text style={styles.value}>
-                        : {agent.AadhaarNumber}
-                      </Text>
-                    </View>
-                  )}
-                  {agent.PANNumber && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>PAN</Text>
-                      <Text style={styles.value}>: {agent.PANNumber}</Text>
-                    </View>
-                  )}
-                  {agent.BankAccountNumber && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Bank Account</Text>
-                      <Text style={styles.value}>
-                        : {agent.BankAccountNumber}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Status</Text>
-                    <Text
-                      style={[
-                        styles.value,
-                        agent.CallExecutiveCall === "Done"
-                          ? styles.doneStatus
-                          : styles.pendingStatus,
-                      ]}
-                    >
-                      :{" "}
-                      {agent.CallExecutiveCall === "Done"
-                        ? "Done"
-                        : "Pending"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.buttonContainer}>
-                  {agent.CallExecutiveCall !== "Done" && (
-                    <TouchableOpacity
-                      style={styles.doneButton}
-                      onPress={() => handleMarkAsDone(agent._id)}
-                    >
-                      <Text style={styles.buttonText}>Done</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditAgent(agent)}
-                  >
-                    <Text style={styles.buttonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteAgent(agent._id)}
-                  >
-                    <Text style={styles.buttonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            {filteredAgents.map(renderAgentCard)}
           </View>
         )}
       </ScrollView>
@@ -1330,20 +939,7 @@ export default function ViewAgents() {
             }
           >
             <View style={styles.header}>
-              <Text style={styles.heading}>My Assigned Agents</Text>
-              <TouchableOpacity
-                style={styles.notificationBadgeContainer}
-                onPress={scrollToNewAgents}
-              >
-                <Ionicons name="notifications" size={24} color="#333" />
-                {notificationCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.notificationBadgeText}>
-                      {notificationCount}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <Text style={styles.heading}>Assigned Agents</Text>
             </View>
 
             <View style={styles.searchContainer}>
@@ -1365,7 +961,7 @@ export default function ViewAgents() {
                 <Text style={styles.noAgentsText}>
                   {searchQuery
                     ? "No matching agents found"
-                    : "No agents assigned to you"}
+                    : "No agents available"}
                 </Text>
                 <TouchableOpacity
                   style={styles.refreshButton}
@@ -1375,245 +971,9 @@ export default function ViewAgents() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.cardContainer}>
-                {filteredAgents.map((agent) => (
-                  <View
-                    key={agent._id}
-                    style={[
-                      styles.card,
-                      agent.CallExecutiveCall === "Done"
-                        ? styles.doneCard
-                        : styles.pendingCard,
-                    ]}
-                  >
-                    <Image
-                      source={
-                        agent.photo
-                          ? { uri: `${API_URL}${agent.photo}` }
-                          : logo1
-                      }
-                      style={styles.avatar}
-                    />
-                    <View style={styles.infoContainer}>
-                      {agent.FullName && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Name</Text>
-                          <Text style={styles.value}>: {agent.FullName}</Text>
-                        </View>
-                      )}
-                      {agent.District && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>District</Text>
-                          <Text style={styles.value}>: {agent.District}</Text>
-                        </View>
-                      )}
-                      {agent.Contituency && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Constituency</Text>
-                          <Text style={styles.value}>
-                            : {agent.Contituency}
-                          </Text>
-                        </View>
-                      )}
-                      {agent.MobileNumber && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Mobile</Text>
-                          <View style={styles.phoneRow}>
-                            <Text style={styles.value}>: {agent.MobileNumber}</Text>
-                            <TouchableOpacity
-                              onPress={() => handleCallAgent(agent.MobileNumber)}
-                              style={styles.smallCallButton}
-                            >
-                              <Ionicons name="call" size={16} color="white" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      )}
-                      {agent.MyRefferalCode && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Referral Code</Text>
-                          <Text style={styles.value}>
-                            : {agent.MyRefferalCode}
-                          </Text>
-                        </View>
-                      )}
-                      {agent.ReferredBy && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Referred By</Text>
-                          <Text style={styles.value}>
-                            :{" "}
-                            {referrerDetails[agent.ReferredBy]?.name ||
-                              "Loading..."}
-                            {referrerDetails[agent.ReferredBy]
-                              ?.mobileNumber && (
-                              <Text>
-                                {" "}
-                                (
-                                {referrerDetails[agent.ReferredBy].mobileNumber}
-                                )
-                              </Text>
-                            )}
-                          </Text>
-                        </View>
-                      )}
-                      {agent.AadhaarNumber && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Aadhaar</Text>
-                          <Text style={styles.value}>
-                            : {agent.AadhaarNumber}
-                          </Text>
-                        </View>
-                      )}
-                      {agent.PANNumber && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>PAN</Text>
-                          <Text style={styles.value}>: {agent.PANNumber}</Text>
-                        </View>
-                      )}
-                      {agent.BankAccountNumber && (
-                        <View style={styles.row}>
-                          <Text style={styles.label}>Bank Account</Text>
-                          <Text style={styles.value}>
-                            : {agent.BankAccountNumber}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={styles.row}>
-                        <Text style={styles.label}>Status</Text>
-                        <Text
-                          style={[
-                            styles.value,
-                            agent.CallExecutiveCall === "Done"
-                              ? styles.doneStatus
-                              : styles.pendingStatus,
-                          ]}
-                        >
-                          :{" "}
-                          {agent.CallExecutiveCall === "Done"
-                            ? "Done"
-                            : "Pending"}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.buttonContainer}>
-                      {agent.CallExecutiveCall !== "Done" && (
-                        <TouchableOpacity
-                          style={styles.doneButton}
-                          onPress={() => handleMarkAsDone(agent._id)}
-                        >
-                          <Text style={styles.buttonText}>Done</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => handleEditAgent(agent)}
-                      >
-                        <Text style={styles.buttonText}>Edit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeleteAgent(agent._id)}
-                      >
-                        <Text style={styles.buttonText}>Delete</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                          onPress={() => handleCallAgent(agent.MobileNumber)}
-                          style={styles.callButton}
-                        >
-                          <Ionicons name="call" size={18} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
+              <View style={styles.webCardContainer}>
+                {filteredAgents.map(renderAgentCard)}
               </View>
-            )}
-          </ScrollView>
-        </View>
-
-        <View style={styles.rightPanel}>
-          <View style={styles.notificationHeader}>
-            <Text style={styles.notificationHeading}>New Agent Requests</Text>
-            {notificationCount > 0 && (
-              <View style={styles.notificationCountBadge}>
-                <Text style={styles.notificationCountText}>
-                  {notificationCount}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <ScrollView
-            style={styles.notificationScrollView}
-            ref={newAgentsScrollRef}
-          >
-            {newAgents.length === 0 ? (
-              <View style={styles.noNotificationsContainer}>
-                <Ionicons name="notifications-off" size={40} color="#ccc" />
-                <Text style={styles.noNotifications}>
-                  No new agent requests
-                </Text>
-              </View>
-            ) : (
-              newAgents.map((agent) => (
-                <View key={agent._id} style={styles.notificationCard}>
-                  <View style={styles.notificationCardHeader}>
-                    <Text style={styles.newBadge}>NEW</Text>
-                    <Text style={styles.notificationTime}>
-                      {new Date(agent.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.notificationCardBody}>
-                    <Image
-                      source={
-                        agent.photo
-                          ? { uri: `${API_URL}${agent.photo}` }
-                          : logo1
-                      }
-                      style={styles.notificationAvatar}
-                    />
-                    <View style={styles.notificationInfo}>
-                      <Text style={styles.notificationName}>
-                        {agent.FullName}
-                      </Text>
-                      <View style={styles.phoneRow}>
-                        <Text style={styles.notificationDetail}>
-                          <MaterialIcons name="phone" size={14} color="#555" />{" "}
-                          {agent.MobileNumber}
-                        </Text>
-                        
-                      </View>
-                      <Text style={styles.notificationDetail}>
-                        <MaterialIcons
-                          name="location-on"
-                          size={14}
-                          color="#555"
-                        />{" "}
-                        {agent.District || "N/A"}
-                      </Text>
-
-                      <View style={styles.notificationButtons}>
-                        <TouchableOpacity
-                          style={styles.acceptButton}
-                          onPress={() => handleAcceptAgent(agent._id)}
-                        >
-                          <Ionicons name="checkmark" size={18} color="white" />
-                          <Text style={styles.buttonText}> Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.rejectButton}
-                          onPress={() => handleRejectAgent(agent._id)}
-                        >
-                          <Ionicons name="close" size={18} color="white" />
-                          <Text style={styles.buttonText}> Reject</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              ))
             )}
           </ScrollView>
         </View>
@@ -1821,13 +1181,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   leftPanel: {
-    flex: 2,
-    borderRightWidth: 1,
-    borderRightColor: "#ddd",
-  },
-  rightPanel: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
   },
   mobileHeader: {
     flexDirection: "row",
@@ -1835,14 +1189,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 15,
     paddingTop: 15,
-  },
-  mobileNotificationPanel: {
-    backgroundColor: "#f9f9f9",
-    padding: 10,
-    margin: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
   },
   header: {
     flexDirection: "row",
@@ -1855,25 +1201,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
-  },
-  notificationBadgeContainer: {
-    position: "relative",
-  },
-  notificationBadge: {
-    position: "absolute",
-    right: -8,
-    top: -8,
-    backgroundColor: "red",
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  notificationBadgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
   },
   searchContainer: {
     paddingHorizontal: 15,
@@ -1925,6 +1252,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 20,
   },
+  webCardContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -1936,6 +1270,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 3,
+    width: Platform.OS === "web" ? "32%" : "100%",
+  },
+  assignedCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: "#2196F3",
+    backgroundColor: "#E3F2FD",
   },
   doneCard: {
     borderLeftWidth: 5,
@@ -2132,141 +1472,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
   },
-  notificationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-    backgroundColor: "#fff",
-  },
-  notificationHeading: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  notificationCountBadge: {
-    backgroundColor: "red",
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  notificationCountText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  notificationScrollView: {
-    flex: 1,
-    padding: 10,
-  },
-  noNotificationsContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  noNotifications: {
-    textAlign: "center",
-    color: "#666",
-    marginTop: 10,
-    fontSize: 16,
-  },
-  notificationCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: "hidden",
-  },
-  notificationCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#f0f7ff",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  newBadge: {
-    backgroundColor: "#2196F3",
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  notificationTime: {
-    fontSize: 12,
-    color: "#666",
-  },
-  notificationCardBody: {
-    padding: 10,
-    flexDirection: "row",
-  },
-  notificationAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 10,
-    backgroundColor: "#ddd",
-  },
-  notificationInfo: {
-    flex: 1,
-  },
-  notificationName: {
-    fontWeight: "bold",
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  notificationDetail: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 5,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  notificationButtons: {
-    flexDirection: "row",
-    marginTop: 10,
-    justifyContent: "space-between",
-  },
-  acceptButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: 5,
-    justifyContent: "center",
-  },
-  rejectButton: {
-    backgroundColor: "#F44336",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginLeft: 5,
-    justifyContent: "center",
-  },
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  callButton: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 20,
-    padding: 5,
-    // marginLeft: 10,
   },
   smallCallButton: {
     backgroundColor: "#4CAF50",
