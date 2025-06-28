@@ -473,6 +473,10 @@ const SuppliersVendors = () => {
     navigation.navigate("AddSupplier");
   };
 
+  // const handleBackPress = () => {
+  //   navigation.navigate.;
+  // };
+
   const shouldShowAddButton = () => {
     return userType === "CoreMember" || agentType === "RegionalWealthAssociate";
   };
@@ -648,6 +652,8 @@ const styles = StyleSheet.create({
     fontSize: 22 * fontSizeMultiplier,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
+    textAlign: 'center',
   },
   addButtonBox: {
     flexDirection: "row",

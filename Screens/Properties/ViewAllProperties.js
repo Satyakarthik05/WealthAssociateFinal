@@ -899,7 +899,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   filterButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
   },
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   applyButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
   },
   resetButton: {
     backgroundColor: "#2196F3",

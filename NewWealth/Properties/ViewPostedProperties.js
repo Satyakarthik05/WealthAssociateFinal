@@ -61,6 +61,50 @@ const ViewPostedProperties = () => {
     }
   };
 
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        console.warn("No token found in AsyncStorage.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/properties/getMyPropertys`, {
+        method: "GET",
+        headers: {
+          token: `${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        setProperties(
+          data.length > 0 
+            ? data.map((property) => ({
+                ...property,
+                images: formatImages(property),
+              }))
+            : []
+        );
+      } else {
+        setProperties([]);
+      }
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+      setProperties([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const PropertyImageSlider = ({ images }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const scrollRef = useRef(null);
@@ -128,47 +172,6 @@ const ViewPostedProperties = () => {
         )}
       </View>
     );
-  };
-  const fetchProperties = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      if (!token) {
-        console.warn("No token found in AsyncStorage.");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/properties/getMyPropertys`, {
-        method: "GET",
-        headers: {
-          token: `${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (Array.isArray(data)) {
-        setProperties(
-          data.map((property) => ({
-            ...property,
-            images: formatImages(property),
-          }))
-        );
-      } else {
-        setProperties([]);
-        console.error("Unexpected API response:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching properties:", error);
-      setProperties([]);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleFilterChange = (value) => {
@@ -262,7 +265,7 @@ const ViewPostedProperties = () => {
                 <MaterialIcons
                   name={showFilterList ? "arrow-drop-up" : "arrow-drop-down"}
                   size={24}
-                  color="#E82E5F"
+                  color="#3E5C76"
                   style={styles.icon}
                 />
               </TouchableOpacity>
@@ -287,9 +290,11 @@ const ViewPostedProperties = () => {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E82E5F" style={styles.loader} />
+        <ActivityIndicator size="large" color="#3E5C76" style={styles.loader} />
       ) : properties.length === 0 ? (
-        <Text>No properties available.</Text>
+        <View style={styles.noPropertiesContainer}>
+          <Text style={styles.noPropertiesText}>No properties requested yet</Text>
+        </View>
       ) : (
         <View style={styles.grid}>
           {properties.map((item) => (
@@ -394,7 +399,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     textAlign: "left",
-    color: "#191919",
+    color: "#3E5C76",
   },
   idContainer: {
     backgroundColor: "green",
@@ -417,11 +422,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 10,
     color: "#191919",
+    marginTop:"10"
   },
   inputContainer: {
     width: Platform.OS === "android" || Platform.OS === "ios" ? "70%" : "30%",
     position: "relative",
     zIndex: 1,
+    marginTop:"20"
   },
   inputWrapper: {
     position: "relative",
@@ -597,6 +604,16 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "400",
+  },
+  noPropertiesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  noPropertiesText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 

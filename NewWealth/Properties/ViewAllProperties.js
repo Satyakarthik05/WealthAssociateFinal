@@ -1052,7 +1052,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     width: "100%",
-   
   },
   loadingContainer: {
     flex: 1,

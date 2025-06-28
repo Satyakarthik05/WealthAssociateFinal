@@ -48,7 +48,7 @@ const HomeScreen = () => {
     approvedProperties: [],
     wealthProperties: [],
     listedProperties: [],
-    rentalProperties:[]
+    rentalProperties: [],
   });
 
   const navigation = useNavigation();
@@ -655,7 +655,7 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-       
+
         {propertyCategories.rentalProperties.length > 0 && (
           <>
             <SectionHeader

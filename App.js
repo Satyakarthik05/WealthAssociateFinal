@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   ActivityIndicator,
@@ -393,17 +393,17 @@ export default function App() {
         <Stack.Screen
           name="AddRegionalWealthAssociate"
           component={Rrwa}
-          options={{ headerShown:false}}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AddValueWealthAssociate"
           component={RegisterValue}
-          options={{  headerShown:false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AddExecutiveWealthAssociate"
           component={Rewa}
-          options={{ headerShown:false  }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="PropertyCard"

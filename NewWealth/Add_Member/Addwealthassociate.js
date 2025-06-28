@@ -20,6 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useFontsLoader from "../../assets/Hooks/useFontsLoader";
+import { Ionicons } from "@expo/vector-icons";
 
 const screenHeight = Dimensions.get("window").height;
 const { width } = Dimensions.get("window");
@@ -412,6 +413,9 @@ const Add_Agent = ({ closeModal }) => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
+          <TouchableOpacity onPress={() => navigation.goBack() }style={{alignContent:"flex-start",alignItems:"flex-start",alignSelf:"flex-start",marginTop:20}}>
+                                      <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+                                    </TouchableOpacity>
           <Text style={styles.title}>Register Wealth Associate</Text>
           <View style={styles.card}>
             {errorMessage ? (
