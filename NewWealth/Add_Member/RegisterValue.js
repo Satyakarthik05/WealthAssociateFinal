@@ -24,7 +24,7 @@ import * as ImagePicker from "expo-image-picker";
 
 const { width, height } = Dimensions.get("window");
 
-const RegisterValue = ({ closeModal }) => {
+const RegisterValue = ({ onClose }) => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -157,8 +157,16 @@ const RegisterValue = ({ closeModal }) => {
 
     if (!result.canceled) {
       setLogo(result.assets[0].uri);
-      // Here you would typically create a file object to upload
-      // For simplicity, we're just storing the URI
+      const localUri = result.assets[0].uri;
+      const filename = localUri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image';
+      
+      setLogoFile({
+        uri: localUri,
+        name: filename,
+        type
+      });
     }
   };
 
@@ -209,11 +217,7 @@ const RegisterValue = ({ closeModal }) => {
     formData.append("AgentType", "ValueAssociate");
 
     if (logoFile) {
-      formData.append("Logo", {
-        uri: logo,
-        type: "image/jpeg",
-        name: "logo.jpg",
-      });
+      formData.append("Logo", logoFile);
     }
 
     try {
@@ -230,7 +234,7 @@ const RegisterValue = ({ closeModal }) => {
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
-        closeModal();
+        handleCancel();
       } else if (response.status === 400) {
         const errorData = await response.json();
         Alert.alert("Error", errorData.message || "Mobile number already exists.");
@@ -301,6 +305,26 @@ const RegisterValue = ({ closeModal }) => {
     </TouchableOpacity>
   );
 
+  const handleCancel = () => {
+    setFullname("");
+    setMobile("");
+    setEmail("");
+    setCompanyName("");
+    setDistrict("");
+    setConstituency("");
+    setLocation("");
+    setExpertise("");
+    setExperience("");
+    setLogo(null);
+    setLogoFile(null);
+    
+    if (onClose) {
+      onClose();
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
@@ -320,7 +344,7 @@ const RegisterValue = ({ closeModal }) => {
         >
           <View style={styles.headerContainer}>
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={handleCancel}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={24} color="#2B2D42" />
@@ -338,7 +362,6 @@ const RegisterValue = ({ closeModal }) => {
               </Text>
             )}
 
-            {/* Logo Upload Section - Moved to top */}
             <View style={styles.logoUploadTopContainer}>
               <Text style={styles.label}>Company Logo</Text>
               <TouchableOpacity
@@ -364,7 +387,6 @@ const RegisterValue = ({ closeModal }) => {
             </View>
 
             <View style={styles.webInputWrapper}>
-              {/* Row 1 */}
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Company Name</Text>
@@ -386,9 +408,6 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
-                  {errors.companyName && (
-                    <Text style={styles.errorText}>{errors.companyName}</Text>
-                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Fullname</Text>
@@ -410,9 +429,6 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
-                  {errors.fullname && (
-                    <Text style={styles.errorText}>{errors.fullname}</Text>
-                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Mobile Number</Text>
@@ -435,13 +451,9 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
-                  {errors.mobile && (
-                    <Text style={styles.errorText}>{errors.mobile}</Text>
-                  )}
                 </View>
               </View>
 
-              {/* Row 2 */}
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
@@ -463,9 +475,6 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
-                  {errors.email && (
-                    <Text style={styles.errorText}>{errors.email}</Text>
-                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Parliament</Text>
@@ -519,7 +528,6 @@ const RegisterValue = ({ closeModal }) => {
                 </View>
               </View>
 
-              {/* Row 3 */}
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Expertise</Text>
@@ -585,7 +593,6 @@ const RegisterValue = ({ closeModal }) => {
                 </View>
               </View>
 
-              {/* Row 4 - Now only contains Referral Code */}
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Referral Code</Text>
@@ -606,7 +613,6 @@ const RegisterValue = ({ closeModal }) => {
                     />
                   </View>
                 </View>
-                {/* Empty container to maintain layout */}
                 <View style={styles.inputContainer}></View>
                 <View style={styles.inputContainer}></View>
               </View>
@@ -623,7 +629,7 @@ const RegisterValue = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={closeModal}
+                onPress={handleCancel}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -640,7 +646,6 @@ const RegisterValue = ({ closeModal }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* District Modal */}
       <Modal
         visible={showDistrictModal}
         animationType="slide"
@@ -694,7 +699,6 @@ const RegisterValue = ({ closeModal }) => {
         </View>
       </Modal>
 
-      {/* Constituency Modal */}
       <Modal
         visible={showConstituencyModal}
         animationType="slide"
@@ -748,7 +752,6 @@ const RegisterValue = ({ closeModal }) => {
         </View>
       </Modal>
 
-      {/* Expertise Modal */}
       <Modal
         visible={showExpertiseModal}
         animationType="slide"
@@ -802,7 +805,6 @@ const RegisterValue = ({ closeModal }) => {
         </View>
       </Modal>
 
-      {/* Experience Modal */}
       <Modal
         visible={showExperienceModal}
         animationType="slide"
@@ -986,7 +988,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#191919",
     marginBottom: 8,
-    
   },
   row: {
     flexDirection: "row",
@@ -1031,7 +1032,6 @@ const styles = StyleSheet.create({
     color: "#2B2D42",
     textAlign: "center",
   },
-  // Modal styles
   modalOuterContainer: {
     flex: 1,
     justifyContent: "center",

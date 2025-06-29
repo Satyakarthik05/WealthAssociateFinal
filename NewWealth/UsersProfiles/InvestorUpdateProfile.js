@@ -5,33 +5,37 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
-  Dimensions,
+  useWindowDimensions,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 
-const { width } = Dimensions.get("window");
+const InvestorModifyDetails = ({
+  closeModal,
+  onDetailsUpdate,
+  onDetailsUpdated,
+}) => {
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 450;
 
-const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
-  const [fullname, setFullname] = useState("");
+  const [fullName, setFullName] = useState("");
   const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
   const [location, setLocation] = useState("");
   const [selectSkill, setSelectSkill] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [responseStatus, setResponseStatus] = useState(null);
-  const [isMobileEditable, setIsMobileEditable] = useState(false); // State to control mobile field editability
+  const [isMobileEditable, setIsMobileEditable] = useState(false);
 
   const mobileRef = useRef(null);
-  const emailRef = useRef(null);
+  const locationRef = useRef(null);
 
   const getDetails = async () => {
     try {
@@ -43,17 +47,14 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
         },
       });
       const newDetails = await response.json();
-      console.log("Fetched Details:", newDetails); // Debugging: Log fetched details
 
-      // Pre-fill the form fields with the fetched details
-      if (newDetails.FullName) setFullname(newDetails.FullName);
+      if (newDetails.FullName) setFullName(newDetails.FullName);
       if (newDetails.MobileNumber) setMobile(newDetails.MobileNumber);
-      if (newDetails.Email) setEmail(newDetails.Email);
       if (newDetails.Location) setLocation(newDetails.Location);
       if (newDetails.SelectSkill) setSelectSkill(newDetails.SelectSkill);
       if (newDetails.Password) setPassword(newDetails.Password);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
+      console.error("Error fetching investor details:", error);
     }
   };
 
@@ -61,15 +62,8 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
     getDetails();
   }, []);
 
-  const handleRegister = async () => {
-    if (
-      !fullname ||
-      !mobile ||
-      // !email ||
-      !location ||
-      !selectSkill ||
-      !password
-    ) {
+  const handleUpdate = async () => {
+    if (!fullName || !mobile || !location || !selectSkill || !password) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
@@ -77,9 +71,8 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
     setIsLoading(true);
 
     const userData = {
-      FullName: fullname,
+      FullName: fullName,
       MobileNumber: mobile,
-      Email: email,
       Location: location,
       SelectSkill: selectSkill,
       Password: password,
@@ -97,19 +90,19 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
       setResponseStatus(response.status);
 
       if (response.ok) {
-        Alert.alert("Success", "Details Updated successfully!");
-        setIsMobileEditable(false); // Disable mobile number field
+        Alert.alert("Success", "Profile updated successfully!");
+        setIsMobileEditable(false);
         closeModal();
         onDetailsUpdate();
-        if (onDetailsUpdated) onDetailsUpdated(); // Check if the function exists before calling
+        if (onDetailsUpdated) onDetailsUpdated();
       } else if (response.status === 400) {
-        Alert.alert("Error", "Unable to Update details.");
+        Alert.alert("Error", "Unable to update profile.");
       } else {
         const errorData = await response.json();
         Alert.alert("Error", errorData.message || "Something went wrong.");
       }
     } catch (error) {
-      console.error("Error during registration:", error);
+      console.error("Error during update:", error);
       Alert.alert(
         "Error",
         "Failed to connect to the server. Please try again later."
@@ -124,15 +117,21 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            isSmallScreen && styles.smallScreenScrollContainer,
+          ]}
+          style={styles.scrollView}
           nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-              <Text style={styles.register_text}>Edit Details</Text>
-          <View style={styles.card}>
-            <View style={styles.register_main}>
-            </View>
+          <Text style={styles.screenTitle}>Edit Investor Profile</Text>
+
+          <View style={[styles.card, !isSmallScreen && styles.desktopCard]}>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
                 Mobile number already exists.
@@ -141,16 +140,26 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
 
             <View style={styles.webInputWrapper}>
               {/* Row 1 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Fullname</Text>
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Full Name</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
                       placeholder="Full name"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setFullname}
-                      value={fullname}
+                      onChangeText={setFullName}
+                      value={fullName}
                       returnKeyType="next"
                       onSubmitEditing={() => mobileRef.current.focus()}
                     />
@@ -162,7 +171,12 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-                <View style={styles.inputContainer}>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
                   <Text style={styles.label}>Mobile Number</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
@@ -174,8 +188,8 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                       value={mobile}
                       keyboardType="number-pad"
                       returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current.focus()}
-                      editable={isMobileEditable} // Disable editing based on state
+                      onSubmitEditing={() => locationRef.current.focus()}
+                      editable={isMobileEditable}
                     />
                     <MaterialIcons
                       name="phone"
@@ -185,36 +199,51 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Email</Text>
+              </View>
+
+              {/* Row 2 */}
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Location</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
-                      ref={emailRef}
+                      ref={locationRef}
                       style={styles.input}
-                      placeholder="Email"
-                      value={email}
+                      placeholder="Location"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setEmail}
+                      onChangeText={setLocation}
+                      value={location}
                       returnKeyType="next"
                     />
                     <MaterialIcons
-                      name="email"
+                      name="location-on"
                       size={20}
                       color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
                 </View>
-              </View>
-
-              {/* Row 2 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Skill</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Investment Focus</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
-                      placeholder="Select Skill"
+                      placeholder="Investment Focus"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setSelectSkill}
                       value={selectSkill}
@@ -227,29 +256,21 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Location</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Location"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setLocation}
-                      value={location}
-                    />
-                    <MaterialIcons
-                      name="location-on"
-                      size={20}
-                      color="#3E5C76"
-                      style={styles.icon}
-                    />
-                  </View>
-                </View>
               </View>
 
               {/* Row 3 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
                   <Text style={styles.label}>Password</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
@@ -268,89 +289,108 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  {/* Empty container for layout consistency */}
+                </View>
               </View>
             </View>
 
             <View style={styles.row}>
               <TouchableOpacity
                 style={styles.registerButton}
-                onPress={handleRegister}
+                onPress={handleUpdate}
                 disabled={isLoading}
               >
-                <Text style={styles.buttonText}>Submit</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Update Profile</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[
+                  styles.cancelButton,
+                  isLoading && styles.disabledButton,
+                ]}
                 disabled={isLoading}
                 onPress={closeModal}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-
-            {isLoading && (
-              <ActivityIndicator
-                size="large"
-                color="#3E5C76"
-                style={styles.loadingIndicator}
-              />
-            )}
           </View>
         </ScrollView>
-        {/* <StatusBar style="auto" /> */}
+        <StatusBar style="auto" />
       </KeyboardAvoidingView>
     </View>
   );
 };
 
+// Reuse the exact same styles from your NRI profile component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D8E3E7",
-    width:"100%",
-    borderRadius:30,
+    width: Platform.OS === "web" ? "120%" : "100%",
+    left: Platform.OS === "web" ? "-5%" : "undefined",
+    borderRadius: 10,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#D8E3E7",
-    borderRadius: 30,
+    paddingBottom: 20,
   },
-  register_main: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    width: Platform.OS === "web" ? "100%" : 260,
-    height: 1,
-    borderRadius: 20,
+  smallScreenScrollContainer: {
+    paddingHorizontal: 0,
+    paddingTop: 50,
   },
-  register_text: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    alignContent: "center",
-    fontSize: 24,
-    color: "black",
-    fontFamily: "OpenSanssemibold",
+  screenTitle: {
+    fontWeight: "700",
+    fontSize: 22,
+    color: "#2B2D42",
+    marginBottom: 10,
+    textAlign: "center",
+    fontFamily: "Roboto-Bold",
+    marginTop: 20,
   },
   card: {
-    display: "flex",
-    justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "90%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+    overflow: "hidden",
     elevation: 8,
     alignItems: "center",
+    marginBottom: 20,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
+    width: "95%",
+    ...Platform.select({
+      web: {
+        transition: "all 0.3s ease",
+        ":hover": {
+          shadowOpacity: 0.3,
+        },
+      },
+    }),
+  },
+  desktopCard: {
+    width: "80%",
+    minWidth: 650,
+    maxWidth: 800,
   },
   webInputWrapper: {
     width: "100%",
@@ -360,77 +400,102 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS !== "android" ? "column" : "row",
-    justifyContent: "space-between",
-    gap: 5,
+    flexDirection: "column",
+    gap: 15,
+    width: "100%",
+    ...Platform.select({
+      web: {
+        transition: "flex-direction 0.3s ease",
+      },
+    }),
   },
   inputContainer: {
-    width:
-      Platform.OS === "android" || Platform.OS !== "android" ? "100%" : "30%",
-    position: "relative",
-    zIndex: 1,
+    width: "100%",
   },
   inputWrapper: {
     position: "relative",
-    zIndex: 1,
+    width: "100%",
   },
   input: {
     width: "100%",
     height: 47,
     backgroundColor: "#FFF",
     borderRadius: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 45,
+    paddingRight: 15,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 2,
-    marginBottom: 5,
     borderWidth: 1,
     borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
   },
   icon: {
     position: "absolute",
-    right: 10,
+    left: 15,
     top: 13,
+    color: "#3E5C76",
+    zIndex: 2,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#191919",
+    marginBottom: 8,
+    fontFamily: "Roboto-Medium",
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     width: "100%",
     marginTop: 20,
+    gap: 15,
+  },
+  desktopInputRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  desktopInputContainer: {
+    width: "48%",
   },
   registerButton: {
     backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    minHeight: 44,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "400",
-  },
-  loadingIndicator: {
-    marginTop: 20,
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+    fontFamily: "Roboto-Medium",
   },
   errorText: {
     color: "red",
     fontSize: 14,
     marginBottom: 10,
     textAlign: "center",
+    fontFamily: "Roboto-Regular",
   },
 });
 
-export default Modify_Deatils;
+export default InvestorModifyDetails;

@@ -187,15 +187,16 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flexGrow: 1,
-    paddingTop: 20,
+    paddingTop: 30,
     paddingBottom: 90,
   },
   header: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
     color: "#333",
     marginBottom: 15,
+    fontFamily: "OpenSanssemibold",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -225,6 +226,7 @@ const styles = StyleSheet.create({
     color: "#3E5C76",
     fontWeight: "bold",
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
   gridContainer: {
     flexDirection: "row",
@@ -253,9 +255,10 @@ const styles = StyleSheet.create({
     tintColor: "#FDFDFD",
   },
   text: {
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "normal",
     textAlign: "center",
+    fontFamily: "OpenSanssemibold",
     color: "#333",
   },
 });

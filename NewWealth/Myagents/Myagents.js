@@ -20,6 +20,7 @@ import agentImage from "../../assets/man.png";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
+const isSmallWeb = isWeb && width < 450; // Check for small web screens
 
 export default function ViewAgents() {
   const [agents, setAgents] = useState([]);
@@ -170,10 +171,10 @@ export default function ViewAgents() {
     setModalVisible(true);
   };
 
-  // Render agent cards in rows (3 per row on web)
+  // Render agent cards in rows (3 per row on web, 1 for small screens)
   const renderAgentCards = () => {
     if (isWeb) {
-      // For web: 3 cards per row with left alignment
+      // For web: 3 cards per row (or 1 for small screens) with left alignment
       return (
         <View style={styles.webGrid}>
           {agents.map((agent) => (
@@ -336,21 +337,29 @@ const AgentCard = ({ agent, onPress, onDelete, userType }) => {
           }
           style={styles.avatar}
         />
-        <Text style={styles.agentName}>{agent.FullName}</Text>
+        <Text style={styles.agentName} numberOfLines={1} ellipsizeMode="tail">
+          {agent.FullName}
+        </Text>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>District:</Text>
-          <Text style={styles.infoValue}>{agent.District}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {agent.District}
+          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Constituency:</Text>
-          <Text style={styles.infoValue}>{agent.Contituency}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {agent.Contituency}
+          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Referral Code:</Text>
-          <Text style={styles.infoValue}>{agent.MyRefferalCode}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {agent.MyRefferalCode}
+          </Text>
         </View>
         {agent.MobileNumber && (
           <View style={styles.infoRow}>
@@ -361,7 +370,9 @@ const AgentCard = ({ agent, onPress, onDelete, userType }) => {
         {agent.Locations && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Location:</Text>
-            <Text style={styles.infoValue}>{agent.Locations}</Text>
+            <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+              {agent.Locations}
+            </Text>
           </View>
         )}
       </View>
@@ -382,21 +393,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    paddingBottom: 30,
+    paddingBottom: 90,
   },
   scrollContainer: {
     width: "100%",
-    paddingHorizontal: isWeb ? 20 : 10,
+    paddingHorizontal: isSmallWeb ? 5 : (isWeb ? 20 : 10),
   },
   loader: {
     marginTop: 40,
   },
   heading: {
-    fontSize: 24,
+    fontSize: isSmallWeb ? 20 : 24,
     fontWeight: "bold",
     color: "#3E5C76",
     marginVertical: 20,
-    marginLeft: isWeb ? 10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? 5 : 10) : 0,
   },
   gridContainer: {
     width: "100%",
@@ -405,14 +416,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
-    marginLeft: isWeb ? -10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? -5 : -10) : 0,
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    width: isWeb ? "31%" : "93%",
-    margin: isWeb ? 10 : 15,
-    padding: 20,
+    width: isWeb ? (isSmallWeb ? "90%" : "31%") : "88%",
+    margin: isWeb ? (isSmallWeb ? 5 : 10) : 15,
+    padding: isSmallWeb ? 12 : 20,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
@@ -420,7 +431,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: "#eee",
-    // alignItems: "center",
   },
   cardHeader: {
     flexDirection: "row",
@@ -431,16 +441,18 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+    width: isSmallWeb ? 50 : 60,
+    height: isSmallWeb ? 50 : 60,
+    borderRadius: isSmallWeb ? 25 : 30,
+    marginRight: isSmallWeb ? 10 : 15,
     backgroundColor: "#f0f0f0",
   },
   agentName: {
-    fontSize: 18,
+    fontSize: isSmallWeb ? 16 : 18,
     fontWeight: "600",
     color: "#3E5C76",
+    flexShrink: 1,
+    maxWidth: isSmallWeb ? width - 180 : width - 200,
   },
   infoContainer: {
     width: "100%",
@@ -451,22 +463,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#6c757d",
     fontWeight: "500",
+    flexShrink: 1,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#495057",
     fontWeight: "600",
     textAlign: "right",
     flexShrink: 1,
-    flexWrap: "wrap",
+    maxWidth: "50%",
   },
   noAgentsText: {
     textAlign: "center",
     marginTop: 20,
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#6c757d",
     width: "100%",
   },
@@ -482,7 +495,7 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
   },
   centeredView: {
     flex: 1,
@@ -494,9 +507,9 @@ const styles = StyleSheet.create({
     margin: 20,
     backgroundColor: "white",
     borderRadius: 20,
-    padding: 25,
+    padding: isSmallWeb ? 15 : 25,
     width: "90%",
-    maxWidth: 400,
+    maxWidth: isSmallWeb ? 350 : 400,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -507,7 +520,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: isSmallWeb ? 18 : 20,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
@@ -526,6 +539,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: isSmallWeb ? 14 : 16,
   },
   statsContainer: {
     width: "100%",
@@ -539,17 +553,17 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#495057",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#3E5C76",
   },
   noStatsText: {
     textAlign: "center",
     marginVertical: 20,
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#6c757d",
   },
 });

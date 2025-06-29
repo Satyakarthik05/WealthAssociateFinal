@@ -932,10 +932,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#3E5C76",
+    color: "black",
     textAlign: "center",
+    fontFamily: "OpenSanssemibold",
   },
   formContainer: {
     marginBottom: 10,
@@ -948,11 +949,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 3,
-    width: "80%",
+    width: "35%",
     alignSelf: "center",
   },
   formContainerMobile: {
-    width: "95%",
+    width: "85%",
     paddingHorizontal: 15,
   },
   titleWrapper: {

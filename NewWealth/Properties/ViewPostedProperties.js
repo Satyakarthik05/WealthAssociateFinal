@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -13,43 +19,92 @@ import {
   ScrollView,
   Alert,
   FlatList,
+  Animated,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
-import logo1 from "../../assets/logo.png";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import LottieView from "lottie-react-native";
+import RNPickerSelect from "react-native-picker-select";
+import PropertyCard from "../components/home/PropertyCard";
+import PropertyModal from "../components/home/PropertyModal";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+const IS_WEB = Platform.OS === "web";
+const IS_SMALL_SCREEN = width < 450;
 
 const ViewPostedProperties = () => {
   const navigation = useNavigation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState("");
-  const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
+  const [referredInfo, setReferredInfo] = useState(null);
+  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    propertyType: "",
+    location: "",
+    minPrice: "",
+    maxPrice: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [likedProperties, setLikedProperties] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+  const [tabContentWidth, setTabContentWidth] = useState(0);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedData, setEditedData] = useState({
     propertyType: "",
     location: "",
     price: "",
   });
-  const [showFilterList, setShowFilterList] = useState(false);
-  const [referredInfo, setReferredInfo] = useState(null);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
-  const filterOptions = [
-    { label: "All Properties", value: "" },
-    { label: "Price: Low to High", value: "lowToHigh" },
-    { label: "Price: High to Low", value: "highToLow" },
-    { label: "Recently Added", value: "recent" },
-  ];
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const scrollViewRef = useRef(null);
+  const tabScrollViewRef = useRef(null);
+
+  const PROPERTIES_PER_PAGE = 20;
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading, fadeAnim, slideAnim]);
 
   useEffect(() => {
     fetchProperties();
     loadReferredInfoFromStorage();
+    loadLikedProperties();
   }, []);
+
+  const loadLikedProperties = async () => {
+    try {
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
+      }
+    } catch (error) {
+      console.error("Error loading liked properties:", error);
+    }
+  };
 
   const loadReferredInfoFromStorage = async () => {
     try {
@@ -92,13 +147,18 @@ const ViewPostedProperties = () => {
           images: normalizeImageSources(property),
         }));
         setProperties(formattedProperties);
+        setTotalPages(
+          Math.ceil(formattedProperties.length / PROPERTIES_PER_PAGE)
+        );
       } else {
         setProperties([]);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
       Alert.alert("Error", "Failed to fetch properties. Please try again.");
       setProperties([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -108,14 +168,19 @@ const ViewPostedProperties = () => {
     if (!property) return [];
 
     // First check for any array of images
-    const possibleArrayFields = ['photos', 'imageUrls', 'newImageUrls', 'images'];
+    const possibleArrayFields = [
+      "photos",
+      "imageUrls",
+      "newImageUrls",
+      "images",
+    ];
     for (const field of possibleArrayFields) {
       if (Array.isArray(property[field])) {
         return property[field]
-          .filter(url => url && typeof url === 'string')
-          .map(url => {
+          .filter((url) => url && typeof url === "string")
+          .map((url) => {
             // Handle case where URL might be relative
-            if (url.startsWith('/')) {
+            if (url.startsWith("/")) {
               return `${API_URL}${url}`;
             }
             return url;
@@ -124,11 +189,11 @@ const ViewPostedProperties = () => {
     }
 
     // Then check for single string fields
-    const possibleStringFields = ['photo', 'imageUrl', 'newImageUrl', 'image'];
+    const possibleStringFields = ["photo", "imageUrl", "newImageUrl", "image"];
     for (const field of possibleStringFields) {
-      if (typeof property[field] === 'string' && property[field]) {
+      if (typeof property[field] === "string" && property[field]) {
         const url = property[field];
-        return [url.startsWith('/') ? `${API_URL}${url}` : url];
+        return [url.startsWith("/") ? `${API_URL}${url}` : url];
       }
     }
 
@@ -136,103 +201,225 @@ const ViewPostedProperties = () => {
     return [];
   }, []);
 
-  const PropertyImageSlider = React.memo(({ images }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const scrollRef = useRef(null);
+  const filterProperties = useCallback(() => {
+    let filtered = [...properties];
 
-    useEffect(() => {
-      if (images.length <= 1) return;
+    if (searchQuery) {
+      filtered = filtered.filter((property) => {
+        const propertyId = property._id
+          ? property._id.slice(-4).toLowerCase()
+          : "";
+        return (
+          propertyId.includes(searchQuery.toLowerCase()) ||
+          (property.location &&
+            property.location
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (property.propertyType &&
+            property.propertyType
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+        );
+      });
+    }
 
-      const interval = setInterval(() => {
-        const nextIndex = (currentImageIndex + 1) % images.length;
-        setCurrentImageIndex(nextIndex);
-        if (scrollRef.current) {
-          scrollRef.current.scrollTo({
-            x: nextIndex * width,
-            animated: true,
-          });
-        }
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }, [currentImageIndex, images.length]);
-
-    if (images.length === 0) {
-      return (
-        <View style={styles.imagePlaceholder}>
-          <Image
-            source={logo1}
-            style={styles.propertyImage}
-            resizeMode="contain"
-          />
-        </View>
+    if (filterCriteria.propertyType) {
+      filtered = filtered.filter(
+        (property) => property.propertyType === filterCriteria.propertyType
       );
     }
 
-    return (
-      <View style={styles.imageSliderContainer}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const newIndex = Math.round(offsetX / width);
-            setCurrentImageIndex(newIndex);
-          }}
-        >
-          {images.map((image, index) => (
-            <View key={index} style={styles.imageSlide}>
-              <Image
-                source={{ uri: image }}
-                style={styles.propertyImage}
-                resizeMode="cover"
-                onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
-              />
-            </View>
-          ))}
-        </ScrollView>
-
-        {images.length > 1 && (
-          <View style={styles.pagination}>
-            {images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.paginationDot,
-                  index === currentImageIndex && styles.activeDot,
-                ]}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  });
-
-  const handleFilterChange = (value) => {
-    setSelectedFilter(value);
-    setShowFilterList(false);
-
-    let sortedProperties = [...properties];
-    
-    switch (value) {
-      case "highToLow":
-        sortedProperties.sort((a, b) => b.price - a.price);
-        break;
-      case "lowToHigh":
-        sortedProperties.sort((a, b) => a.price - b.price);
-        break;
-      case "recent":
-        sortedProperties.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      default:
-        break;
+    if (filterCriteria.location) {
+      filtered = filtered.filter(
+        (property) => property.location === filterCriteria.location
+      );
     }
 
-    setProperties(sortedProperties);
+    if (filterCriteria.minPrice) {
+      const minPriceValue = parseFloat(filterCriteria.minPrice) * 100000;
+      filtered = filtered.filter((property) => property.price >= minPriceValue);
+    }
+
+    if (filterCriteria.maxPrice) {
+      const maxPriceValue = parseFloat(filterCriteria.maxPrice) * 100000;
+      filtered = filtered.filter((property) => property.price <= maxPriceValue);
+    }
+
+    const newTotalPages = Math.ceil(filtered.length / PROPERTIES_PER_PAGE);
+    if (newTotalPages !== totalPages) {
+      setTotalPages(newTotalPages);
+    }
+
+    if (currentPage > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(newTotalPages);
+    } else if (newTotalPages === 0) {
+      setCurrentPage(1);
+    }
+
+    return filtered;
+  }, [properties, searchQuery, filterCriteria, totalPages, currentPage]);
+
+  const paginatedProperties = useMemo(() => {
+    const filtered = filterProperties();
+    const startIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
+    const endIndex = startIndex + PROPERTIES_PER_PAGE;
+    return filtered.slice(startIndex, endIndex);
+  }, [filterProperties, currentPage]);
+
+  const getUniqueValues = useCallback(
+    (key) => {
+      return [...new Set(properties.map((item) => item[key]))].filter(Boolean);
+    },
+    [properties]
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilterCriteria({
+      propertyType: "",
+      location: "",
+      minPrice: "",
+      maxPrice: "",
+    });
+    setSearchQuery("");
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const applyFilters = useCallback(() => {
+    setFilterModalVisible(false);
+    setCurrentPage(1);
+  }, []);
+
+  const handleTabScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const newShowRightArrow =
+      contentOffset.x + layoutMeasurement.width < contentSize.width;
+    if (newShowRightArrow !== showRightArrow) {
+      setShowRightArrow(newShowRightArrow);
+    }
   };
+
+  const scrollTabsRight = () => {
+    tabScrollViewRef.current?.scrollTo({ x: tabContentWidth, animated: true });
+  };
+
+  const onTabContentSizeChange = (contentWidth) => {
+    setTabContentWidth(contentWidth);
+    setShowRightArrow(contentWidth > width);
+  };
+
+  const handlePropertyPress = useCallback(
+    (property) => {
+      if (!property?._id) {
+        console.error("Property ID is missing");
+        return;
+      }
+
+      const images = normalizeImageSources(property).map((uri) => ({
+        uri: uri,
+      }));
+
+      let formattedPrice = "Price not available";
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images:
+            images.length > 0 ? images : [require("../../assets/logo.png")],
+        },
+      });
+    },
+    [navigation, normalizeImageSources]
+  );
+
+  const handleShare = useCallback(
+    (property) => {
+      const images = normalizeImageSources(property);
+      let shareImage = images.length > 0 ? images[0] : null;
+
+      let formattedPrice = "Price not available";
+      if (property.price) {
+        try {
+          const priceValue = parseInt(property.price);
+          if (!isNaN(priceValue)) {
+            formattedPrice = `₹${priceValue.toLocaleString()}`;
+          }
+        } catch (e) {
+          console.error("Error formatting price:", e);
+        }
+      }
+
+      navigation.navigate("PropertyCard", {
+        property: {
+          photo: shareImage,
+          location: property.location || "Location not specified",
+          price: formattedPrice,
+          propertyType: property.propertyType || "Property",
+          PostedBy: property.PostedBy || "",
+          fullName: property.fullName || "Property Owner",
+        },
+      });
+    },
+    [navigation, normalizeImageSources]
+  );
+
+  const handleEnquiryNow = useCallback((property) => {
+    setSelectedProperty(property);
+    setPropertyModalVisible(true);
+  }, []);
+
+  const toggleLike = useCallback(
+    async (propertyId) => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !likedProperties.includes(propertyId);
+        let updatedLikes;
+
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, propertyId];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== propertyId);
+        }
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: propertyId,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || "User",
+            mobileNumber: userDetails?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
+      }
+    },
+    [likedProperties]
+  );
 
   const handleEditPress = (property) => {
     setSelectedProperty(property);
@@ -325,214 +512,536 @@ const ViewPostedProperties = () => {
     return id.length > 4 ? id.slice(-4) : id;
   };
 
-  const handlePropertyPress = (property) => {
-    navigation.navigate("PropertyDetails", { 
-      property: {
-        ...property,
-        id: property._id,
-        price: `₹${parseInt(property.price).toLocaleString()}`,
-        images: property.images.length > 0 
-          ? property.images.map(uri => ({ uri })) 
-          : [{ uri: Image.resolveAssetSource(logo1).uri }]
+  const renderPagination = useCallback(() => {
+    if (totalPages <= 1) return null;
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    return (
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === 1 && styles.disabledButton,
+          ]}
+          onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.pageButtonText}>Previous</Text>
+        </TouchableOpacity>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pageNumbersContainer}
+        >
+          {Array.from(
+            { length: endPage - startPage + 1 },
+            (_, i) => startPage + i
+          ).map((page) => (
+            <TouchableOpacity
+              key={page}
+              style={[
+                styles.pageNumber,
+                currentPage === page && styles.activePage,
+              ]}
+              onPress={() => setCurrentPage(page)}
+            >
+              <Text
+                style={
+                  currentPage === page
+                    ? styles.activePageText
+                    : styles.pageNumberText
+                }
+              >
+                {page}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === totalPages && styles.disabledButton,
+          ]}
+          onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <Text style={styles.pageButtonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [currentPage, totalPages]);
+
+  const RenderPropertyCard = React.memo(({ property }) => {
+    const [isLiked, setIsLiked] = useState(
+      likedProperties.includes(property._id)
+    );
+
+    const handleToggleLike = useCallback(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
+
+        const newLikedStatus = !isLiked;
+        setIsLiked(newLikedStatus);
+
+        let updatedLikes;
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, property._id];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== property._id);
+        }
+        setLikedProperties(updatedLikes);
+
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: property._id,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || "User",
+            mobileNumber: userDetails?.MobileNumber || "",
+          }),
+        });
+      } catch (error) {
+        console.error("Error toggling like:", error);
       }
-    });
-  };
+    }, [isLiked, likedProperties, property._id]);
+
+    return (
+      <PropertyCard
+        property={property}
+        onPress={() => handlePropertyPress(property)}
+        onEnquiryPress={() => handleEnquiryNow(property)}
+        onSharePress={() => handleShare(property)}
+        isLiked={isLiked}
+        onLikePress={handleToggleLike}
+        showActions={false}
+      />
+    );
+  });
+
+  const renderHeader = useCallback(
+    () => (
+      <>
+        <View style={styles.header}>
+          <Text style={styles.heading}>My Properties</Text>
+          <View style={styles.searchFilterContainer}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by Property ID, Location or Type..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#999"
+              />
+              <Ionicons
+                name="search"
+                size={20}
+                color="#999"
+                style={styles.searchIcon}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setFilterModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="filter" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        {renderPagination()}
+      </>
+    ),
+    [searchQuery, renderPagination]
+  );
+
+  const renderEmptyComponent = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No properties found</Text>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={resetFilters}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.resetButtonText}>Reset Filters</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.addPropertyButton}
+          onPress={() => navigation.navigate("PostProperty")}
+        >
+          <Text style={styles.addPropertyButtonText}>Add New Property</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [resetFilters, navigation]
+  );
+
+  const renderFilterModal = useCallback(
+    () => (
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View
+                style={[
+                  styles.filterModalContent,
+                  IS_SMALL_SCREEN
+                    ? styles.smallScreenModal
+                    : styles.largeScreenModal,
+                ]}
+              >
+                <View style={styles.modalHandle} />
+                <Text style={styles.filterHeader}>Filter Properties</Text>
+
+                <ScrollView
+                  style={styles.filterScrollContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Property Type</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          propertyType: value,
+                        })
+                      }
+                      items={getUniqueValues("propertyType").map((type) => ({
+                        label: type,
+                        value: type,
+                      }))}
+                      value={filterCriteria.propertyType}
+                      placeholder={{ label: "Select Property Type", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#3E5C76"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>Location</Text>
+                    <RNPickerSelect
+                      onValueChange={(value) =>
+                        setFilterCriteria({
+                          ...filterCriteria,
+                          location: value,
+                        })
+                      }
+                      items={getUniqueValues("location").map((loc) => ({
+                        label: loc,
+                        value: loc,
+                      }))}
+                      value={filterCriteria.location}
+                      placeholder={{ label: "Select Location", value: "" }}
+                      style={pickerSelectStyles}
+                      useNativeAndroidPickerStyle={false}
+                      Icon={() => (
+                        <Ionicons
+                          name="chevron-down"
+                          size={20}
+                          color="#3E5C76"
+                        />
+                      )}
+                    />
+                  </View>
+
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterLabel}>
+                      Price Range (in lakhs)
+                    </Text>
+                    <View style={styles.priceRangeContainer}>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Min"
+                          value={filterCriteria.minPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              minPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <Text style={styles.priceRangeSeparator}>to</Text>
+                      <View style={styles.priceInputContainer}>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Max"
+                          value={filterCriteria.maxPrice}
+                          onChangeText={(text) =>
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              maxPrice: text,
+                            })
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.filterButtonsContainer}>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.resetFilterButton]}
+                    onPress={resetFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.resetFilterButtonText}>Reset All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.applyFilterButton]}
+                    onPress={applyFilters}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterButtonText}>Apply Filters</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    ),
+    [
+      isFilterModalVisible,
+      getUniqueValues,
+      filterCriteria,
+      resetFilters,
+      applyFilters,
+    ]
+  );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3E5C76" />
+      <View style={[styles.container, styles.loadingContainer]}>
+        <LottieView
+          source={require("../../assets/animations/home[1].json")}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>My Properties</Text>
-        <View style={styles.filterContainer}>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowFilterList(!showFilterList)}
-          >
-            <Text style={styles.filterButtonText}>
-              {selectedFilter
-                ? filterOptions.find((opt) => opt.value === selectedFilter)?.label || "Filter"
-                : "Filter"}
-            </Text>
-            <MaterialIcons
-              name={showFilterList ? "arrow-drop-up" : "arrow-drop-down"}
-              size={24}
-              color="#3E5C76"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Animated.View
+        style={[
+          styles.contentContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.propertyScrollView}
+          contentContainerStyle={styles.propertyGridContainer}
+        >
+          {renderHeader()}
 
-      {showFilterList && (
-        <View style={styles.filterList}>
-          {filterOptions.map((item) => (
-            <TouchableOpacity
-              key={item.value}
-              style={[
-                styles.filterItem,
-                selectedFilter === item.value && styles.selectedFilterItem,
-              ]}
-              onPress={() => handleFilterChange(item.value)}
-            >
-              <Text
-                style={[
-                  styles.filterItemText,
-                  selectedFilter === item.value && styles.selectedFilterItemText,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+          {paginatedProperties.length > 0 ? (
+            <View style={styles.propertyListContainer}>
+              {paginatedProperties.map((item) => (
+                <View
+                  key={item._id}
+                  style={
+                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
+                  }
+                >
+                  <RenderPropertyCard property={item} />
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => handleEditPress(item)}
+                    >
+                      <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
 
-      {properties.length === 0 ? (
-        <View style={styles.noPropertiesContainer}>
-          <Text style={styles.noPropertiesText}>No properties found</Text>
-          <TouchableOpacity
-            style={styles.addPropertyButton}
-            onPress={() => navigation.navigate("PostProperty")}
-          >
-            <Text style={styles.addPropertyButtonText}>Add New Property</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={properties}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.propertiesContainer}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <TouchableOpacity onPress={() => handlePropertyPress(item)}>
-                <PropertyImageSlider images={item.images} />
-              </TouchableOpacity>
-              
-              <View style={styles.details}>
-                <View style={styles.idContainer}>
-                  <Text style={styles.idText}>ID: {getLastFourChars(item._id)}</Text>
-                  <Text style={styles.statusText}>{item.status || "Pending"}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeletePress(item)}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                
-                <Text style={styles.title}>{item.propertyType}</Text>
-                <Text style={styles.info}>Location: {item.location}</Text>
-                <Text style={styles.budget}>
-                  ₹ {parseInt(item.price).toLocaleString()}
-                </Text>
-                
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditPress(item)}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeletePress(item)}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
+              ))}
+            </View>
+          ) : (
+            renderEmptyComponent()
+          )}
+
+          {renderPagination()}
+        </ScrollView>
+
+        {renderFilterModal()}
+
+        <PropertyModal
+          visible={isPropertyModalVisible}
+          onClose={() => setPropertyModalVisible(false)}
+          property={selectedProperty}
+          referredInfo={referredInfo}
+        />
+
+        {/* Edit Property Modal */}
+        <Modal visible={editModalVisible} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Property</Text>
+
+              <Text style={styles.label}>Property Type</Text>
+              <TextInput
+                style={styles.input}
+                value={editedData.propertyType}
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, propertyType: text })
+                }
+                placeholder="Property Type"
+              />
+
+              <Text style={styles.label}>Location</Text>
+              <TextInput
+                style={styles.input}
+                value={editedData.location}
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, location: text })
+                }
+                placeholder="Location"
+              />
+
+              <Text style={styles.label}>Price</Text>
+              <TextInput
+                style={styles.input}
+                value={editedData.price}
+                keyboardType="numeric"
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, price: text })
+                }
+                placeholder="Price"
+              />
+
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveEdit}
+                >
+                  <Text style={styles.buttonText}>Save Changes</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          )}
-        />
-      )}
+          </View>
+        </Modal>
 
-      {/* Edit Property Modal */}
-      <Modal visible={editModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Property</Text>
-            
-            <Text style={styles.label}>Property Type</Text>
-            <TextInput
-              style={styles.input}
-              value={editedData.propertyType}
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, propertyType: text })
-              }
-              placeholder="Property Type"
-            />
-            
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              value={editedData.location}
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, location: text })
-              }
-              placeholder="Location"
-            />
-            
-            <Text style={styles.label}>Price</Text>
-            <TextInput
-              style={styles.input}
-              value={editedData.price}
-              keyboardType="numeric"
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, price: text })
-              }
-              placeholder="Price"
-            />
-            
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveEdit}
-              >
-                <Text style={styles.buttonText}>Save Changes</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setEditModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
+        {/* Delete Confirmation Modal */}
+        <Modal visible={deleteModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.confirmationModal}>
+              <Text style={styles.confirmationTitle}>Confirm Delete</Text>
+              <Text style={styles.confirmationText}>
+                Are you sure you want to delete this property?
+              </Text>
+
+              <View style={styles.confirmationButtonContainer}>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={confirmDeleteProperty}
+                >
+                  <Text style={styles.confirmButtonText}>Delete</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cancelDeleteButton}
+                  onPress={() => setDeleteModalVisible(false)}
+                >
+                  <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal visible={deleteModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmationModal}>
-            <Text style={styles.confirmationTitle}>Confirm Delete</Text>
-            <Text style={styles.confirmationText}>
-              Are you sure you want to delete this property?
-            </Text>
-            
-            <View style={styles.confirmationButtonContainer}>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={confirmDeleteProperty}
-              >
-                <Text style={styles.confirmButtonText}>Delete</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.cancelDeleteButton}
-                onPress={() => setDeleteModalVisible(false)}
-              >
-                <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        </Modal>
+      </Animated.View>
     </View>
   );
 };
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    color: "black",
+    paddingRight: 30,
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  iconContainer: {
+    top: 10,
+    right: 12,
+  },
+  placeholder: {
+    color: "#999",
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -603,6 +1112,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
+  },
+  emptyListContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   noPropertiesText: {
     fontSize: 16,
@@ -631,18 +1145,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    width: Platform.OS === 'web' ? '30%' : '90%',
-    alignSelf: Platform.OS === 'web' ? 'flex-start' : 'center',
-    marginHorizontal: Platform.OS === 'web' ? '1.5%' : 0,
+    width: Platform.OS === "web" ? "30%" : "90%",
+    alignSelf: Platform.OS === "web" ? "flex-start" : "center",
+    marginHorizontal: Platform.OS === "web" ? "1.5%" : 0,
   },
   imageSliderContainer: {
     height: 200,
     width: "100%",
     position: "relative",
+    backgroundColor: "#f0f0f0",
   },
   imageSlide: {
     width: width,
     height: 200,
+    justifyContent: "center",
+    alignItems: "center",
   },
   imagePlaceholder: {
     width: "100%",

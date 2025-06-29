@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  Modal,
+  Pressable,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
@@ -18,19 +20,29 @@ import logo1 from "../../assets/man.png";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
+const isSmallWeb = isWeb && width < 450; // Check for small web screens
 
 export default function ViewCustomers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [userType, setUserType] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchUserTypeAndCustomers = async () => {
       try {
-        const type = await AsyncStorage.getItem("userType");
-        setUserType(type);
-        await fetchCustomers(type);
+        const storedUserType = await AsyncStorage.getItem("userType");
+        const storedUserTypeValue = await AsyncStorage.getItem("userTypevalue");
+
+        const currentUserType =
+          storedUserTypeValue === "ValueAssociate"
+            ? "ValueAssociate"
+            : storedUserType || "";
+
+        setUserType(currentUserType);
+        await fetchCustomers(currentUserType);
       } catch (error) {
         console.error("Error fetching user type:", error);
         setLoading(false);
@@ -144,6 +156,12 @@ export default function ViewCustomers() {
     }
   };
 
+  const handleCustomerPress = (customer) => {
+    if (userType !== "ValueAssociate") return;
+    setSelectedCustomer(customer);
+    setModalVisible(true);
+  };
+
   const renderCustomerCards = () => {
     if (isWeb) {
       return (
@@ -152,6 +170,7 @@ export default function ViewCustomers() {
             <CustomerCard 
               key={customer._id} 
               customer={customer} 
+              onPress={handleCustomerPress}
               onDelete={handleDelete}
               userType={userType}
               deletingId={deletingId}
@@ -164,6 +183,7 @@ export default function ViewCustomers() {
         <CustomerCard 
           key={customer._id} 
           customer={customer} 
+          onPress={handleCustomerPress}
           onDelete={handleDelete}
           userType={userType}
           deletingId={deletingId}
@@ -190,19 +210,102 @@ export default function ViewCustomers() {
             {renderCustomerCards()}
           </View>
         ) : (
-          <Text style={styles.noCustomersText}>No customers found.</Text>
+          <Text style={styles.noCustomersText}>
+            {userType === "CoreMember" ||
+            userType === "WealthAssociate" ||
+            userType === "ReferralAssociate" ||
+            userType === "ValueAssociate"
+              ? "No customers found."
+              : "This feature is only available for Core Members and Associates."}
+          </Text>
         )}
       </ScrollView>
+
+      {/* Modal for Value Associate */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>
+              {selectedCustomer?.FullName}'s Details
+            </Text>
+
+            {selectedCustomer ? (
+              <View style={styles.statsContainer}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Mobile:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.MobileNumber || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Occupation:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.Occupation || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Referral Code:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.MyRefferalCode || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>District:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.District || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Constituency:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.Contituency || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Location:</Text>
+                  <Text style={styles.statValue}>
+                    {selectedCustomer.Locations || "N/A"}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.noStatsText}>
+                No customer details available
+              </Text>
+            )}
+
+            <Pressable
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => setModalVisible(!modalVisible)}
+            >
+              <Text style={styles.textStyle}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const CustomerCard = ({ customer, onDelete, userType, deletingId }) => {
+const CustomerCard = ({ customer, onPress, onDelete, userType, deletingId }) => {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(customer)}
+      activeOpacity={userType === "ValueAssociate" ? 0.6 : 1}
+    >
       <View style={styles.cardHeader}>
         <Image source={logo1} style={styles.avatar} />
-        <Text style={styles.customerName}>{customer.FullName}</Text>
+        <Text style={styles.customerName} numberOfLines={1} ellipsizeMode="tail">
+          {customer.FullName}
+        </Text>
       </View>
 
       <View style={styles.infoContainer}>
@@ -212,11 +315,15 @@ const CustomerCard = ({ customer, onDelete, userType, deletingId }) => {
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Occupation:</Text>
-          <Text style={styles.infoValue}>{customer.Occupation}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {customer.Occupation}
+          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Referral Code:</Text>
-          <Text style={styles.infoValue}>{customer.MyRefferalCode}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {customer.MyRefferalCode}
+          </Text>
         </View>
         
         {userType !== "WealthAssociate" &&
@@ -225,15 +332,21 @@ const CustomerCard = ({ customer, onDelete, userType, deletingId }) => {
             <>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>District:</Text>
-                <Text style={styles.infoValue}>{customer.District}</Text>
+                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+                  {customer.District}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Constituency:</Text>
-                <Text style={styles.infoValue}>{customer.Contituency}</Text>
+                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+                  {customer.Contituency}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Location:</Text>
-                <Text style={styles.infoValue}>{customer.Locations}</Text>
+                <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+                  {customer.Locations}
+                </Text>
               </View>
             </>
           )}
@@ -250,7 +363,7 @@ const CustomerCard = ({ customer, onDelete, userType, deletingId }) => {
           <Text style={styles.deleteButtonText}>Delete Customer</Text>
         )}
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -258,21 +371,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    paddingBottom: 30,
+    paddingBottom: 90,
   },
   scrollContainer: {
     width: "100%",
-    paddingHorizontal: isWeb ? 20 : 10,
+    paddingHorizontal: isSmallWeb ? 5 : (isWeb ? 20 : 10),
   },
   loader: {
     marginTop: 40,
   },
   heading: {
-    fontSize: 24,
+    fontSize: isSmallWeb ? 20 : 24,
     fontWeight: "bold",
     color: "#3E5C76",
     marginVertical: 20,
-    marginLeft: isWeb ? 10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? 5 : 10) : 0,
   },
   gridContainer: {
     width: "100%",
@@ -281,14 +394,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
-    marginLeft: isWeb ? -10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? -5 : -10) : 0,
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    width: isWeb ? "31%" : "93%",
-    margin: isWeb ? 10 : 15,
-    padding: 20,
+    width: isWeb ? (isSmallWeb ? "90%" : "31%") : "88%",
+    margin: isWeb ? (isSmallWeb ? 5 : 10) : 15,
+    padding: isSmallWeb ? 12 : 20,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
@@ -306,16 +419,18 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+    width: isSmallWeb ? 50 : 60,
+    height: isSmallWeb ? 50 : 60,
+    borderRadius: isSmallWeb ? 25 : 30,
+    marginRight: isSmallWeb ? 10 : 15,
     backgroundColor: "#f0f0f0",
   },
   customerName: {
-    fontSize: 18,
+    fontSize: isSmallWeb ? 16 : 18,
     fontWeight: "600",
     color: "#3E5C76",
+    flexShrink: 1,
+    maxWidth: isSmallWeb ? width - 180 : width - 200,
   },
   infoContainer: {
     width: "100%",
@@ -326,22 +441,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#6c757d",
     fontWeight: "500",
+    flexShrink: 1,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#495057",
     fontWeight: "600",
     textAlign: "right",
     flexShrink: 1,
-    flexWrap: "wrap",
+    maxWidth: "50%",
   },
   noCustomersText: {
     textAlign: "center",
     marginTop: 20,
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#6c757d",
     width: "100%",
   },
@@ -357,6 +473,75 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: isSmallWeb ? 15 : 25,
+    width: "80%",
+    maxWidth: isSmallWeb ? 350 : 400,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: isSmallWeb ? 18 : 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#3E5C76",
+  },
+  button: {
+    borderRadius: 10,
+    padding: 12,
+    elevation: 2,
+    marginTop: 20,
+  },
+  buttonClose: {
+    backgroundColor: "#3E5C76",
+  },
+  textStyle: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: isSmallWeb ? 14 : 16,
+  },
+  statsContainer: {
+    width: "100%",
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  statLabel: {
+    fontWeight: "bold",
+    fontSize: isSmallWeb ? 14 : 16,
+    color: "#495057",
+  },
+  statValue: {
+    fontSize: isSmallWeb ? 14 : 16,
+    color: "#3E5C76",
+  },
+  noStatsText: {
+    textAlign: "center",
+    marginVertical: 20,
+    fontSize: isSmallWeb ? 14 : 16,
+    color: "#6c757d",
   },
 });

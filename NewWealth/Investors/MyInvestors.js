@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
+const isSmallWeb = isWeb && width < 450; // Check for small web screens
 
 export default function ViewInvesters() {
   const [investors, setInvestors] = useState([]);
@@ -28,6 +29,7 @@ export default function ViewInvesters() {
   const [userType, setUserType] = useState("");
   const [selectedInvestor, setSelectedInvestor] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchInvestorsBasedOnUserType();
@@ -37,17 +39,23 @@ export default function ViewInvesters() {
     try {
       const token = await AsyncStorage.getItem("authToken");
       const storedUserType = await AsyncStorage.getItem("userType");
+      const storedUserTypeValue = await AsyncStorage.getItem("userTypevalue");
 
-      if (!token || !storedUserType) {
+      const currentUserType =
+        storedUserTypeValue === "ValueAssociate"
+          ? "ValueAssociate"
+          : storedUserType || "";
+
+      if (!token || !currentUserType) {
         console.error("Missing token or userType in AsyncStorage");
         setLoading(false);
         return;
       }
 
-      setUserType(storedUserType);
+      setUserType(currentUserType);
 
       let endpoint = "";
-      switch (storedUserType) {
+      switch (currentUserType) {
         case "WealthAssociate":
         case "ReferralAssociate":
           endpoint = `${API_URL}/investors/getagentinvestor`;
@@ -109,6 +117,7 @@ export default function ViewInvesters() {
       const confirmed = await confirmDelete();
       if (!confirmed) return;
 
+      setDeletingId(id);
       const token = await AsyncStorage.getItem("authToken");
       if (!token) {
         console.error("No token found in AsyncStorage");
@@ -146,10 +155,13 @@ export default function ViewInvesters() {
     } catch (error) {
       console.error("Error deleting investor:", error);
       Alert.alert("Error", "An error occurred while deleting the investor");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleInvestorPress = (investor) => {
+    if (userType !== "ValueAssociate") return;
     setSelectedInvestor(investor);
     setModalVisible(true);
   };
@@ -179,6 +191,7 @@ export default function ViewInvesters() {
               onPress={handleInvestorPress}
               onDelete={handleDelete}
               userType={userType}
+              deletingId={deletingId}
             />
           ))}
         </View>
@@ -191,6 +204,7 @@ export default function ViewInvesters() {
           onPress={handleInvestorPress}
           onDelete={handleDelete}
           userType={userType}
+          deletingId={deletingId}
         />
       ));
     }
@@ -215,7 +229,12 @@ export default function ViewInvesters() {
           </View>
         ) : (
           <Text style={styles.noInvestorsText}>
-            No investors found.
+            {userType === "CoreMember" ||
+            userType === "WealthAssociate" ||
+            userType === "ReferralAssociate" ||
+            userType === "ValueAssociate"
+              ? "No investors found."
+              : "This feature is only available for Core Members and Associates."}
           </Text>
         )}
       </ScrollView>
@@ -235,7 +254,7 @@ export default function ViewInvesters() {
               {selectedInvestor?.FullName}'s Details
             </Text>
 
-            {selectedInvestor && (
+            {selectedInvestor ? (
               <View style={styles.statsContainer}>
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Category:</Text>
@@ -264,6 +283,10 @@ export default function ViewInvesters() {
                   </View>
                 )}
               </View>
+            ) : (
+              <Text style={styles.noStatsText}>
+                No investor details available
+              </Text>
             )}
 
             <Pressable
@@ -279,23 +302,26 @@ export default function ViewInvesters() {
   );
 }
 
-// Separate InvestorCard component with improved design
-const InvestorCard = ({ investor, onPress, onDelete, userType }) => {
+const InvestorCard = ({ investor, onPress, onDelete, userType, deletingId }) => {
   return (
     <TouchableOpacity
       style={styles.card}
       onPress={() => onPress(investor)}
-      activeOpacity={0.6}
+      activeOpacity={userType === "ValueAssociate" ? 0.6 : 1}
     >
       <View style={styles.cardHeader}>
         <Image source={logo1} style={styles.avatar} />
-        <Text style={styles.investorName}>{investor.FullName}</Text>
+        <Text style={styles.investorName} numberOfLines={1} ellipsizeMode="tail">
+          {investor.FullName}
+        </Text>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Category:</Text>
-          <Text style={styles.infoValue}>{investor.SelectSkill}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {investor.SelectSkill}
+          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Mobile:</Text>
@@ -303,12 +329,16 @@ const InvestorCard = ({ investor, onPress, onDelete, userType }) => {
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Location:</Text>
-          <Text style={styles.infoValue}>{investor.Location}</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+            {investor.Location}
+          </Text>
         </View>
         {userType === "NRI" && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>NRI Details:</Text>
-            <Text style={styles.infoValue}>{investor.NRIDetails || "N/A"}</Text>
+            <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+              {investor.NRIDetails || "N/A"}
+            </Text>
           </View>
         )}
       </View>
@@ -316,9 +346,16 @@ const InvestorCard = ({ investor, onPress, onDelete, userType }) => {
       <TouchableOpacity
         style={styles.deleteButton}
         onPress={() => onDelete(investor._id)}
+        disabled={deletingId === investor._id}
       >
-        <Ionicons name="trash-outline" size={20} color="#fff" />
-        <Text style={styles.deleteButtonText}>Delete Investor</Text>
+        {deletingId === investor._id ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+            <Text style={styles.deleteButtonText}>Delete Investor</Text>
+          </>
+        )}
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -328,21 +365,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    paddingBottom: 30,
+    paddingBottom: 90,
   },
   scrollContainer: {
     width: "100%",
-    paddingHorizontal: isWeb ? 20 : 10,
+    paddingHorizontal: isSmallWeb ? 5 : (isWeb ? 20 : 10),
   },
   loader: {
     marginTop: 40,
   },
   heading: {
-    fontSize: 24,
+    fontSize: isSmallWeb ? 20 : 24,
     fontWeight: "bold",
     color: "#3E5C76",
     marginVertical: 20,
-    marginLeft: isWeb ? 10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? 5 : 10) : 0,
   },
   gridContainer: {
     width: "100%",
@@ -351,14 +388,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
-    marginLeft: isWeb ? -10 : 0,
+    marginLeft: isWeb ? (isSmallWeb ? -5 : -10) : 0,
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    width: isWeb ? "31%" : "93%",
-    margin: isWeb ? 10 : 15,
-    padding: 20,
+    width: isWeb ? (isSmallWeb ? "90%" : "31%") : "88%",
+    margin: isWeb ? (isSmallWeb ? 5 : 10) : 15,
+    padding: isSmallWeb ? 12 : 20,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
@@ -376,16 +413,18 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+    width: isSmallWeb ? 50 : 60,
+    height: isSmallWeb ? 50 : 60,
+    borderRadius: isSmallWeb ? 25 : 30,
+    marginRight: isSmallWeb ? 10 : 15,
     backgroundColor: "#f0f0f0",
   },
   investorName: {
-    fontSize: 18,
+    fontSize: isSmallWeb ? 16 : 18,
     fontWeight: "600",
     color: "#3E5C76",
+    flexShrink: 1,
+    maxWidth: isSmallWeb ? width - 180 : width - 200,
   },
   infoContainer: {
     width: "100%",
@@ -396,22 +435,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#6c757d",
     fontWeight: "500",
+    flexShrink: 1,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     color: "#495057",
     fontWeight: "600",
     textAlign: "right",
     flexShrink: 1,
-    flexWrap: "wrap",
+    maxWidth: "50%",
   },
   noInvestorsText: {
     textAlign: "center",
     marginTop: 20,
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#6c757d",
     width: "100%",
   },
@@ -429,7 +469,7 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: isSmallWeb ? 12 : 14,
     marginLeft: 8,
   },
   centeredView: {
@@ -442,9 +482,9 @@ const styles = StyleSheet.create({
     margin: 20,
     backgroundColor: "white",
     borderRadius: 20,
-    padding: 25,
+    padding: isSmallWeb ? 15 : 25,
     width: "90%",
-    maxWidth: 400,
+    maxWidth: isSmallWeb ? 350 : 400,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -455,7 +495,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: isSmallWeb ? 18 : 20,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
@@ -474,6 +514,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: isSmallWeb ? 14 : 16,
   },
   statsContainer: {
     width: "100%",
@@ -487,11 +528,17 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#495057",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: isSmallWeb ? 14 : 16,
     color: "#3E5C76",
+  },
+  noStatsText: {
+    textAlign: "center",
+    marginVertical: 20,
+    fontSize: isSmallWeb ? 14 : 16,
+    color: "#6c757d",
   },
 });

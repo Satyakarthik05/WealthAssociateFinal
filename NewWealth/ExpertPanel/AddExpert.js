@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
   },
   card: {
-    backgroundColor: "white",
+    backgroundColor: "#FDFDFD",
     borderRadius: 20,
     elevation: 5,
     shadowColor: "#000",
@@ -618,6 +618,7 @@ const styles = StyleSheet.create({
     color: "black",
     textAlign: "center",
     padding: 15,
+    fontFamily: "OpenSanssemibold",
   },
   formGroup: {
     width: "100%",
@@ -681,6 +682,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#555",
     fontWeight: "500",
+    fontFamily: "OpenSanssemibold",
   },
   removeButton: {
     backgroundColor: "#ff4444",
@@ -691,8 +693,9 @@ const styles = StyleSheet.create({
   },
   removeButtonText: {
     color: "white",
-    fontSize: 14,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "normal",
+    fontFamily: "OpenSanssemibold",
   },
   additionalFieldsSection: {
     width: "100%",
@@ -727,16 +730,19 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     minWidth: 120,
     alignItems: "center",
+
   },
   addText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
   cancelText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
   disabledButton: {
     backgroundColor: "#ccc",
@@ -763,11 +769,12 @@ const styles = StyleSheet.create({
     maxHeight: "70%",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",
     color: "#2B2D42",
+    fontFamily: "OpenSanssemibold",
   },
   searchContainer: {
     position: "relative",
@@ -798,11 +805,13 @@ const styles = StyleSheet.create({
   },
   listItemText: {
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
   listItemSubText: {
     fontSize: 14,
     color: "#777",
     marginTop: 4,
+    fontFamily: "OpenSanssemibold",
   },
   closeButton: {
     backgroundColor: "#3E5C76",
@@ -814,6 +823,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+    fontFamily: "OpenSanssemibold",
   },
 });
 

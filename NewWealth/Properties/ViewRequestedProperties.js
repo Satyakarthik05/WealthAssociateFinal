@@ -249,9 +249,10 @@ const RequestedProperties = () => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
+    // padding: 20,
     backgroundColor: "#f8f8f8",
     alignItems: "center",
+    paddingBottom:"29%"
   },
   heading: { 
     fontSize: 20, 
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     margin: 8,
-    width: 250,
+    width: "90%",
     padding: 10,
     elevation: 3,
     position: "relative",
