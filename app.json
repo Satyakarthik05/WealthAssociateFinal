@@ -3,7 +3,7 @@
     "name": "WealthAssociate",
     "slug": "wealthassociates",
     "scheme": "wealthassociates",
-    "version": "1.2.7",
+    "version": "1.2.8",
     "runtimeVersion": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
