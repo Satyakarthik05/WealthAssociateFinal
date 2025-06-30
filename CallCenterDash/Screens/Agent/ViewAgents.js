@@ -643,6 +643,14 @@ export default function ViewAgents() {
             </Text>
           </View>
         )}
+        {agent.CallExecutivename && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Assigned to</Text>
+            <Text style={styles.value}>
+              : {agent.CallExecutivename || "assigned ot found"}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.row}>
           <Text style={styles.label}>Status</Text>
@@ -658,22 +666,34 @@ export default function ViewAgents() {
           </Text>
         </View>
       </View>
+
       <View style={styles.buttonContainer}>
-        {agent.CallExecutiveCall !== "Done" &&
-          agent.assignedExecutive === executiveId && (
-            <TouchableOpacity
-              style={styles.doneButton}
-              onPress={() => handleMarkAsDone(agent._id)}
-            >
-              <Text style={styles.buttonText}>Done</Text>
-            </TouchableOpacity>
-          )}
+        {agent.CallExecutiveCall !== "Done" && (
+          <TouchableOpacity
+            style={[
+              styles.doneButton,
+              agent.assignedExecutive !== executiveId && styles.disabledButton,
+            ]}
+            onPress={() => {
+              if (agent.assignedExecutive === executiveId) {
+                handleMarkAsDone(agent._id);
+              } else {
+                alert("You are not assigned to this agent.");
+              }
+            }}
+            // disabled={agent.assignedExecutive !== executiveId}
+          >
+            <Text style={styles.buttonText}>Done</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => handleEditAgent(agent)}
         >
           <Text style={styles.buttonText}>Edit</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => handleDeleteAgent(agent._id)}
@@ -1480,7 +1500,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
     borderRadius: 15,
     padding: 3,
-    marginLeft: 5,
+    // marginLeft: 5,
   },
   scrollContainer: {
     flexGrow: 1,

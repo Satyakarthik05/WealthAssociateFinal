@@ -24,7 +24,7 @@ import paint3 from "../../assets/paint3.jpg";
 import paint4 from "../../assets/paint4.jpg";
 import Hvac1 from "../../assets/Hvac1.jpg";
 import Hvac2 from "../../assets/Hvac2.jpg";
-import Hvac3 from "../../assets/Hvac3.jpg";                                               
+import Hvac3 from "../../assets/Hvac3.jpg";
 import Hvac4 from "../../assets/Hvac4.jpg";
 import Land1 from "../../assets/Land1.jpg";
 import Land2 from "../../assets/Land2.jpg";
@@ -67,13 +67,15 @@ const vendorSubcategories = {
       id: 1,
       name: "Sand and Aggregates / ఇసుక మరియు కంకర",
       image: Sand_Aggregates,
-      description: "Construction-grade sand, gravel, crushed stone / నిర్మాణ-శ్రేణి ఇసుక, కంకర, చూర్ణం చేసిన రాయి",
+      description:
+        "Construction-grade sand, gravel, crushed stone / నిర్మాణ-శ్రేణి ఇసుక, కంకర, చూర్ణం చేసిన రాయి",
     },
     {
       id: 2,
       name: "Cement and Concrete / సిమెంట్ మరియు కాంక్రీటు",
       image: cement,
-      description: "Various types of cement, ready-mix concrete / వివిధ రకాల సిమెంట్, రెడీ-మిక్స్ కాంక్రీటు",
+      description:
+        "Various types of cement, ready-mix concrete / వివిధ రకాల సిమెంట్, రెడీ-మిక్స్ కాంక్రీటు",
     },
     {
       id: 3,
@@ -99,7 +101,8 @@ const vendorSubcategories = {
       id: 1,
       name: "Heavy Machinery / హెవీ మెషినరీ",
       image: heavy,
-      description: "Excavators, bulldozers, cranes / ఎక్స్కవేటర్లు, బుల్డోజర్లు, క్రేన్లు",
+      description:
+        "Excavators, bulldozers, cranes / ఎక్స్కవేటర్లు, బుల్డోజర్లు, క్రేన్లు",
     },
     {
       id: 2,
@@ -111,7 +114,8 @@ const vendorSubcategories = {
       id: 3,
       name: "Hand Tools / హ్యాండ్ టూల్స్",
       image: hand,
-      description: "Hammers, wrenches, screwdrivers / సుత్తులు, రెంచ్, స్క్రూడ్రైవర్లు",
+      description:
+        "Hammers, wrenches, screwdrivers / సుత్తులు, రెంచ్, స్క్రూడ్రైవర్లు",
     },
     {
       id: 4,
@@ -120,32 +124,34 @@ const vendorSubcategories = {
       description: "Levels, tape measures / స్థాయిలు, టేప్ కొలతలు",
     },
   ],
-  "Plumbing and Electrical Suppliers / ప్లంబింగ్ మరియు ఎలక్ట్రికల్ సరఫరాదారులు": [
-    {
-      id: 1,
-      name: "Pipes and Fittings / పైపులు మరియు ఫిట్టింగ్స్",
-      image: pipes,
-      description: "PVC, CPVC, copper pipes / పివిసి, సిపివిసి, రాగి పైపులు",
-    },
-    {
-      id: 2,
-      name: "Electrical Wiring / ఎలక్ట్రికల్ వైరింగ్",
-      image: wire,
-      description: "Cables, wires, conductors / కేబుల్స్, వైర్లు, కండక్టర్లు",
-    },
-    {
-      id: 3,
-      name: "Switches and Outlets / స్విచ్లు మరియు అవుట్లెట్లు",
-      image: outlet,
-      description: "Electrical switches, outlets / ఎలక్ట్రికల్ స్విచ్లు, అవుట్లెట్లు",
-    },
-    {
-      id: 4,
-      name: "Sanitary Fixtures / సానిటరీ ఫిక్స్చర్స్",
-      image: sanitary,
-      description: "Toilets, sinks, faucets / టాయిలెట్లు, సింక్లు, నాళాలు",
-    },
-  ],
+  "Plumbing and Electrical Suppliers / ప్లంబింగ్ మరియు ఎలక్ట్రికల్ సరఫరాదారులు":
+    [
+      {
+        id: 1,
+        name: "Pipes and Fittings / పైపులు మరియు ఫిట్టింగ్స్",
+        image: pipes,
+        description: "PVC, CPVC, copper pipes / పివిసి, సిపివిసి, రాగి పైపులు",
+      },
+      {
+        id: 2,
+        name: "Electrical Wiring / ఎలక్ట్రికల్ వైరింగ్",
+        image: wire,
+        description: "Cables, wires, conductors / కేబుల్స్, వైర్లు, కండక్టర్లు",
+      },
+      {
+        id: 3,
+        name: "Switches and Outlets / స్విచ్లు మరియు అవుట్లెట్లు",
+        image: outlet,
+        description:
+          "Electrical switches, outlets / ఎలక్ట్రికల్ స్విచ్లు, అవుట్లెట్లు",
+      },
+      {
+        id: 4,
+        name: "Sanitary Fixtures / సానిటరీ ఫిక్స్చర్స్",
+        image: sanitary,
+        description: "Toilets, sinks, faucets / టాయిలెట్లు, సింక్లు, నాళాలు",
+      },
+    ],
   "Paint and Finishing Suppliers / పెయింట్ మరియు ఫినిషింగ్ సరఫరాదారులు": [
     {
       id: 1,
@@ -215,7 +221,8 @@ const vendorSubcategories = {
       id: 3,
       name: "Irrigation Systems / నీటిపారుదల వ్యవస్థలు",
       image: Land3,
-      description: "Sprinklers, drip irrigation / స్ప్రింక్లర్లు, డ్రిప్ నీటిపారుదల",
+      description:
+        "Sprinklers, drip irrigation / స్ప్రింక్లర్లు, డ్రిప్ నీటిపారుదల",
     },
     {
       id: 4,
@@ -224,32 +231,37 @@ const vendorSubcategories = {
       description: "Pavers, retaining walls / పేవర్స్, రిటైనింగ్ వాల్లు",
     },
   ],
-  "Prefabricated Construction Materials / ప్రీఫాబ్రికేటెడ్ కన్స్ట్రక్షన్ మెటీరియల్స్": [
-    {
-      id: 1,
-      name: "Prefab Wall Panels / ప్రీఫాబ్ వాల్ ప్యానెల్స్",
-      image: prefab,
-      description: "Factory-made wall panels / ఫ్యాక్టరీ-తయారీ గోడ ప్యానెల్స్",
-    },
-    {
-      id: 2,
-      name: "Modular Units / మాడ్యులర్ యూనిట్లు",
-      image: modular,
-      description: "Prefabricated modular units / ప్రీఫాబ్రికేటెడ్ మాడ్యులర్ యూనిట్లు",
-    },
-    {
-      id: 3,
-      name: "Precast Concrete / ప్రీకాస్ట్ కాంక్రీటు",
-      image: precast,
-      description: "Precast concrete elements / ప్రీకాస్ట్ కాంక్రీట్ ఎలిమెంట్స్",
-    },
-    {
-      id: 4,
-      name: "Steel Structures / స్టీల్ స్ట్రక్చర్స్",
-      image: steel,
-      description: "Pre-engineered steel buildings / ప్రీ-ఇంజనీర్డ్ స్టీల్ భవనాలు",
-    },
-  ],
+  "Prefabricated Construction Materials / ప్రీఫాబ్రికేటెడ్ కన్స్ట్రక్షన్ మెటీరియల్స్":
+    [
+      {
+        id: 1,
+        name: "Prefab Wall Panels / ప్రీఫాబ్ వాల్ ప్యానెల్స్",
+        image: prefab,
+        description:
+          "Factory-made wall panels / ఫ్యాక్టరీ-తయారీ గోడ ప్యానెల్స్",
+      },
+      {
+        id: 2,
+        name: "Modular Units / మాడ్యులర్ యూనిట్లు",
+        image: modular,
+        description:
+          "Prefabricated modular units / ప్రీఫాబ్రికేటెడ్ మాడ్యులర్ యూనిట్లు",
+      },
+      {
+        id: 3,
+        name: "Precast Concrete / ప్రీకాస్ట్ కాంక్రీటు",
+        image: precast,
+        description:
+          "Precast concrete elements / ప్రీకాస్ట్ కాంక్రీట్ ఎలిమెంట్స్",
+      },
+      {
+        id: 4,
+        name: "Steel Structures / స్టీల్ స్ట్రక్చర్స్",
+        image: steel,
+        description:
+          "Pre-engineered steel buildings / ప్రీ-ఇంజనీర్డ్ స్టీల్ భవనాలు",
+      },
+    ],
   "Waste Management and Disposal / వేస్ట్ మేనేజ్మెంట్ మరియు డిస్పోజల్": [
     {
       id: 1,
@@ -302,37 +314,40 @@ const vendorSubcategories = {
       description: "Crane rental services / క్రేన్ అద్దె సేవలు",
     },
   ],
-  "Architectural and Design Suppliers / ఆర్కిటెక్చరల్ మరియు డిజైన్ సరఫరాదారులు": [
-    {
-      id: 1,
-      name: "Flooring Materials / ఫ్లోరింగ్ మెటీరియల్స్",
-      image: marblebased,
-      description: "Tiles, hardwood / టైల్స్, హార్డ్వుడ్",
-    },
-    {
-      id: 2,
-      name: "Windows and Doors / విండోస్ మరియు తలుపులు",
-      image: door,
-      description: "Custom windows, doors / కస్టమ్ విండోస్, తలుపులు",
-    },
-    {
-      id: 3,
-      name: "Interior Fixtures / ఇంటీరియర్ ఫిక్స్చర్స్",
-      image: interior,
-      description: "Light fixtures, ceiling details / లైట్ ఫిక్స్చర్స్, సీలింగ్ వివరాలు",
-    },
-    {
-      id: 4,
-      name: "Decorative Materials / డెకరేటివ్ మెటీరియల్స్",
-      image: decorative,
-      description: "Wallpapers, decorative panels / వాల్పేపర్లు, అలంకార ప్యానెల్స్",
-    },
-  ],
+  "Architectural and Design Suppliers / ఆర్కిటెక్చరల్ మరియు డిజైన్ సరఫరాదారులు":
+    [
+      {
+        id: 1,
+        name: "Flooring Materials / ఫ్లోరింగ్ మెటీరియల్స్",
+        image: marblebased,
+        description: "Tiles, hardwood / టైల్స్, హార్డ్వుడ్",
+      },
+      {
+        id: 2,
+        name: "Windows and Doors / విండోస్ మరియు తలుపులు",
+        image: door,
+        description: "Custom windows, doors / కస్టమ్ విండోస్, తలుపులు",
+      },
+      {
+        id: 3,
+        name: "Interior Fixtures / ఇంటీరియర్ ఫిక్స్చర్స్",
+        image: interior,
+        description:
+          "Light fixtures, ceiling details / లైట్ ఫిక్స్చర్స్, సీలింగ్ వివరాలు",
+      },
+      {
+        id: 4,
+        name: "Decorative Materials / డెకరేటివ్ మెటీరియల్స్",
+        image: decorative,
+        description:
+          "Wallpapers, decorative panels / వాల్పేపర్లు, అలంకార ప్యానెల్స్",
+      },
+    ],
 };
 
 const { width } = Dimensions.get("window");
-const isWeb = Platform.OS === 'web';
-const fontSizeMultiplier = Platform.OS === 'web' ? 1.2 : 1;
+const isWeb = Platform.OS === "web";
+const fontSizeMultiplier = Platform.OS === "web" ? 1.2 : 1;
 
 const SuppliersVendors = () => {
   const navigation = useNavigation();
@@ -342,27 +357,27 @@ const SuppliersVendors = () => {
   const [language, setLanguage] = useState("english");
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === "english" ? "telugu" : "english");
+    setLanguage((prev) => (prev === "english" ? "telugu" : "english"));
   };
 
   // Translations
   const translations = {
     title: {
       english: "Suppliers & Vendors",
-      telugu: "సరఫరాదారులు మరియు విక్రేతలు"
+      telugu: "సరఫరాదారులు మరియు విక్రేతలు",
     },
     subtitle: {
       english: "Find all the services you need for your property",
-      telugu: "మీ ఆస్తి కోసం మీకు అవసరమైన అన్ని సేవలను కనుగొనండి"
+      telugu: "మీ ఆస్తి కోసం మీకు అవసరమైన అన్ని సేవలను కనుగొనండి",
     },
     addSupplier: {
       english: "Add Supplier",
-      telugu: "సరఫరాదారుని జోడించండి"
+      telugu: "సరఫరాదారుని జోడించండి",
     },
     loading: {
       english: "Loading...",
-      telugu: "లోడ్ అవుతోంది..."
-    }
+      telugu: "లోడ్ అవుతోంది...",
+    },
   };
 
   useEffect(() => {
@@ -462,20 +477,20 @@ const SuppliersVendors = () => {
     },
   ];
 
+  const getEnglishText = (text) => {
+    return text.split("/")[0].trim();
+  };
+
   const handleSubcategoryPress = (category, subcategory) => {
     navigation.navigate("VendorList", {
-      vendorType: category,
-      subcategory: subcategory.name,
+      vendorType: getEnglishText(category),
+      subcategory: getEnglishText(subcategory.name),
     });
   };
 
   const handleAddSupplier = () => {
     navigation.navigate("AddSupplier");
   };
-
-  // const handleBackPress = () => {
-  //   navigation.navigate.;
-  // };
 
   const shouldShowAddButton = () => {
     return userType === "CoreMember" || agentType === "RegionalWealthAssociate";
@@ -506,20 +521,22 @@ const SuppliersVendors = () => {
         activeOpacity={0.7}
       >
         <Image
-          source={typeof item.image === "string" ? { uri: item.image } : item.image}
+          source={
+            typeof item.image === "string" ? { uri: item.image } : item.image
+          }
           style={styles.subcategoryImage}
           resizeMode="cover"
         />
         <View style={styles.subcategoryTextContainer}>
           <Text style={styles.subcategoryName}>
-            {language === "telugu" ? 
-              item.name.split("/")[1]?.trim() || item.name : 
-              item.name.split("/")[0]}
+            {language === "telugu"
+              ? item.name.split("/")[1]?.trim() || item.name
+              : item.name.split("/")[0]}
           </Text>
           <Text style={styles.subcategoryDescription} numberOfLines={2}>
-            {language === "telugu" ?
-              item.description.split("/")[1]?.trim() || item.description :
-              item.description.split("/")[0]}
+            {language === "telugu"
+              ? item.description.split("/")[1]?.trim() || item.description
+              : item.description.split("/")[0]}
           </Text>
         </View>
       </TouchableOpacity>
@@ -562,9 +579,8 @@ const SuppliersVendors = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>{translations.title[language]}</Text>
-          
         </View>
-        
+
         {shouldShowAddButton() && (
           <TouchableOpacity onPress={handleAddSupplier}>
             <View style={styles.addButtonBox}>
@@ -579,27 +595,35 @@ const SuppliersVendors = () => {
 
       <Text style={styles.subtitle}>{translations.subtitle[language]}</Text>
       <TouchableOpacity onPress={toggleLanguage} style={styles.languageToggle}>
-            <Text style={styles.languageText}>
-              {language === "english" ? "తెలుగు" : "English"}
-            </Text>
-          </TouchableOpacity>
+        <Text style={styles.languageText}>
+          {language === "english" ? "తెలుగు" : "English"}
+        </Text>
+      </TouchableOpacity>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
         {vendorTypes.map((vendor) => (
           <View key={vendor.id} style={styles.categoryContainer}>
             <View style={styles.categoryHeader}>
-              {renderIcon(vendor.iconType, vendor.icon, 24 * fontSizeMultiplier, "#3E5C76")}
+              {renderIcon(
+                vendor.iconType,
+                vendor.icon,
+                24 * fontSizeMultiplier,
+                "#3E5C76"
+              )}
               <Text style={styles.categoryTitle}>
-                {language === "telugu" ? 
-                  vendor.name.split("/")[1]?.trim() || vendor.name : 
-                  vendor.name.split("/")[0]}
+                {language === "telugu"
+                  ? vendor.name.split("/")[1]?.trim() || vendor.name
+                  : vendor.name.split("/")[0]}
               </Text>
             </View>
 
-            {renderSubcategories(vendorSubcategories[vendor.name] || [], vendor.name)}
+            {renderSubcategories(
+              vendorSubcategories[vendor.name] || [],
+              vendor.name
+            )}
           </View>
         ))}
       </ScrollView>
@@ -636,24 +660,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   languageToggle: {
-    // marginLeft: 15,
     padding: 5,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: "#E8E8E8",
     borderRadius: 5,
-    width:80,
-    bottom:10
+    width: 80,
+    bottom: 10,
   },
   languageText: {
-    color: '#D81B60',
+    color: "#D81B60",
     fontSize: 16 * fontSizeMultiplier,
-    textAlign:"center"
+    textAlign: "center",
   },
   title: {
     fontSize: 22 * fontSizeMultiplier,
     fontWeight: "bold",
     color: "#333",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   addButtonBox: {
     flexDirection: "row",
@@ -682,7 +705,7 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     marginBottom: 30,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     elevation: 2,
@@ -708,13 +731,13 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   webGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
     marginHorizontal: -8,
   },
   subcategoryCard: {
-    width: isWeb ? '30%' : 180,
+    width: isWeb ? "30%" : 180,
     minWidth: 160,
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
