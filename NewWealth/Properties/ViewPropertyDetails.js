@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -39,7 +40,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       const nextIndex = (currentImageIndex + 1) % property.images.length;
       setCurrentImageIndex(nextIndex);
       scrollRef.current?.scrollTo({
-        x: nextIndex * width,
+        x: nextIndex * (Platform.OS === "web" ? width * 0.8 : width),
         animated: true,
       });
     }, 3000);
@@ -361,7 +362,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={(e) => {
             const offsetX = e.nativeEvent.contentOffset.x;
-            const newIndex = Math.round(offsetX / width);
+            const newIndex = Math.round(offsetX / (Platform.OS === "web" ? width * 0.8 : width));
             setCurrentImageIndex(newIndex);
           }}
         >
@@ -470,14 +471,14 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: "#2196F3" }]}
+          style={[styles.actionButton, { backgroundColor: "#3E5C76" }]}
           onPress={handleShare}
         >
           <FontAwesome name="share" size={20} color="white" />
           <Text style={styles.actionButtonText}>Share</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: "#D81B60" }]}
+          style={[styles.actionButton, { backgroundColor: "#3E5C76" }]}
           onPress={handleEnquiry}
         >
           <Text style={styles.actionButtonText}>Enquiry Now</Text>
@@ -559,19 +560,21 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#D8E3E7",
     paddingBottom: "20%",
     top: 20,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingBottom: Platform.OS === "web" ? "2%" : "30%",
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf: "center",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 15,
-    backgroundColor: "white",
+    backgroundColor: "#D8E3E7",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
@@ -582,9 +585,11 @@ const styles = StyleSheet.create({
   },
   imageSliderContainer: {
     position: "relative",
+    width: "100%",
+    alignItems: "center",
   },
   image: {
-    width: width,
+    width: Platform.OS === "web" ? width * 0.3 : width,
     height: 250,
   },
   pagination: {
@@ -613,6 +618,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: Platform.OS === "web" ? "70%" : "100%",
+    alignSelf: "center",
   },
   titleRow: {
     flexDirection: "row",
@@ -629,7 +636,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#D81B60",
+    color: "#3E5C76",
   },
   detailSection: {
     marginTop: 10,
@@ -707,12 +714,15 @@ const styles = StyleSheet.create({
   buttonContainer: {
     position: "absolute",
     bottom: "15%",
+    width: Platform.OS === "web" ? width * 0.8 : width,
     left: 0,
     right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     padding: 15,
-    backgroundColor: "white",
+    backgroundColor: "#D8E3E7",
+    alignItems:"center",
+    alignSelf:"center",
     borderTopWidth: 1,
     borderTopColor: "#eee",
   },
@@ -721,8 +731,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
+    alignSelf:"center",
     borderRadius: 5,
-    width: "45%",
+    width: Platform.OS === "web" ? "15%" : "45%",
     justifyContent: "center",
   },
   actionButtonText: {
@@ -742,7 +753,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     alignItems: "center",
-    width: width * 0.8,
+    width: Platform.OS === "web" ? width * 0.3 : width * 0.8,
   },
   agentLogo: {
     width: 80,
@@ -766,7 +777,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: "#D81B60",
+    backgroundColor: "#3E5C76",
     borderRadius: 5,
   },
   closeButtonText: {
@@ -778,7 +789,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#3E5C76",
     borderRadius: 5,
     marginTop: 10,
   },

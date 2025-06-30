@@ -634,9 +634,9 @@ const SuppliersVendors = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "#D8E3E7",
     padding: 20,
-    width: Platform.OS === "web" ? "80%" : "100%",
+    width: Platform.OS === "web" ? "100%" : "100%",
     alignSelf: "center",
   },
   loadingContainer: {
