@@ -214,13 +214,13 @@ const RequestedExpert = ({ closeModal }) => {
         style={[
           styles.container,
           {
-            width: isMobile ? "100%" : "40%",
+            width: isMobile ? "90%" : "40%",
             paddingHorizontal: isMobile ? 20 : 30,
             paddingVertical: 30,
           },
         ]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 50 : 0}
       >
         <ScrollView
           contentContainerStyle={[
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
     borderRadius: 5,
-    paddingBottom: 40,
+    paddingBottom: 30,
     padding: 30,
     paddingRight: 30,
     backgroundColor: "#D8E3E7",
@@ -391,15 +391,15 @@ const styles = StyleSheet.create({
     paddingBottom: "10%",
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "400",
     textAlign: "center",
-    color: "#2B2D42",
+    color: "black",
     backgroundColor: "#D8E3E7",
     alignSelf: "center",
     paddingHorizontal: 16,
-    height: 45,
-    marginTop: 70,
+    height: 25,
+    marginTop: 75,
     borderRadius: 20,
     display: "flex",
     justifyContent: "center",
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 20,
     shadowOffset: { width: 0, height: 1 },
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     color: "#2B2D42",
-    fontWeight: "500",
+    fontFamily: "OpenSanssemibold",
   },
   inputContainer: {
     flexDirection: "row",

@@ -12,6 +12,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  useWindowDimensions,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
@@ -22,9 +23,9 @@ import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
-const { width } = Dimensions.get("window");
-
 const CoreProfile = ({ onDetailsUpdates }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 450 || Platform.OS !== "web";
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -214,8 +215,23 @@ const CoreProfile = ({ onDetailsUpdates }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.scrollContainer,
+        { paddingBottom: isMobile ? 100 : 60 }, // 👈 add bottom space
+      ]}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            width: isMobile ? "100%" : "80%",
+            padding: isMobile ? 10 : 20,
+          },
+        ]}
+      >
         <Text style={styles.agentProfileText}>Core Profile</Text>
         {loading ? (
           <ActivityIndicator
@@ -254,7 +270,16 @@ const CoreProfile = ({ onDetailsUpdates }) => {
               <Text style={styles.profileName}>{Details.name}</Text>
             </View>
             <View style={styles.profileCard}>
-              <View style={styles.profileForm}>
+              <View
+                style={[
+                  styles.profileForm,
+                  {
+                    flexDirection: isMobile ? "column" : "row",
+                    flexWrap: isMobile ? "nowrap" : "wrap",
+                    justifyContent: isMobile ? "flex-start" : "space-between",
+                  },
+                ]}
+              >
                 {profileFields.map(({ label, icon, key }) => (
                   <CustomInput
                     key={key}
@@ -262,6 +287,7 @@ const CoreProfile = ({ onDetailsUpdates }) => {
                     icon={icon}
                     value={Details[key]}
                     labelStyle={styles.label}
+                    isMobile={isMobile}
                   />
                 ))}
               </View>
@@ -316,10 +342,15 @@ const profileFields = [
   { label: "Referral Code", icon: "users", key: "MyRefferalCode" },
 ];
 
-const CustomInput = ({ label, icon, value }) => (
-  <View style={styles.inputWrapper}>
+const CustomInput = ({ label, icon, value, isMobile }) => (
+  <View style={[styles.inputWrapper, { width: isMobile ? "100%" : "30%" }]}>
     <Text style={styles.inputLabel}>{label}</Text>
-    <View style={styles.inputContainer}>
+    <View
+      style={[
+        styles.inputContainer,
+        { width: isMobile ? "100%" : "100%" }, // optional override
+      ]}
+    >
       <TextInput
         style={styles.input}
         value={value || "-"}
@@ -340,6 +371,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
+    backgroundColor: "#D8E3E7",
+    paddingTop: 20,
+    paddingBottom: 100,
     // paddingBottom: "12%",
   },
   container: {
@@ -348,7 +382,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     width: Platform.OS === "web" ? "80%" : "100%",
-    alignSelf:"center",
+    alignSelf: "center",
   },
   profileForm: {
     flexDirection: Platform.OS === "web" ? "row" : "column",
@@ -356,7 +390,7 @@ const styles = StyleSheet.create({
     justifyContent: Platform.OS === "web" ? "space-between" : "flex-start",
     width: "100%",
     fontWeight: 600,
-    backgroundColor:"FDFDFD",
+    backgroundColor: "FDFDFD",
     fontSize: 16,
   },
   inputWrapper: {
@@ -369,9 +403,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 10,
     borderRadius: 10,
+
+    // Shadow for Web (and iOS)
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+
+    // Elevation for Android
     elevation: 3,
+
     width: Platform.OS === "web" ? "100%" : 240,
   },
+
   input: {
     flex: 1,
     fontSize: 16,
@@ -423,9 +467,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   buttonContainer: {
-    display: "flex",
     flexDirection: "row",
     justifyContent: "space-evenly",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 10,
   },
   label: {
     fontSize: 40,
@@ -434,7 +480,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 10,
   },
   profileName: {
     fontSize: 22,
@@ -446,7 +491,7 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 5,
   },
   profileCard: {
     width: Platform.OS === "web" ? "80%" : "100%",

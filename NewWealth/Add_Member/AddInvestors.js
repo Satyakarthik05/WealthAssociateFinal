@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     maxWidth: 800,
   },
   title: {
-    fontSize: isSmallScreen ? 18 : 20,
+    fontSize: 20,
     fontWeight: "bold",
     fontFamily: "OpenSanssemibold",
     color: "Black",
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   label: {
-    fontSize: isSmallScreen ? 13 : 14,
+    fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
     color: "#555",
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: isSmallScreen ? 14 : 16,
+    fontSize: 16,
     fontFamily: "OpenSanssemibold",
   },
   errorContainer: {

@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     maxWidth: 800,
   },
   title: {
-    fontSize: isSmallScreen ? 18 : 20,
+    fontSize: 20,
     fontWeight: "bold",
     fontFamily: "OpenSanssemibold",
     color: "Black",
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     marginBottom: Platform.OS === "ios" ? "-14%" : "",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",

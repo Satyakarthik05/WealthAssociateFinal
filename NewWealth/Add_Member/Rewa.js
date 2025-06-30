@@ -849,9 +849,10 @@ const styles = StyleSheet.create({
     color: "#3E5C76",
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#191919",
     marginBottom: 8,
+    fontFamily: "OpenSanssemibold",
   },
   row: {
     flexDirection: "row",
@@ -877,6 +878,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
     fontWeight: "500",
     textAlign: "center",
   },
@@ -918,11 +920,12 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'ios' ? 200 : 0,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",
     color: "#2B2D42",
+    fontFamily: "OpenSanssemibold",
   },
   searchContainer: {
     position: "relative",
@@ -953,6 +956,7 @@ const styles = StyleSheet.create({
   },
   listItemText: {
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
   closeButton: {
     backgroundColor: "#3E5C76",

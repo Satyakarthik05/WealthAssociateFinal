@@ -7,20 +7,28 @@ import {
   StyleSheet,
   Platform,
   ScrollView,
+  useWindowDimensions,
   StatusBar,
-  Dimensions,
-  KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  FlatList,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 
-const { width } = Dimensions.get("window");
+const AgentModifyDetails = ({
+  closeModal,
+  onDetailsUpdate,
+  onDetailsUpdated,
+}) => {
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 450;
 
-const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
-  const [fullname, setFullname] = useState("");
+  const [fullName, setFullName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [location, setLocation] = useState("");
@@ -30,10 +38,9 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
   const [responseStatus, setResponseStatus] = useState(null);
   const [expertiseSearch, setExpertiseSearch] = useState("");
   const [experienceSearch, setExperienceSearch] = useState("");
-  const [showExpertiseList, setShowExpertiseList] = useState(false);
-  const [showExperienceList, setShowExperienceList] = useState(false);
-  const [Details, setDetails] = useState({});
-  const [isMobileEditable, setIsMobileEditable] = useState(false); // State to control mobile field editability
+  const [showExpertiseModal, setShowExpertiseModal] = useState(false);
+  const [showExperienceModal, setShowExperienceModal] = useState(false);
+  const [isMobileEditable, setIsMobileEditable] = useState(false);
 
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
@@ -70,10 +77,8 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
         },
       });
       const newDetails = await response.json();
-      setDetails(newDetails);
 
-      // Pre-fill the form fields with the fetched details
-      if (newDetails.FullName) setFullname(newDetails.FullName);
+      if (newDetails.FullName) setFullName(newDetails.FullName);
       if (newDetails.MobileNumber) setMobile(newDetails.MobileNumber);
       if (newDetails.Email) setEmail(newDetails.Email);
       if (newDetails.Locations) setLocation(newDetails.Locations);
@@ -94,9 +99,9 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
     getDetails();
   }, []);
 
-  const handleRegister = async () => {
+  const handleUpdate = async () => {
     if (
-      !fullname ||
+      !fullName ||
       !mobile ||
       !email ||
       !location ||
@@ -110,7 +115,7 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
     setIsLoading(true);
 
     const userData = {
-      FullName: fullname,
+      FullName: fullName,
       MobileNumber: mobile,
       Email: email,
       Locations: location,
@@ -130,19 +135,19 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
       setResponseStatus(response.status);
 
       if (response.ok) {
-        Alert.alert("Success", "Details Updated successfully!");
-        setIsMobileEditable(false); // Disable mobile number field
+        Alert.alert("Success", "Profile updated successfully!");
+        setIsMobileEditable(false);
         closeModal();
         onDetailsUpdate();
-        if (onDetailsUpdated) onDetailsUpdated(); // Check if the function exists before calling
+        if (onDetailsUpdated) onDetailsUpdated();
       } else if (response.status === 400) {
-        Alert.alert("Error", "Unable to Update details.");
+        Alert.alert("Error", "Unable to update profile.");
       } else {
         const errorData = await response.json();
         Alert.alert("Error", errorData.message || "Something went wrong.");
       }
     } catch (error) {
-      console.error("Error during registration:", error);
+      console.error("Error during update:", error);
       Alert.alert(
         "Error",
         "Failed to connect to the server. Please try again later."
@@ -152,20 +157,54 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
     }
   };
 
+  const renderExpertiseItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setExpertise(item.name);
+        setShowExpertiseModal(false);
+        setExpertiseSearch("");
+      }}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderExperienceItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setExperience(item.name);
+        setShowExperienceModal(false);
+        setExperienceSearch("");
+      }}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            isSmallScreen && styles.smallScreenScrollContainer,
+          ]}
+          style={styles.scrollView}
           nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-              <Text style={styles.register_text}>Edit Details</Text>
-            <View style={styles.register_main}>
-            </View>
-          <View style={styles.card}>
+          <Text style={styles.screenTitle}>Edit Agent Profile</Text>
+
+          <View style={[styles.card, !isSmallScreen && styles.desktopCard]}>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
                 Mobile number already exists.
@@ -174,18 +213,28 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
 
             <View style={styles.webInputWrapper}>
               {/* Row 1 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Fullname</Text>
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Full Name</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
                       placeholder="Full name"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setFullname}
-                      value={fullname}
+                      onChangeText={setFullName}
+                      value={fullName}
                       returnKeyType="next"
-                      onSubmitEditing={() => mobileRef.current.focus()}
+                      onSubmitEditing={() => mobileRef.current?.focus()}
                     />
                     <FontAwesome
                       name="user"
@@ -195,7 +244,12 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-                <View style={styles.inputContainer}>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
                   <Text style={styles.label}>Mobile Number</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
@@ -207,8 +261,8 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                       value={mobile}
                       keyboardType="number-pad"
                       returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current.focus()}
-                      editable={isMobileEditable} // Disable editing based on state
+                      onSubmitEditing={() => emailRef.current?.focus()}
+                      editable={isMobileEditable}
                     />
                     <MaterialIcons
                       name="phone"
@@ -218,7 +272,21 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-                <View style={styles.inputContainer}>
+              </View>
+
+              {/* Row 2 */}
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
                   <Text style={styles.label}>Email</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
@@ -238,81 +306,12 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                     />
                   </View>
                 </View>
-              </View>
-
-              {/* Row 2 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Experience</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Select Experience"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={experienceSearch}
-                      onChangeText={(text) => {
-                        setExperienceSearch(text);
-                        setShowExperienceList(true);
-                      }}
-                      onFocus={() => setShowExperienceList(true)}
-                    />
-                    {showExperienceList && (
-                      <View style={styles.dropdownContainer}>
-                        {filteredExperience.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setExperience(item.name);
-                              setExperienceSearch(item.name);
-                              setShowExperienceList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              {/* Row 3 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Expertise</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Select Expertise"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={expertiseSearch}
-                      onChangeText={(text) => {
-                        setExpertiseSearch(text);
-                        setShowExpertiseList(true);
-                      }}
-                      onFocus={() => setShowExpertiseList(true)}
-                    />
-                    {showExpertiseList && (
-                      <View style={styles.dropdownContainer}>
-                        {filteredExpertise.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setExpertise(item.name);
-                              setExpertiseSearch(item.name);
-                              setShowExpertiseList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.inputContainer}>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
                   <Text style={styles.label}>Location</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
@@ -331,36 +330,222 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
                   </View>
                 </View>
               </View>
+
+              {/* Row 3 */}
+              <View
+                style={[
+                  styles.inputRow,
+                  !isSmallScreen && styles.desktopInputRow,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Experience</Text>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowExperienceModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Experience"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={experience}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    !isSmallScreen && styles.desktopInputContainer,
+                  ]}
+                >
+                  <Text style={styles.label}>Expertise</Text>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowExpertiseModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Expertise"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={expertise}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
             <View style={styles.row}>
               <TouchableOpacity
                 style={styles.registerButton}
-                onPress={handleRegister}
+                onPress={handleUpdate}
                 disabled={isLoading}
+                activeOpacity={0.7}
               >
-                <Text style={styles.buttonText}>Submit</Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Update Profile</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.cancelButton}
-                disabled={isLoading}
+                style={[
+                  styles.cancelButton,
+                  isLoading && styles.disabledButton,
+                ]}
                 onPress={closeModal}
+                disabled={isLoading}
+                activeOpacity={0.7}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-
-            {isLoading && (
-              <ActivityIndicator
-                size="large"
-                color="#E82E5F"
-                style={styles.loadingIndicator}
-              />
-            )}
           </View>
         </ScrollView>
-        {/* <StatusBar style="auto" /> */}
+        <StatusBar style="auto" />
       </KeyboardAvoidingView>
+
+      {/* Expertise Modal */}
+      <Modal
+        visible={showExpertiseModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExpertiseModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowExpertiseModal(false)}>
+          <View style={styles.modalOuterContainer}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalKeyboardAvoidingView}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Expertise</Text>
+                    <View style={styles.searchContainer}>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search expertise..."
+                        placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                        onChangeText={setExpertiseSearch}
+                        value={expertiseSearch}
+                        autoFocus={true}
+                      />
+                      <MaterialIcons
+                        name="search"
+                        size={24}
+                        color="#3E5C76"
+                        style={styles.searchIcon}
+                      />
+                    </View>
+                    <FlatList
+                      data={filteredExpertise}
+                      renderItem={renderExpertiseItem}
+                      keyExtractor={(item) => item.code}
+                      style={styles.modalList}
+                      keyboardShouldPersistTaps="handled"
+                    />
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={() => {
+                        setShowExpertiseModal(false);
+                        setExpertiseSearch("");
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                    >
+                      <Text style={styles.closeButtonText}>Close</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Experience Modal */}
+      <Modal
+        visible={showExperienceModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowExperienceModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowExperienceModal(false)}>
+          <View style={styles.modalOuterContainer}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalKeyboardAvoidingView}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Experience</Text>
+                    <View style={styles.searchContainer}>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search experience..."
+                        placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                        onChangeText={setExperienceSearch}
+                        value={experienceSearch}
+                        autoFocus={true}
+                      />
+                      <MaterialIcons
+                        name="search"
+                        size={24}
+                        color="#3E5C76"
+                        style={styles.searchIcon}
+                      />
+                    </View>
+                    <FlatList
+                      data={filteredExperience}
+                      renderItem={renderExperienceItem}
+                      keyExtractor={(item) => item.code}
+                      style={styles.modalList}
+                      keyboardShouldPersistTaps="handled"
+                    />
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={() => {
+                        setShowExperienceModal(false);
+                        setExperienceSearch("");
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                    >
+                      <Text style={styles.closeButtonText}>Close</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -368,54 +553,62 @@ const Modify_Deatils = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width:"100%",
-    height: "30%",
-    // backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
+    width: Platform.OS === "web" ? "120%" : "100%",
+    left: Platform.OS === "web" ? "-5%" : "undefined",
+    borderRadius: 10,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#D8E3E7",
-    borderRadius: 30,
-    height: "50%",
-    width: "100%",
-
+    paddingBottom: 20,
   },
-  register_main: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    // backgroundColor: "#3E5C76",
-    width: Platform.OS === "web" ? "100%" : 260,
-    height: 10,
-    borderRadius: 20,
+  smallScreenScrollContainer: {
+    paddingHorizontal: 0,
+    paddingTop: 50,
   },
-  register_text: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    alignContent: "center",
-    fontSize: 24,
-    color: "black",
-    fontFamily: "OpenSanssemibold",
+  screenTitle: {
+    fontWeight: "700",
+    fontSize: 22,
+    color: "#2B2D42",
+    marginBottom: 10,
+    textAlign: "center",
+    fontFamily: "Roboto-Bold",
+    marginTop: 20,
   },
   card: {
-    display: "flex",
-    justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "90%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+    overflow: "hidden",
     elevation: 8,
     alignItems: "center",
+    marginBottom: 20,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
+    width: "95%",
+    ...Platform.select({
+      web: {
+        transition: "all 0.3s ease",
+        ":hover": {
+          shadowOpacity: 0.3,
+        },
+      },
+    }),
+  },
+  desktopCard: {
+    width: "80%",
+    minWidth: 650,
+    maxWidth: 800,
   },
   webInputWrapper: {
     width: "100%",
@@ -425,93 +618,176 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
-    justifyContent: "space-between",
-    gap: 5,
+    flexDirection: "column",
+    gap: 15,
+    width: "100%",
+    ...Platform.select({
+      web: {
+        transition: "flex-direction 0.3s ease",
+      },
+    }),
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "30%",
-    position: "relative",
-    zIndex: 1,
+    width: "100%",
   },
   inputWrapper: {
     position: "relative",
-    zIndex: 1,
+    width: "100%",
   },
   input: {
     width: "100%",
     height: 47,
     backgroundColor: "#FFF",
     borderRadius: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 45,
+    paddingRight: 15,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 2,
-    marginBottom: 5,
     borderWidth: 1,
     borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
   },
   icon: {
     position: "absolute",
-    right: 10,
+    left: 15,
     top: 13,
+    color: "#3E5C76",
+    zIndex: 2,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#191919",
+    marginBottom: 8,
+    fontFamily: "Roboto-Medium",
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     width: "100%",
     marginTop: 20,
+    gap: 15,
+  },
+  desktopInputRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  desktopInputContainer: {
+    width: "48%",
   },
   registerButton: {
     backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    minHeight: 44,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "400",
-  },
-  loadingIndicator: {
-    marginTop: 20,
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+    fontFamily: "Roboto-Medium",
   },
   errorText: {
     color: "red",
     fontSize: 14,
     marginBottom: 10,
     textAlign: "center",
+    fontFamily: "Roboto-Regular",
   },
-  dropdownContainer: {
-    position: "absolute",
-    bottom: "100%",
-    left: 0,
-    right: 0,
-    zIndex: 1000,
+  // Modal styles
+  modalOuterContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalKeyboardAvoidingView: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
     backgroundColor: "#FFF",
-    borderColor: "#ccc",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2B2D42",
+    fontFamily: "Roboto-Bold",
+  },
+  searchContainer: {
+    position: "relative",
+    marginBottom: 15,
+  },
+  searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 5,
+    borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
   },
   listItem: {
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    borderBottomColor: "#eee",
+  },
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "Roboto-Regular",
+  },
+  closeButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    fontFamily: "Roboto-Bold",
   },
 });
 
-export default Modify_Deatils;
+export default AgentModifyDetails;
