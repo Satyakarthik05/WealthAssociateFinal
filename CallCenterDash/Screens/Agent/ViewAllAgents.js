@@ -383,7 +383,7 @@ export default function ViewAgents() {
                 ]}
               >
                 <Image
-                  source={require("../../../assets/man.png")}
+                  source={require("../../assets/man.png")}
                   style={styles.avatar}
                 />
                 <View style={styles.infoContainer}>

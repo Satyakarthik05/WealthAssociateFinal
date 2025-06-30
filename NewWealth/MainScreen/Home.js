@@ -24,6 +24,7 @@ import RequestedPropertyCard from "../components/home/RequestedPropertyCard";
 import SectionHeader from "../components/home/SectionHeader";
 import PropertyModal from "../components/home/PropertyModal";
 import LazyImage from "../components/home/LazyImage";
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const { width } = Dimensions.get("window");
 
@@ -559,6 +560,7 @@ const HomeScreen = () => {
             </Animated.View>
           )}
         <ActionButtons navigation={navigation} />
+       
         {propertyCategories.regularProperties.length > 0 && (
           <>
             <SectionHeader
@@ -779,6 +781,15 @@ const HomeScreen = () => {
           </>
         )}
       </Animated.ScrollView>
+       {propertyCategories.rentalProperties.length > 0 && (
+      <TouchableOpacity 
+        style={styles.floatingButton}
+        onPress={() => navigation.navigate("rentalprop")}
+      >
+        <Icon name="home" size={20} color="white" />
+        <Text style={styles.floatingButtonText}>Rental</Text>
+      </TouchableOpacity>
+    )}
 
       <PropertyModal
         visible={isPropertyModalVisible}
@@ -790,12 +801,12 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#D8E3E7",
-    paddingHorizontal: 15,
-    top: 10,
-  },
+ container: {
+  flex: 1,
+  backgroundColor: "#D8E3E7",
+  paddingHorizontal: 15,
+  top:10
+},
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -886,6 +897,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     fontWeight: "600",
+  },
+floatingButton: {
+  position: 'absolute',
+  bottom: Platform.OS === 'ios' ? 100 : 100, // Increased these values
+  right: 20,
+  backgroundColor: '#3E5C76',
+  width: 70,
+  height: 70,
+  borderRadius: 30,
+  justifyContent: 'center',
+  alignItems: 'center',
+  elevation: 10, // Increased elevation
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.3,
+  shadowRadius: 3,
+  zIndex: 100, // Increased zIndex
+},
+  floatingButtonText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

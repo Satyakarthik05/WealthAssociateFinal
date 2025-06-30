@@ -59,11 +59,15 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
     if (response.ok) {
       const data = await response.json();
       if (data.count > 0) {
+        // Play sound even in background
+        await playNotificationSound();
+
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "New Requests",
             body: `You have ${data.count} new requests to review`,
             sound: "default",
+            priority: Notifications.AndroidNotificationPriority.HIGH,
           },
           trigger: null,
         });
@@ -82,6 +86,8 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
+
+
 
 const getAuthToken = async () => {
   try {
@@ -157,6 +163,30 @@ const CallCenterDashboard = () => {
     expertCallRequests: 0,
   });
 
+  const [pendingNotifications, setPendingNotifications] = useState({
+    agents: [],
+    customers: [],
+    properties: [],
+    requestedProperties: [],
+    skilled: [],
+    investors: [],
+    expertRequests: [],
+    expertRegistrations: [],
+    expertCallRequests: [],
+  });
+
+  const [pendingCounts, setPendingCounts] = useState({
+    agents: 0,
+    customers: 0,
+    properties: 0,
+    requestedProperties: 0,
+    skilled: 0,
+    investors: 0,
+    expertRequests: 0,
+    expertRegistrations: 0,
+    expertCallRequests: 0,
+  });
+
   const navigation = useNavigation();
   const soundRef = useRef(null);
   const soundIntervalRef = useRef(null);
@@ -167,7 +197,22 @@ const CallCenterDashboard = () => {
   const socketRef = useRef(null);
   const isFirstRender = useRef(true);
 
-  // Track initial login when component mounts
+  useEffect(() => {
+  // Initialize socket connection
+  const socket = io(API_URL, {
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+  });
+
+  socketRef.current = socket;
+
+  return () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+  };
+}, []);
+
   useEffect(() => {
     const trackInitialLogin = async () => {
       try {
@@ -193,35 +238,21 @@ const CallCenterDashboard = () => {
 
     trackInitialLogin();
     getDetails();
+    fetchPendingItems();
   }, []);
 
-  // Track logout when component unmounts or app goes to background
   useEffect(() => {
     const handleAppStateChange = async (nextAppState) => {
-      if (
-        appState.match(/active/) &&
-        nextAppState.match(/inactive|background/)
-      ) {
-        try {
-          const token = await AsyncStorage.getItem("authToken");
-          const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+      console.log("App state changed to:", nextAppState);
 
-          if (callexecutiveId) {
-            await fetch(
-              `${API_URL}/callexe/${callexecutiveId}/update-logout-time`,
-              {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  token: `${token}` || "",
-                },
-              }
-            );
-          }
-        } catch (error) {
-          console.error("Error tracking logout:", error);
-        }
+      if (nextAppState === "background") {
+        // Register background task when going to background
+        await registerBackgroundFetch();
+      } else if (nextAppState === "active") {
+        // Check for pending items when coming to foreground
+        fetchPendingItems();
       }
+
       setAppState(nextAppState);
     };
 
@@ -232,11 +263,70 @@ const CallCenterDashboard = () => {
 
     return () => {
       subscription.remove();
-      if (isActive) {
-        trackLogout();
-      }
     };
-  }, [isActive]);
+  }, [isActive, notificationSettings]);
+
+  const registerBackgroundFetch = async () => {
+    try {
+      await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+        minimumInterval: 1 * 60, // Check every 1 minute
+        stopOnTerminate: false,
+        startOnBoot: true,
+      });
+      console.log("Background fetch registered successfully");
+    } catch (err) {
+      console.log("Background Fetch failed to register", err);
+    }
+  };
+
+  const fetchPendingItems = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(
+        `${API_URL}/callexe/${callexecutiveId}/pending-items`,
+        {
+          headers: { token },
+        }
+      );
+
+      if (response.ok) {
+        const { pendingItems } = await response.json();
+        console.log("Pending items received:", pendingItems);
+
+        if (pendingItems) {
+          const newPendingNotifications = { ...pendingNotifications };
+          const newPendingCounts = { ...pendingCounts };
+
+          Object.entries(pendingItems).forEach(([type, items]) => {
+            if (items && items.length > 0) {
+              newPendingNotifications[type] = [
+                ...items.map((item) => ({
+                  ...item,
+                  type,
+                  createdAt: item.createdAt || new Date().toISOString(),
+                  isPending: true,
+                })),
+              ];
+
+              newPendingCounts[type] = items.length;
+
+              // Play sound if there are pending items and user is active
+              if (isActive && notificationSettings[type] && items.length > 0) {
+                playNotificationSound();
+              }
+            }
+          });
+
+          setPendingNotifications(newPendingNotifications);
+          setPendingCounts(newPendingCounts);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching pending items:", error);
+    }
+  };
 
   const trackLogout = async () => {
     try {
@@ -260,142 +350,242 @@ const CallCenterDashboard = () => {
     }
   };
 
-  // Initialize background fetch and notifications
-  useEffect(() => {
-    const registerBackgroundTask = async () => {
-      try {
-        await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
-          minimumInterval: 15 * 60,
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
-      } catch (err) {
-        console.log("Background Fetch failed to register", err);
+  const loadSound = async () => {
+    try {
+      if (isWeb) {
+        audioContextRef.current = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        return;
       }
-    };
 
-    registerBackgroundTask();
-
-    const requestPermissions = async () => {
-      await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-          allowAnnouncements: true,
-        },
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
-    };
 
-    requestPermissions();
-  }, []);
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/siren.mp3")
+      );
+      soundRef.current = sound;
+    } catch (error) {
+      console.error("Error loading sound:", error);
+    }
+  };
 
-  // Initialize socket connection
-  useEffect(() => {
-    const socket = io(API_URL, {
-      transports: ["websocket"],
-      reconnectionAttempts: 5,
-    });
-
-    socketRef.current = socket;
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Setup socket event listeners
-  useEffect(() => {
-    if (!socketRef.current) return;
-
-    const socket = socketRef.current;
-
-    const handleNewNotification = (type, data) => {
-      if (!processedNotificationIds.current.has(data._id)) {
-        processedNotificationIds.current.add(data._id);
-
-        setNewNotifications((prev) => ({
-          ...prev,
-          [type]: [
-            {
-              ...data,
-              type,
-              createdAt: new Date().toISOString(),
-            },
-            ...prev[type],
-          ],
-        }));
-
-        setNotificationCounts((prev) => ({
-          ...prev,
-          [type]: prev[type] + 1,
-        }));
-
-        if (isActive && notificationSettings[type]) {
-          playNotificationSound();
-        }
-      }
-    };
-
-    const handleAssignedByOther = (data) => {
-      const { type, id } = data;
-      
-      setNewNotifications(prev => ({
-        ...prev,
-        [type]: prev[type].filter(item => item._id !== id)
-      }));
-
-      setNotificationCounts(prev => ({
-        ...prev,
-        [type]: Math.max(0, prev[type] - 1)
-      }));
-
-      // Stop sound if no more notifications
-      const total = Object.values(notificationCounts).reduce((sum, count) => sum + count, 0);
-      if (total <= 0) {
+  const playNotificationSound = async () => {
+    try {
+      // Stop any existing sound
+      if (soundIntervalRef.current) {
         stopNotificationSound();
       }
-    };
 
-    const notificationHandlers = {
-      new_agent: (data) => handleNewNotification("agents", data.agent),
-      new_customer: (data) => handleNewNotification("customers", data.customer),
-      new_property: (data) =>
-        handleNewNotification("properties", data.property),
-      new_requested_property: (data) =>
-        handleNewNotification("requestedProperties", data.property),
-      new_skilled_labor: (data) => handleNewNotification("skilled", data.labor),
-      new_investor: (data) => handleNewNotification("investors", data.investor),
-      new_requestExpert: (data) =>
-        handleNewNotification("expertRequests", data.expert),
-      new_Expert: (data) =>
-        handleNewNotification("expertRegistrations", data.expert),
-      new_requestedExpert: (data) =>
-        handleNewNotification("expertCallRequests", data.expert),
-      assigned_by_other: handleAssignedByOther
-    };
+      if (
+        (isWeb && !audioContextRef.current) ||
+        (!isWeb && !soundRef.current)
+      ) {
+        await loadSound();
+      }
 
-    Object.entries(notificationHandlers).forEach(([event, handler]) => {
-      socket.on(event, handler);
+      if (isWeb) {
+        const response = await fetch(require("../assets/siren.mp3"));
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContextRef.current.decodeAudioData(
+          arrayBuffer
+        );
+
+        const playSound = () => {
+          if (!soundIntervalRef.current) return;
+
+          audioSourceRef.current = audioContextRef.current.createBufferSource();
+          audioSourceRef.current.buffer = audioBuffer;
+          audioSourceRef.current.connect(audioContextRef.current.destination);
+          audioSourceRef.current.start();
+
+          audioSourceRef.current.onended = () => {
+            if (soundIntervalRef.current) {
+              setTimeout(playSound, 500);
+            }
+          };
+        };
+
+        soundIntervalRef.current = true;
+        playSound();
+      } else {
+        if (soundRef.current) {
+          // For mobile, play sound in a loop
+          const playLoop = async () => {
+            try {
+              await soundRef.current.replayAsync();
+              if (soundIntervalRef.current) {
+                setTimeout(playLoop, 3000);
+              }
+            } catch (error) {
+              console.error("Error in play loop:", error);
+            }
+          };
+
+          soundIntervalRef.current = true;
+          await playLoop();
+        }
+      }
+    } catch (error) {
+      console.error("Error playing sound:", error);
+    }
+  };
+
+  const stopNotificationSound = () => {
+    soundIntervalRef.current = false;
+
+    if (isWeb) {
+      if (audioSourceRef.current) {
+        audioSourceRef.current.stop();
+        audioSourceRef.current = null;
+      }
+    } else {
+      if (soundRef.current) {
+        soundRef.current.stopAsync();
+      }
+    }
+  };
+useEffect(() => {
+  if (!socketRef.current) return;
+
+  const socket = socketRef.current;
+const handleNewNotification = (type, data) => {
+  const notificationId = data._id || `${type}-${Date.now()}`;
+
+  // Only process if not already processed or if it's a pending item
+  if (!processedNotificationIds.current.has(notificationId) || data.isPending) {
+    processedNotificationIds.current.add(notificationId);
+
+    setNewNotifications(prev => ({
+      ...prev,
+      [type]: [
+        {
+          ...data,
+          type,
+          createdAt: data.createdAt || new Date().toISOString(),
+          isPending: data.isPending || false,
+        },
+        ...prev[type],
+      ],
+    }));
+
+    setNotificationCounts(prev => ({
+      ...prev,
+      [type]: prev[type] + 1,
+    }));
+
+    // Always play sound for pending items if active
+    if (isActive && (notificationSettings[type] || data.isPending)) {
+      playNotificationSound();
+      
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: `New ${type}`,
+          body: `New ${type} registered: ${
+            data.FullName || data.propertyType || "Item"
+          }`,
+          sound: "default",
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null,
+      });
+    }
+  }
+};
+
+  const handleAssignedByOther = (data) => {
+    const { type, id } = data;
+
+    // Remove from new notifications if present
+    setNewNotifications(prev => {
+      const updatedNew = {
+        ...prev,
+        [type]: prev[type].filter(item => item._id !== id)
+      };
+      
+      // Check if we should stop the sound
+      const totalNew = Object.values(updatedNew).reduce(
+        (sum, items) => sum + items.length, 
+        0
+      );
+      const totalPending = Object.values(pendingNotifications).reduce(
+        (sum, items) => sum + items.length, 
+        0
+      );
+      
+      if (totalNew + totalPending <= 0) {
+        stopNotificationSound();
+      }
+
+      return updatedNew;
     });
 
-    return () => {
-      Object.keys(notificationHandlers).forEach((event) => {
-        socket.off(event);
-      });
-    };
-  }, [isActive, notificationSettings, notificationCounts]);
+    // Remove from pending notifications if present
+    setPendingNotifications(prev => {
+      const updatedPending = {
+        ...prev,
+        [type]: prev[type].filter(item => item._id !== id)
+      };
+      
+      return updatedPending;
+    });
+
+    // Update counts
+    setNotificationCounts(prev => ({
+      ...prev,
+      [type]: Math.max(0, prev[type] - 1)
+    }));
+
+    setPendingCounts(prev => ({
+      ...prev,
+      [type]: Math.max(0, prev[type] - 1)
+    }));
+  };
+
+  const notificationHandlers = {
+    new_agent: (data) => handleNewNotification("agents", data.agent),
+    new_customer: (data) => handleNewNotification("customers", data.customer),
+    new_property: (data) => handleNewNotification("properties", data.property),
+    new_requested_property: (data) => 
+      handleNewNotification("requestedProperties", data.property),
+    new_skilled_labor: (data) => handleNewNotification("skilled", data.labor),
+    new_investor: (data) => handleNewNotification("investors", data.investor),
+    new_requestExpert: (data) => 
+      handleNewNotification("expertRequests", data.expert),
+    new_Expert: (data) => 
+      handleNewNotification("expertRegistrations", data.expert),
+    new_requestedExpert: (data) => 
+      handleNewNotification("expertCallRequests", data.expert),
+    assigned_by_other: handleAssignedByOther,
+  };
+
+  // Set up all event listeners
+  Object.entries(notificationHandlers).forEach(([event, handler]) => {
+    socket.on(event, handler);
+  });
+
+  // Cleanup function
+  return () => {
+    Object.entries(notificationHandlers).forEach(([event, handler]) => {
+      socket.off(event, handler);
+    });
+  };
+}, [isActive, notificationSettings, notificationCounts, pendingCounts, pendingNotifications]);
 
   const toggleStatus = async () => {
     const newStatus = !isActive;
-    
+
     try {
       const token = await AsyncStorage.getItem("authToken");
       const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
 
-      // Disable all notifications if going inactive
-      const newNotificationSettings = newStatus 
-        ? notificationSettings 
+      const newNotificationSettings = newStatus
+        ? notificationSettings
         : Object.keys(notificationSettings).reduce((acc, key) => {
             acc[key] = false;
             return acc;
@@ -411,9 +601,9 @@ const CallCenterDashboard = () => {
           "Content-Type": "application/json",
           token: `${token}` || "",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: newStatus ? "active" : "inactive",
-          notificationSettings: newNotificationSettings
+          notificationSettings: newNotificationSettings,
         }),
       });
 
@@ -426,9 +616,12 @@ const CallCenterDashboard = () => {
           "userStatus",
           newStatus ? "active" : "inactive"
         );
-        
+
         if (!newStatus) {
           stopNotificationSound();
+        } else {
+          // When going active, check for pending items
+          fetchPendingItems();
         }
       } else {
         console.error("Failed to toggle status:", result.message);
@@ -456,8 +649,6 @@ const CallCenterDashboard = () => {
       const token = await AsyncStorage.getItem("authToken");
       const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
 
-      setNotificationSettings(newSettings);
-
       const response = await fetch(
         `${API_URL}/callexe/${callexecutiveId}/notification-settings`,
         {
@@ -472,13 +663,76 @@ const CallCenterDashboard = () => {
         }
       );
 
-      if (!response.ok) {
-        setNotificationSettings(notificationSettings);
-        throw new Error("Failed to update settings");
+      const result = await response.json();
+
+      if (response.ok) {
+        setNotificationSettings(newSettings);
+
+        // If enabling this notification type, fetch pending items
+        if (newSettings[type]) {
+          fetchPendingItemsForType(type);
+        } else {
+          // If disabling, clear pending notifications for this type
+          setPendingNotifications((prev) => ({
+            ...prev,
+            [type]: [],
+          }));
+          setPendingCounts((prev) => ({
+            ...prev,
+            [type]: 0,
+          }));
+        }
+      } else {
+        throw new Error(result.message || "Failed to update settings");
       }
     } catch (error) {
       console.error("Error updating notification settings:", error);
       Alert.alert("Error", "Failed to update notification settings");
+    }
+  };
+
+  const fetchPendingItemsForType = async (type) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(
+        `${API_URL}/callexe/${callexecutiveId}/pending-items/${type}`,
+        {
+          headers: { token },
+        }
+      );
+
+      if (response.ok) {
+        const { pendingItems } = await response.json();
+
+        if (pendingItems && pendingItems.length > 0) {
+          setPendingNotifications((prev) => ({
+            ...prev,
+            [type]: [
+              ...pendingItems.map((item) => ({
+                ...item,
+                type,
+                createdAt: item.createdAt || new Date().toISOString(),
+                isPending: true,
+              })),
+              ...prev[type],
+            ],
+          }));
+
+          setPendingCounts((prev) => ({
+            ...prev,
+            [type]: pendingItems.length,
+          }));
+
+          // Play sound if there are pending items and user is active
+          if (isActive && notificationSettings[type]) {
+            playNotificationSound();
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching pending items for ${type}:`, error);
     }
   };
 
@@ -641,19 +895,19 @@ const CallCenterDashboard = () => {
     let title, name, phone, location;
     switch (type) {
       case "agents":
-        title = "New Agent";
+        title = item.isPending ? "Pending Agent" : "New Agent";
         name = item.FullName || "No name";
         phone = item.MobileNumber || "No phone";
         location = item.District || "No location";
         break;
       case "customers":
-        title = "New Customer";
+        title = item.isPending ? "Pending Customer" : "New Customer";
         name = item.FullName || "No name";
         phone = item.MobileNumber || "No phone";
         location = item.District || "No location";
         break;
       case "properties":
-        title = "New Property";
+        title = item.isPending ? "Pending Property" : "New Property";
         name = item.propertyType || "No title";
         phone = item.PostedBy || "No phone";
         location =
@@ -661,37 +915,43 @@ const CallCenterDashboard = () => {
           "No location";
         break;
       case "requestedProperties":
-        title = "Requested Property";
+        title = item.isPending
+          ? "Pending Requested Property"
+          : "Requested Property";
         name = item.propertyTitle || "No title";
         phone = item.PostedBy || "No phone";
         location = item.location || "No location";
         break;
       case "skilled":
-        title = "New Skilled Labor";
+        title = item.isPending ? "Pending Skilled Labor" : "New Skilled Labor";
         name = item.FullName || "No name";
         phone = item.MobileNumber || "No phone";
         location = item.District || "No location";
         break;
       case "investors":
-        title = "New Investor";
+        title = item.isPending ? "Pending Investor" : "New Investor";
         name = item.FullName || "No name";
         phone = item.MobileNumber || "No phone";
         location = item.District || "No location";
         break;
       case "expertRequests":
-        title = "Expert Request";
+        title = item.isPending ? "Pending Expert Request" : "Expert Request";
         name = item.expertType || "No type";
         phone = item.WantedBy || "No requester";
         location = item.reason || "No reason provided";
         break;
       case "expertRegistrations":
-        title = "Expert Registration";
+        title = item.isPending
+          ? "Pending Expert Registration"
+          : "Expert Registration";
         name = item.name || "No name";
         phone = item.mobile || "No phone";
         location = item.expertType || "No type";
         break;
       case "expertCallRequests":
-        title = "Expert Call Request";
+        title = item.isPending
+          ? "Pending Expert Call Request"
+          : "Expert Call Request";
         name = item.Name || "No name";
         phone = item.MobileNumber || "No phone";
         location = item.ExpertType || "No type";
@@ -701,14 +961,31 @@ const CallCenterDashboard = () => {
     }
 
     return (
-      <View style={styles.notificationCard} key={`${type}-${item._id}`}>
-        <View style={styles.notificationCardHeader}>
-          <Text style={styles.newBadge}>{title}</Text>
+      <View
+        style={[
+          styles.notificationCard,
+          item.isPending && styles.pendingNotificationCard,
+        ]}
+        key={`${type}-${item._id}`}
+      >
+        <View
+          style={[
+            styles.notificationCardHeader,
+            item.isPending && styles.pendingNotificationHeader,
+          ]}
+        >
+          <Text
+            style={[styles.newBadge, item.isPending && styles.pendingBadge]}
+          >
+            {title}
+          </Text>
           <Text style={styles.notificationTime}>
             {new Date(item.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
+            {" - "}
+            {new Date(item.createdAt).toLocaleDateString()}
           </Text>
         </View>
         <View style={styles.notificationCardBody}>
@@ -743,25 +1020,144 @@ const CallCenterDashboard = () => {
               <TouchableOpacity
                 style={styles.acceptButton}
                 onPress={() => {
-                  handleAcceptNotification(type, item._id);
+                  handleAcceptNotification(type, item._id, item.isPending);
                   handleSubItemClick(getNavigationScreen(type));
                 }}
               >
                 <Ionicons name="checkmark" size={18} color="white" />
                 <Text style={styles.buttonText}> Accept</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.rejectButton}
-                onPress={() => handleRejectNotification(type, item._id)}
+                onPress={() =>
+                  handleRejectNotification(type, item._id, item.isPending)
+                }
               >
                 <Ionicons name="close" size={18} color="white" />
                 <Text style={styles.buttonText}> Reject</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
         </View>
       </View>
     );
+  };
+
+ const handleAcceptNotification = async (type, id, isPending) => {
+  try {
+    const token = await AsyncStorage.getItem("authToken");
+    const executiveId = await AsyncStorage.getItem("callexecutiveId");
+
+    const response = await fetch(`${API_URL}/callexe/${type}/${id}/accept`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token: token || "",
+      },
+      body: JSON.stringify({ executiveId }),
+    });
+
+    if (response.ok) {
+      // Update state immediately
+      if (isPending) {
+        setPendingNotifications(prev => ({
+          ...prev,
+          [type]: prev[type].filter(item => item._id !== id)
+        }));
+        setPendingCounts(prev => ({
+          ...prev,
+          [type]: Math.max(0, prev[type] - 1)
+        }));
+      } else {
+        setNewNotifications(prev => ({
+          ...prev,
+          [type]: prev[type].filter(item => item._id !== id)
+        }));
+        setNotificationCounts(prev => ({
+          ...prev,
+          [type]: Math.max(0, prev[type] - 1)
+        }));
+      }
+
+      // Check if we should stop the sound
+      const totalNew = Object.values(notificationCounts).reduce((sum, count) => sum + count, 0);
+      const totalPending = Object.values(pendingCounts).reduce((sum, count) => sum + count, 0);
+      
+      if (totalNew + totalPending <= 0) {
+        stopNotificationSound();
+      }
+
+      Alert.alert("Success", `${type} accepted successfully`);
+    } else {
+      const errorData = await response.json();
+      Alert.alert("Error", errorData.message || "Failed to accept");
+    }
+  } catch (error) {
+    console.error("Error accepting notification:", error);
+    Alert.alert("Error", "Failed to accept. Please try again.");
+  }
+};
+
+  const handleRejectNotification = async (type, id, isPending) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const executiveId = await AsyncStorage.getItem("callexecutiveId");
+
+      const response = await fetch(`${API_URL}/callexe/${type}/${id}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({ executiveId }),
+      });
+
+      if (response.ok) {
+        if (isPending) {
+          setPendingNotifications((prev) => ({
+            ...prev,
+            [type]: prev[type].filter((item) => item._id !== id),
+          }));
+
+          setPendingCounts((prev) => ({
+            ...prev,
+            [type]: Math.max(0, prev[type] - 1),
+          }));
+        } else {
+          setNewNotifications((prev) => ({
+            ...prev,
+            [type]: prev[type].filter((item) => item._id !== id),
+          }));
+
+          setNotificationCounts((prev) => ({
+            ...prev,
+            [type]: Math.max(0, prev[type] - 1),
+          }));
+        }
+
+        const totalNew = Object.values(notificationCounts).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        const totalPending = Object.values(pendingCounts).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        if (totalNew + totalPending <= 0) {
+          stopNotificationSound();
+        }
+
+        Alert.alert("Success", `${type} rejected successfully`);
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.message || "Failed to reject");
+      }
+    } catch (error) {
+      console.error("Error rejecting notification:", error);
+      Alert.alert("Error", "Failed to reject. Please try again.");
+    }
   };
 
   const renderNotificationSettings = () => (
@@ -793,10 +1189,10 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("agents")}
               disabled={!isActive}
             />
-            {notificationCounts.agents > 0 && (
+            {(notificationCounts.agents > 0 || pendingCounts.agents > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.agents}
+                  {notificationCounts.agents + pendingCounts.agents}
                 </Text>
               </View>
             )}
@@ -817,10 +1213,11 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("customers")}
               disabled={!isActive}
             />
-            {notificationCounts.customers > 0 && (
+            {(notificationCounts.customers > 0 ||
+              pendingCounts.customers > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.customers}
+                  {notificationCounts.customers + pendingCounts.customers}
                 </Text>
               </View>
             )}
@@ -841,10 +1238,11 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("properties")}
               disabled={!isActive}
             />
-            {notificationCounts.properties > 0 && (
+            {(notificationCounts.properties > 0 ||
+              pendingCounts.properties > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.properties}
+                  {notificationCounts.properties + pendingCounts.properties}
                 </Text>
               </View>
             )}
@@ -867,10 +1265,12 @@ const CallCenterDashboard = () => {
               }
               disabled={!isActive}
             />
-            {notificationCounts.requestedProperties > 0 && (
+            {(notificationCounts.requestedProperties > 0 ||
+              pendingCounts.requestedProperties > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.requestedProperties}
+                  {notificationCounts.requestedProperties +
+                    pendingCounts.requestedProperties}
                 </Text>
               </View>
             )}
@@ -891,10 +1291,10 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("skilled")}
               disabled={!isActive}
             />
-            {notificationCounts.skilled > 0 && (
+            {(notificationCounts.skilled > 0 || pendingCounts.skilled > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.skilled}
+                  {notificationCounts.skilled + pendingCounts.skilled}
                 </Text>
               </View>
             )}
@@ -915,10 +1315,11 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("investors")}
               disabled={!isActive}
             />
-            {notificationCounts.investors > 0 && (
+            {(notificationCounts.investors > 0 ||
+              pendingCounts.investors > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.investors}
+                  {notificationCounts.investors + pendingCounts.investors}
                 </Text>
               </View>
             )}
@@ -939,10 +1340,12 @@ const CallCenterDashboard = () => {
               onValueChange={() => toggleNotificationSetting("expertRequests")}
               disabled={!isActive}
             />
-            {notificationCounts.expertRequests > 0 && (
+            {(notificationCounts.expertRequests > 0 ||
+              pendingCounts.expertRequests > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.expertRequests}
+                  {notificationCounts.expertRequests +
+                    pendingCounts.expertRequests}
                 </Text>
               </View>
             )}
@@ -965,10 +1368,12 @@ const CallCenterDashboard = () => {
               }
               disabled={!isActive}
             />
-            {notificationCounts.expertRegistrations > 0 && (
+            {(notificationCounts.expertRegistrations > 0 ||
+              pendingCounts.expertRegistrations > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.expertRegistrations}
+                  {notificationCounts.expertRegistrations +
+                    pendingCounts.expertRegistrations}
                 </Text>
               </View>
             )}
@@ -991,10 +1396,12 @@ const CallCenterDashboard = () => {
               }
               disabled={!isActive}
             />
-            {notificationCounts.expertCallRequests > 0 && (
+            {(notificationCounts.expertCallRequests > 0 ||
+              pendingCounts.expertCallRequests > 0) && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
-                  {notificationCounts.expertCallRequests}
+                  {notificationCounts.expertCallRequests +
+                    pendingCounts.expertCallRequests}
                 </Text>
               </View>
             )}
@@ -1005,17 +1412,31 @@ const CallCenterDashboard = () => {
   );
 
   const renderNotifications = () => {
-    const totalNotifications = Object.values(notificationCounts).reduce(
+    const totalNewNotifications = Object.values(notificationCounts).reduce(
       (sum, count) => sum + count,
       0
     );
+
+    const totalPendingNotifications = Object.values(pendingCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    const totalNotifications =
+      totalNewNotifications + totalPendingNotifications;
 
     if (totalNotifications === 0 || !isActive) return null;
 
     return (
       <View style={styles.notificationsContainer}>
         <Text style={styles.sectionTitle}>
-          New Requests ({totalNotifications})
+          Requests ({totalNotifications})
+          {totalPendingNotifications > 0 && (
+            <Text style={styles.pendingCountText}>
+              {" "}
+              ({totalPendingNotifications} pending)
+            </Text>
+          )}
         </Text>
 
         {notificationCounts.agents > 0 && (
@@ -1024,6 +1445,17 @@ const CallCenterDashboard = () => {
               Agents ({notificationCounts.agents})
             </Text>
             {newNotifications.agents.map((agent) =>
+              renderNotificationCard(agent, "agents")
+            )}
+          </View>
+        )}
+
+        {pendingCounts.agents > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Agents ({pendingCounts.agents})
+            </Text>
+            {pendingNotifications.agents.map((agent) =>
               renderNotificationCard(agent, "agents")
             )}
           </View>
@@ -1040,12 +1472,34 @@ const CallCenterDashboard = () => {
           </View>
         )}
 
+        {pendingCounts.customers > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Customers ({pendingCounts.customers})
+            </Text>
+            {pendingNotifications.customers.map((customer) =>
+              renderNotificationCard(customer, "customers")
+            )}
+          </View>
+        )}
+
         {notificationCounts.properties > 0 && (
           <View style={styles.notificationSection}>
             <Text style={styles.subSectionTitle}>
               Properties ({notificationCounts.properties})
             </Text>
             {newNotifications.properties.map((property) =>
+              renderNotificationCard(property, "properties")
+            )}
+          </View>
+        )}
+
+        {pendingCounts.properties > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Properties ({pendingCounts.properties})
+            </Text>
+            {pendingNotifications.properties.map((property) =>
               renderNotificationCard(property, "properties")
             )}
           </View>
@@ -1062,12 +1516,34 @@ const CallCenterDashboard = () => {
           </View>
         )}
 
+        {pendingCounts.requestedProperties > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Requested Properties ({pendingCounts.requestedProperties})
+            </Text>
+            {pendingNotifications.requestedProperties.map((property) =>
+              renderNotificationCard(property, "requestedProperties")
+            )}
+          </View>
+        )}
+
         {notificationCounts.skilled > 0 && (
           <View style={styles.notificationSection}>
             <Text style={styles.subSectionTitle}>
               Skilled Resources ({notificationCounts.skilled})
             </Text>
             {newNotifications.skilled.map((labor) =>
+              renderNotificationCard(labor, "skilled")
+            )}
+          </View>
+        )}
+
+        {pendingCounts.skilled > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Skilled Resources ({pendingCounts.skilled})
+            </Text>
+            {pendingNotifications.skilled.map((labor) =>
               renderNotificationCard(labor, "skilled")
             )}
           </View>
@@ -1084,12 +1560,34 @@ const CallCenterDashboard = () => {
           </View>
         )}
 
+        {pendingCounts.investors > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Investors ({pendingCounts.investors})
+            </Text>
+            {pendingNotifications.investors.map((investor) =>
+              renderNotificationCard(investor, "investors")
+            )}
+          </View>
+        )}
+
         {notificationCounts.expertRequests > 0 && (
           <View style={styles.notificationSection}>
             <Text style={styles.subSectionTitle}>
               Expert Requests ({notificationCounts.expertRequests})
             </Text>
             {newNotifications.expertRequests.map((request) =>
+              renderNotificationCard(request, "expertRequests")
+            )}
+          </View>
+        )}
+
+        {pendingCounts.expertRequests > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Expert Requests ({pendingCounts.expertRequests})
+            </Text>
+            {pendingNotifications.expertRequests.map((request) =>
               renderNotificationCard(request, "expertRequests")
             )}
           </View>
@@ -1106,12 +1604,34 @@ const CallCenterDashboard = () => {
           </View>
         )}
 
+        {pendingCounts.expertRegistrations > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Expert Registrations ({pendingCounts.expertRegistrations})
+            </Text>
+            {pendingNotifications.expertRegistrations.map((expert) =>
+              renderNotificationCard(expert, "expertRegistrations")
+            )}
+          </View>
+        )}
+
         {notificationCounts.expertCallRequests > 0 && (
           <View style={styles.notificationSection}>
             <Text style={styles.subSectionTitle}>
               Expert Call Requests ({notificationCounts.expertCallRequests})
             </Text>
             {newNotifications.expertCallRequests.map((call) =>
+              renderNotificationCard(call, "expertCallRequests")
+            )}
+          </View>
+        )}
+
+        {pendingCounts.expertCallRequests > 0 && (
+          <View style={styles.notificationSection}>
+            <Text style={styles.subSectionTitle}>
+              Pending Expert Call Requests ({pendingCounts.expertCallRequests})
+            </Text>
+            {pendingNotifications.expertCallRequests.map((call) =>
               renderNotificationCard(call, "expertCallRequests")
             )}
           </View>
@@ -1133,7 +1653,6 @@ const CallCenterDashboard = () => {
       setDetails(userDetails);
       AsyncStorage.setItem("callexecutiveId", userDetails._id);
 
-      // Set notification settings from backend or use defaults
       setNotificationSettings(
         userDetails.notificationSettings || {
           agents: false,
@@ -1148,7 +1667,6 @@ const CallCenterDashboard = () => {
         }
       );
 
-      // Set initial active status
       setIsActive(userDetails.status === "active");
 
       const baseMenuItems = [
@@ -1169,7 +1687,7 @@ const CallCenterDashboard = () => {
           baseMenuItems.push({
             title: "Agents",
             icon: "person-outline",
-            subItems: ["View Agents", "View Customers"],
+            subItems: ["View Agents","View All Agents", "View Customers"],
           });
           break;
         case "Customers":
@@ -1235,209 +1753,6 @@ const CallCenterDashboard = () => {
     }
   };
 
-  const loadSound = async () => {
-    try {
-      if (isWeb) {
-        audioContextRef.current = new (window.AudioContext ||
-          window.webkitAudioContext)();
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        require("../assets/siren.mp3")
-      );
-      soundRef.current = sound;
-    } catch (error) {
-      console.error("Error loading sound:", error);
-    }
-  };
-
-  const playNotificationSound = async () => {
-    try {
-      if (soundIntervalRef.current) return;
-
-      if (
-        (isWeb && !audioContextRef.current) ||
-        (!isWeb && !soundRef.current)
-      ) {
-        await loadSound();
-      }
-
-      if (isWeb) {
-        const response = await fetch(require("../assets/siren.mp3"));
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await audioContextRef.current.decodeAudioData(
-          arrayBuffer
-        );
-
-        const playSound = () => {
-          audioSourceRef.current = audioContextRef.current.createBufferSource();
-          audioSourceRef.current.buffer = audioBuffer;
-          audioSourceRef.current.connect(audioContextRef.current.destination);
-          audioSourceRef.current.start();
-
-          audioSourceRef.current.onended = () => {
-            if (soundIntervalRef.current) {
-              setTimeout(playSound, 500);
-            }
-          };
-        };
-
-        soundIntervalRef.current = true;
-        playSound();
-
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("New Request", {
-            body: "You have new requests to review",
-          });
-        }
-      } else {
-        if (soundRef.current) {
-          const playLoop = async () => {
-            try {
-              await soundRef.current.replayAsync();
-
-              if (soundIntervalRef.current) {
-                setTimeout(playLoop, 3000);
-              }
-            } catch (error) {
-              console.error("Error in play loop:", error);
-            }
-          };
-
-          soundIntervalRef.current = true;
-          await playLoop();
-
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "New Request",
-              body: "You have new requests to review",
-              sound: "default",
-            },
-            trigger: null,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error playing sound:", error);
-    }
-  };
-
-  const stopNotificationSound = () => {
-    soundIntervalRef.current = false;
-
-    if (isWeb) {
-      if (audioSourceRef.current) {
-        audioSourceRef.current.stop();
-        audioSourceRef.current = null;
-      }
-    } else {
-      if (soundRef.current) {
-        soundRef.current.stopAsync();
-      }
-    }
-  };
-
-  const handleAcceptNotification = async (type, id) => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const executiveId = await AsyncStorage.getItem("callexecutiveId");
-
-      const response = await fetch(`${API_URL}/callexe/${type}/${id}/accept`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: token || "",
-        },
-        body: JSON.stringify({ executiveId }),
-      });
-
-      if (response.ok) {
-        setNewNotifications((prev) => ({
-          ...prev,
-          [type]: prev[type].filter((item) => item._id !== id),
-        }));
-
-        setNotificationCounts((prev) => ({
-          ...prev,
-          [type]: Math.max(0, prev[type] - 1),
-        }));
-
-        const total =
-          Object.values(notificationCounts).reduce(
-            (sum, count) => sum + count,
-            0
-          ) - 1;
-
-        if (total <= 0) {
-          stopNotificationSound();
-        }
-
-        Alert.alert("Success", `${type} accepted successfully`);
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Failed to accept");
-      }
-    } catch (error) {
-      console.error("Error accepting notification:", error);
-      Alert.alert("Error", "Failed to accept. Please try again.");
-    }
-  };
-
-  const handleRejectNotification = async (type, id) => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const executiveId = await AsyncStorage.getItem("callexecutiveId");
-
-      const response = await fetch(`${API_URL}/callexe/${type}/${id}/reject`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: token || "",
-        },
-        body: JSON.stringify({ executiveId }),
-      });
-
-      if (response.ok) {
-        setNewNotifications((prev) => ({
-          ...prev,
-          [type]: prev[type].filter((item) => item._id !== id),
-        }));
-
-        setNotificationCounts((prev) => ({
-          ...prev,
-          [type]: Math.max(0, prev[type] - 1),
-        }));
-
-        const total =
-          Object.values(notificationCounts).reduce(
-            (sum, count) => sum + count,
-            0
-          ) - 1;
-
-        if (total <= 0) {
-          stopNotificationSound();
-        }
-
-        Alert.alert("Success", `${type} rejected successfully`);
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Failed to reject");
-      }
-    } catch (error) {
-      console.error("Error rejecting notification:", error);
-      Alert.alert("Error", "Failed to reject. Please try again.");
-    }
-  };
-
   const fetchNewRequests = async () => {
     try {
       const token = await getAuthToken();
@@ -1454,7 +1769,6 @@ const CallCenterDashboard = () => {
     }
   };
 
-  // Toggle notification settings visibility with animation
   const toggleNotificationSettings = () => {
     Animated.timing(rotateAnim, {
       toValue: showNotificationSettings ? 1 : 0,
@@ -1511,13 +1825,22 @@ const CallCenterDashboard = () => {
               {Object.values(notificationCounts).reduce(
                 (sum, count) => sum + count,
                 0
-              ) > 0 && (
+              ) +
+                Object.values(pendingCounts).reduce(
+                  (sum, count) => sum + count,
+                  0
+                ) >
+                0 && (
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>
                     {Object.values(notificationCounts).reduce(
                       (sum, count) => sum + count,
                       0
-                    )}
+                    ) +
+                      Object.values(pendingCounts).reduce(
+                        (sum, count) => sum + count,
+                        0
+                      )}
                   </Text>
                 </View>
               )}
@@ -1949,6 +2272,10 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: "hidden",
   },
+  pendingNotificationCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#FFA500",
+  },
   notificationCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1956,6 +2283,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f7ff",
     paddingHorizontal: 10,
     paddingVertical: 5,
+  },
+  pendingNotificationHeader: {
+    backgroundColor: "#fff8e1",
   },
   newBadge: {
     backgroundColor: "#2196F3",
@@ -1965,6 +2295,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  pendingBadge: {
+    backgroundColor: "#FFA500",
   },
   notificationTime: {
     fontSize: 12,
@@ -2079,6 +2412,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 15,
+  },
+  pendingCountText: {
+    color: "#FFA500",
+    fontWeight: "normal",
   },
 });
 
