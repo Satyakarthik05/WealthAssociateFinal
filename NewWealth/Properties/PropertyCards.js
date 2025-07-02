@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     width: 330,
     marginLeft: 17,
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#D8E3E7",
     paddingHorizontal: 10,
     top: 10,
     // maxHeight: "80%",
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   header: {
-    backgroundColor: "#fff5f5",
+    backgroundColor: "#D8E3E7",
     paddingVertical: 10,
     paddingHorizontal: 15,
     alignItems: "center",

@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8E3E7",
     padding: Platform.OS === 'web' ? 20 : 15,
     paddingBottom: Platform.OS === 'web' ? "4%" : "20%",
-    width: Platform.OS === "web" ? "80%" : "100%",
+    width: Platform.OS === "web" ? "100%" : "100%",
     alignSelf: "center",
   },
   header: {
