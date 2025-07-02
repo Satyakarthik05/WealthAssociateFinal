@@ -20,6 +20,7 @@ import {
   Alert,
   FlatList,
   Animated,
+  useWindowDimensions,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";

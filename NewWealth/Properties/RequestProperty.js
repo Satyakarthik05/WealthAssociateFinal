@@ -233,7 +233,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingTop: 80,
+            paddingTop: 60,
             minHeight: "100%",
             paddingBottom: 120,
             alignItems: "center",
@@ -250,10 +250,10 @@ const RequestedPropertyForm = ({ closeModal }) => {
             style={[
               styles.formContainer,
               {
-                width: isMobileView ? "85%" : "35%",
+                width: isMobileView ? "90%" : "40%",
                 backgroundColor: "#fff",
                 padding: 16,
-                borderRadius: 30,
+                borderRadius: 10,
                 elevation: 5,
                 shadowColor: "#000",
                 shadowOpacity: 0.1,
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    borderRadius: 20,
+    borderRadius: 5,
     paddingBottom: 40,
     padding: 30,
     paddingRight: 30,
@@ -489,13 +489,14 @@ const styles = StyleSheet.create({
     height: "100vh",
   },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 21,
+    fontWeight: "400",
     textAlign: "center",
     color: "#2B2D42",
     backgroundColor: "#D8E3E7",
     width: "115%",
-    height: 50,
+    left: -21,
+    height: 45,
     top: 0,
     borderRadius: 20,
     display: "flex",
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 10,
-    backgroundColor: "#FDFDFD",
+    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 20,
     shadowOffset: { width: 0, height: 1 },
@@ -516,10 +517,10 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   label: {
-    fontSize: 16,
+    fontSize: 12,
     marginBottom: 8,
     color: "#2B2D42",
-    fontFamily: "OpenSanssemibold",
+    fontWeight: "500",
   },
   inputContainer: {
     flexDirection: "row",
@@ -600,8 +601,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: height * 0.7,
-    marginTop: Platform.OS === "ios" ? 200 : 0,
-    marginBottom: Platform.OS === "ios" ? "-10%" : "",
+    marginTop: Platform.OS === 'ios' ? 200 : 0,
+    marginBottom:Platform.OS==="ios" ? "-10%":"",
   },
   modalTitle: {
     fontSize: 18,
