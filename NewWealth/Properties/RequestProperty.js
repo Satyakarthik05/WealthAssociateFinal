@@ -229,7 +229,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      {/* <TouchableWithoutFeedback onPress={Keyboard.dismiss}> */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -265,7 +265,11 @@ const RequestedPropertyForm = ({ closeModal }) => {
             <Text style={styles.label}>Property Type</Text>
             <TouchableOpacity
               style={styles.inputWrapper}
-              onPress={() => setShowPropertyTypeModal(true)}
+              onPress={() => {
+                setShowPropertyTypeModal(true);
+                Keyboard.dismiss();
+              }}
+              activeOpacity={0.7}
             >
               <TextInput
                 ref={propertyTypeInputRef}
@@ -288,7 +292,11 @@ const RequestedPropertyForm = ({ closeModal }) => {
             <Text style={styles.label}>Location (Constituency)</Text>
             <TouchableOpacity
               style={styles.inputWrapper}
-              onPress={() => setShowLocationModal(true)}
+              onPress={() => {
+                setShowLocationModal(true);
+                Keyboard.dismiss();
+              }}
+              activeOpacity={0.7}
             >
               <TextInput
                 ref={locationInputRef}
@@ -314,6 +322,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
               placeholderTextColor="rgba(25, 25, 25, 0.5)"
               value={islocation}
               onChangeText={setlocation}
+              returnKeyType="next"
             />
 
             {/* Budget Input */}
@@ -325,6 +334,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
               value={budget}
               onChangeText={setBudget}
               keyboardType="numeric"
+              returnKeyType="next"
             />
 
             {/* Property Title Input */}
@@ -335,6 +345,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
               placeholderTextColor="rgba(25, 25, 25, 0.5)"
               value={propertyTitle}
               onChangeText={setPropertyTitle}
+              returnKeyType="done"
             />
 
             {/* Action Buttons */}
@@ -343,6 +354,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 style={[styles.postButton, loading && styles.disabledButton]}
                 onPress={handleSubmit}
                 disabled={loading}
+                activeOpacity={0.7}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
@@ -353,13 +365,14 @@ const RequestedPropertyForm = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
-      </TouchableWithoutFeedback>
+      {/* </TouchableWithoutFeedback> */}
 
       {/* Property Type Modal */}
       <Modal
@@ -385,6 +398,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                     onChangeText={setPropertyTypeSearch}
                     value={propertyTypeSearch}
                     autoFocus={true}
+                    returnKeyType="search"
                   />
                   <MaterialIcons
                     name="search"
@@ -399,6 +413,9 @@ const RequestedPropertyForm = ({ closeModal }) => {
                   keyExtractor={(item) => item.code}
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
+                  ListEmptyComponent={
+                    <Text style={styles.noResultsText}>No results found</Text>
+                  }
                 />
                 <TouchableOpacity
                   style={styles.closeButton}
@@ -406,6 +423,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                     setShowPropertyTypeModal(false);
                     setPropertyTypeSearch("");
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
@@ -439,6 +457,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                     onChangeText={setLocationSearch}
                     value={locationSearch}
                     autoFocus={true}
+                    returnKeyType="search"
                   />
                   <MaterialIcons
                     name="search"
@@ -453,6 +472,9 @@ const RequestedPropertyForm = ({ closeModal }) => {
                   keyExtractor={(item, index) => index.toString()}
                   style={styles.modalList}
                   keyboardShouldPersistTaps="handled"
+                  ListEmptyComponent={
+                    <Text style={styles.noResultsText}>No results found</Text>
+                  }
                 />
                 <TouchableOpacity
                   style={styles.closeButton}
@@ -460,6 +482,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                     setShowLocationModal(false);
                     setLocationSearch("");
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
@@ -527,40 +550,43 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#E0E6ED",
     marginBottom: 8,
     borderRadius: 25,
     padding: 10,
+    paddingLeft: 15,
     fontSize: 14,
     backgroundColor: "#fff",
+    height: 45,
   },
   inputWrapper: {
     position: "relative",
+    marginBottom: 15,
   },
   icon: {
     position: "absolute",
-    right: 10,
-    top: 13,
+    right: 15,
+    top: 10,
     color: "#3E5C76",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 11,
+    marginTop: 20,
   },
   postButton: {
     flex: 1,
-    marginRight: 14,
+    marginRight: 10,
     backgroundColor: "#3E5C76",
     borderRadius: 25,
-    paddingVertical: 14,
+    paddingVertical: 12,
     elevation: 2,
   },
   postButtonText: {
     color: "#fff",
     textAlign: "center",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
   },
   cancelButton: {
@@ -568,7 +594,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     backgroundColor: "#3E5C76",
     borderRadius: 25,
-    paddingVertical: 14,
+    paddingVertical: 12,
     elevation: 2,
   },
   cancelButtonText: {
@@ -617,22 +643,24 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     width: "100%",
-    height: 40,
+    height: 45,
     backgroundColor: "#FFF",
     borderRadius: 10,
     paddingHorizontal: 40,
     borderWidth: 1,
     borderColor: "#ccc",
     fontFamily: "Roboto-Regular",
+    fontSize: 16,
   },
   searchIcon: {
     position: "absolute",
     left: 10,
-    top: 8,
+    top: 10,
     color: "#3E5C76",
   },
   modalList: {
     marginBottom: 15,
+    maxHeight: height * 0.4,
   },
   listItem: {
     padding: 15,
@@ -648,12 +676,19 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     alignItems: "center",
+    marginTop: 10,
   },
   closeButtonText: {
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
     fontFamily: "Roboto-Bold",
+  },
+  noResultsText: {
+    textAlign: "center",
+    padding: 20,
+    color: "#666",
+    fontSize: 16,
   },
 });
 

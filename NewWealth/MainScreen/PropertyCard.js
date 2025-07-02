@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
@@ -364,6 +365,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     flex: 1,
     backgroundColor: "#D8E3E7",
+    width: Platform.OS==="web" ? "60%" : "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -456,8 +458,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   propertyImage: {
-    width: "100%",
-    height: 180,
+    width: Platform.OS==="web" ? "50%" : "100%",
+    height: Platform.OS==="web" ? 200 : 180,
     borderRadius: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
