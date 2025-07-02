@@ -29,7 +29,7 @@
       "deploymentTarget": "15.1",
       "bundleIdentifier": "com.wealthassociates.alpha",
       "jsEngine": "hermes",
-      "buildNumber": "1.2.7",
+      "buildNumber": "1.2.8",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

@@ -172,7 +172,7 @@ const Header = () => {
       if (!isAuthenticated) return;
 
       const now = Date.now();
-      
+
       // Check AsyncStorage first
       const cachedUserData = await AsyncStorage.getItem("userDetails");
       if (cachedUserData) {
@@ -182,7 +182,7 @@ const Header = () => {
           userType: parsedData.userType,
         };
         lastFetchTime = now;
-        
+
         setUserData({
           details: parsedData,
           userType: parsedData.userType,
@@ -235,7 +235,7 @@ const Header = () => {
       }
 
       const response = await fetch(endpoint, { headers: { token } });
-      
+
       if (response.status === 401) {
         // Token expired or invalid
         await AsyncStorage.removeItem("authToken");
@@ -247,11 +247,11 @@ const Header = () => {
         return;
       }
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
 
-   
       if (
         (userType === "WealthAssociate" || userType === "ReferralAssociate") &&
         details.AgentType === "ValueAssociate"
@@ -261,7 +261,8 @@ const Header = () => {
       }
 
       // Store user details in AsyncStorage
-      const mobileNumber = details.MobileNumber || details.MobileIN || details.Number;
+      const mobileNumber =
+        details.MobileNumber || details.MobileIN || details.Number;
       exportedFullName = details?.FullName || details?.Name || "User";
       exportedMobileNumber = mobileNumber || "";
 
@@ -271,16 +272,18 @@ const Header = () => {
         mobileNumber,
       };
 
-      await AsyncStorage.setItem("userDetails", JSON.stringify(userDataToStore));
+      await AsyncStorage.setItem(
+        "userDetails",
+        JSON.stringify(userDataToStore)
+      );
       userDataCache = { details: userDataToStore, userType: finalUserType };
       lastFetchTime = now;
 
-      setUserData({ 
-        details: userDataToStore, 
-        userType: finalUserType, 
-        loading: false 
+      setUserData({
+        details: userDataToStore,
+        userType: finalUserType,
+        loading: false,
       });
-
 
       if (
         [
@@ -291,7 +294,8 @@ const Header = () => {
           "ReferralAssociate",
         ].includes(finalUserType)
       ) {
-        if (details.ReferredBy) await fetchReferredDetails(details.ReferredBy, null);
+        if (details.ReferredBy)
+          await fetchReferredDetails(details.ReferredBy, null);
       } else if (details.AddedBy) {
         await fetchReferredDetails(null, details.AddedBy);
       }
@@ -311,31 +315,38 @@ const Header = () => {
   }, [fetchUserDetails]);
 
   const handleProfilePress = useCallback(() => {
-    if (!userData.userType) {
-      navigation.navigate("Main", {
-        screen: "DefaultProfile",
-      });
-      return;
-    }
+    const goToProfile = async () => {
+      const userTypee = await AsyncStorage.getItem("userType");
+      console.log(userTypee);
 
-    const profileRoutes = {
-      WealthAssociate: "agentprofile",
-      ValueAssociate: "agentprofile",
-      ReferralAssociate: "agentprofile",
-      Customer: "CustomerProfile",
-      CoreMember: "CoreProfile",
-      Investor: "InvestorProfile",
-      NRI: "nriprofile",
-      SkilledResource: "SkilledProfile",
+      if (!userData.userType) {
+        navigation.navigate("Main", {
+          screen: "DefaultProfile",
+        });
+        return;
+      }
+
+      const profileRoutes = {
+        WealthAssociate: "agentprofile",
+        ValueAssociate: "agentprofile",
+        ReferralAssociate: "agentprofile",
+        Customer: "CustomerProfile",
+        CoreMember: "CoreProfile",
+        Investor: "InvestorProfile",
+        NRI: "nriprofile",
+        SkilledResource: "SkilledProfile",
+      };
+
+      navigation.navigate("Main", {
+        screen: profileRoutes[userTypee] || "DefaultProfile",
+        params: {
+          userId: userData.details?._id,
+          userType: userData.userType,
+        },
+      });
     };
 
-    navigation.navigate("Main", {
-      screen: profileRoutes[userData.userType] || "DefaultProfile",
-      params: {
-        userId: userData.details?._id,
-        userType: userData.userType,
-      },
-    });
+    goToProfile();
   }, [userData.details?._id, userData.userType, navigation]);
 
   const getUserInitials = () => {
@@ -482,7 +493,7 @@ const Header = () => {
       </View>
     </View>
   );
-      }
+};
 
 const styles = StyleSheet.create({
   headerWrapper: {
