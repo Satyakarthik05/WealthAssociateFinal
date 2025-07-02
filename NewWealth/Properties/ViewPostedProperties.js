@@ -20,6 +20,7 @@ import {
   Alert,
   FlatList,
   Animated,
+  useWindowDimensions,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
@@ -627,15 +628,35 @@ const ViewPostedProperties = () => {
     }, [isLiked, likedProperties, property._id]);
 
     return (
-      <PropertyCard
-        property={property}
-        onPress={() => handlePropertyPress(property)}
-        onEnquiryPress={() => handleEnquiryNow(property)}
-        onSharePress={() => handleShare(property)}
-        isLiked={isLiked}
-        onLikePress={handleToggleLike}
-        showActions={false}
-      />
+      <View
+        style={
+          IS_SMALL_SCREEN ? styles.mobileCardContainer : styles.webCardContainer
+        }
+      >
+        <PropertyCard
+          property={property}
+          onPress={() => handlePropertyPress(property)}
+          onEnquiryPress={() => handleEnquiryNow(property)}
+          onSharePress={() => handleShare(property)}
+          isLiked={isLiked}
+          onLikePress={handleToggleLike}
+          showActions={false}
+        />
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEditPress(property)}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeletePress(property)}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   });
 
@@ -878,31 +899,15 @@ const ViewPostedProperties = () => {
           {renderHeader()}
 
           {paginatedProperties.length > 0 ? (
-            <View style={styles.propertyListContainer}>
+            <View
+              style={
+                IS_SMALL_SCREEN
+                  ? styles.mobilePropertyList
+                  : styles.webPropertyGrid
+              }
+            >
               {paginatedProperties.map((item) => (
-                <View
-                  key={item._id}
-                  style={
-                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
-                  }
-                >
-                  <RenderPropertyCard property={item} />
-                  <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                      style={styles.editButton}
-                      onPress={() => handleEditPress(item)}
-                    >
-                      <Text style={styles.editButtonText}>Edit</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeletePress(item)}
-                    >
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <RenderPropertyCard key={item._id} property={item} />
               ))}
             </View>
           ) : (
@@ -1019,7 +1024,7 @@ const pickerSelectStyles = StyleSheet.create({
     borderRadius: 8,
     color: "black",
     paddingRight: 30,
-    backgroundColor: "#fff",
+    backgroundColor: "#D8E3E7",
     marginBottom: 10,
   },
   inputAndroid: {
@@ -1031,7 +1036,7 @@ const pickerSelectStyles = StyleSheet.create({
     borderRadius: 8,
     color: "black",
     paddingRight: 30,
-    backgroundColor: "#fff",
+    backgroundColor: "#D8E3E7",
     marginBottom: 10,
   },
   iconContainer: {
@@ -1046,8 +1051,8 @@ const pickerSelectStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 15,
+    backgroundColor: "#D8E3E7",
+    padding: IS_SMALL_SCREEN ? 10 : 15,
   },
   loadingContainer: {
     flex: 1,
@@ -1055,76 +1060,144 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#f5f5f5",
   },
-  header: {
+  contentContainer: {
+    flex: 1,
+  },
+  propertyScrollView: {
+    flex: 1,
+  },
+  propertyGridContainer: {
+    flexGrow: 1,
+  },
+  // Web view styles
+  webPropertyGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    paddingHorizontal: IS_SMALL_SCREEN ? 5 : 10,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#3E5C76",
-  },
-  filterContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  filterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#3E5C76",
-  },
-  filterButtonText: {
-    color: "#3E5C76",
-    marginRight: 5,
-  },
-  filterList: {
+  webCardContainer: {
+    width: IS_SMALL_SCREEN ? "100%" : "31%",
+    margin: IS_SMALL_SCREEN ? 5 : "1%",
     backgroundColor: "#fff",
     borderRadius: 10,
-    padding: 10,
-    marginBottom: 15,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    marginBottom: 15,
   },
-  filterItem: {
-    padding: 10,
+  // Mobile view styles
+  mobilePropertyList: {
+    width: "100%",
+  },
+  mobileCardContainer: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 15,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+  },
+  editButton: {
+    backgroundColor: "#3E5C76",
+    padding: 8,
     borderRadius: 5,
+    width: "48%",
+    alignItems: "center",
   },
-  selectedFilterItem: {
-    backgroundColor: "#f0f7ff",
+  deleteButton: {
+    backgroundColor: "#E82E5F",
+    padding: 8,
+    borderRadius: 5,
+    width: "48%",
+    alignItems: "center",
   },
-  filterItemText: {
+  editButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  header: {
+    flexDirection: IS_SMALL_SCREEN ? "column" : "row",
+    justifyContent: "space-between",
+    alignItems: IS_SMALL_SCREEN ? "flex-start" : "center",
+    marginBottom: 15,
+    gap: IS_SMALL_SCREEN ? 10 : 0,
+  },
+  heading: {
+    fontSize: IS_SMALL_SCREEN ? 20 : 22,
+    fontWeight: "bold",
     color: "#3E5C76",
   },
-  selectedFilterItemText: {
-    fontWeight: "bold",
+  searchFilterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: IS_SMALL_SCREEN ? "100%" : "auto",
   },
-  noPropertiesContainer: {
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginRight: 10,
+    flex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+  },
+  searchIcon: {
+    marginLeft: 10,
+  },
+  filterButton: {
+    backgroundColor: "#3E5C76",
+    padding: 10,
+    borderRadius: 20,
+  },
+  emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-  emptyListContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  noPropertiesText: {
+  emptyText: {
     fontSize: 16,
     color: "#666",
     marginBottom: 20,
   },
-  addPropertyButton: {
+  resetButton: {
     backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  resetButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  addPropertyButton: {
+    backgroundColor: "#E82E5F",
     padding: 15,
     borderRadius: 10,
   },
@@ -1132,119 +1205,39 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
-  propertiesContainer: {
-    paddingBottom: 20,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginBottom: 15,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    width: Platform.OS === "web" ? "30%" : "90%",
-    alignSelf: Platform.OS === "web" ? "flex-start" : "center",
-    marginHorizontal: Platform.OS === "web" ? "1.5%" : 0,
-  },
-  imageSliderContainer: {
-    height: 200,
-    width: "100%",
-    position: "relative",
-    backgroundColor: "#f0f0f0",
-  },
-  imageSlide: {
-    width: width,
-    height: 200,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: 200,
-    backgroundColor: "#f0f0f0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  propertyImage: {
-    width: "100%",
-    height: "100%",
-  },
-  pagination: {
-    position: "absolute",
-    bottom: 10,
-    flexDirection: "row",
-    alignSelf: "center",
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.5)",
-    margin: 5,
-  },
-  activeDot: {
-    backgroundColor: "#fff",
-  },
-  details: {
-    padding: 15,
-  },
-  idContainer: {
+  paginationContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    alignItems: "center",
+    paddingVertical: 15,
   },
-  idText: {
-    color: "#3E5C76",
-    fontWeight: "600",
-  },
-  statusText: {
-    color: "#E82E5F",
-    fontWeight: "600",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#191919",
-    marginBottom: 5,
-  },
-  info: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 5,
-  },
-  budget: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#E82E5F",
-    marginBottom: 15,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  editButton: {
-    backgroundColor: "#3E5C76",
+  pageButton: {
     padding: 10,
+    backgroundColor: "#3E5C76",
     borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
-    alignItems: "center",
   },
-  editButtonText: {
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  pageButtonText: {
     color: "#fff",
     fontWeight: "bold",
   },
-  deleteButton: {
-    backgroundColor: "#E82E5F",
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    alignItems: "center",
+  pageNumbersContainer: {
+    flexDirection: "row",
   },
-  deleteButtonText: {
+  pageNumber: {
+    padding: 10,
+    marginHorizontal: 5,
+  },
+  activePage: {
+    backgroundColor: "#3E5C76",
+    borderRadius: 5,
+  },
+  pageNumberText: {
+    color: "#333",
+  },
+  activePageText: {
     color: "#fff",
     fontWeight: "bold",
   },
@@ -1350,6 +1343,99 @@ const styles = StyleSheet.create({
   cancelDeleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  filterModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 30,
+  },
+  smallScreenModal: {
+    width: "100%",
+    maxHeight: "80%",
+    position: "absolute",
+    bottom: 0,
+  },
+  largeScreenModal: {
+    width: "80%",
+    maxWidth: 500,
+    borderRadius: 20,
+    maxHeight: "80%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#ccc",
+    borderRadius: 5,
+    alignSelf: "center",
+    marginBottom: 15,
+  },
+  filterHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#3E5C76",
+    textAlign: "center",
+  },
+  filterScrollContainer: {
+    flex: 1,
+  },
+  filterSection: {
+    marginBottom: 20,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#3E5C76",
+    marginBottom: 10,
+  },
+  priceRangeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  priceInputContainer: {
+    flex: 1,
+  },
+  priceInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: "#D8E3E7",
+  },
+  priceRangeSeparator: {
+    marginHorizontal: 10,
+    color: "#3E5C76",
+  },
+  filterButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  resetFilterButton: {
+    backgroundColor: "#E82E5F",
+    padding: 15,
+    borderRadius: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  applyFilterButton: {
+    backgroundColor: "#3E5C76",
+    padding: 15,
+    borderRadius: 10,
+    flex: 1,
+  },
+  resetFilterButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  filterButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 

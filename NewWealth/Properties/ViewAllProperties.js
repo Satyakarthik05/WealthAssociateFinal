@@ -978,13 +978,20 @@ const ViewAllProperties = ({ route }) => {
           {renderPagination()}
 
           {paginatedProperties.length > 0 ? (
-            <View style={styles.propertyListContainer}>
+            <View
+              style={[
+                styles.propertyListContainer,
+                IS_WEB && !IS_SMALL_SCREEN && styles.webGridContainer,
+              ]}
+            >
               {paginatedProperties.map((item) => (
                 <View
                   key={item._id}
-                  style={
-                    IS_WEB ? styles.webPropertyItem : styles.mobilePropertyItem
-                  }
+                  style={[
+                    IS_WEB && !IS_SMALL_SCREEN
+                      ? styles.webPropertyItem
+                      : styles.mobilePropertyItem,
+                  ]}
                 >
                   <RenderPropertyCard property={item} />
                 </View>
@@ -1124,6 +1131,26 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: "rgba(255,255,255,0.8)",
     borderRadius: 20,
+  },
+  propertyListContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  webGridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+  webPropertyItem: {
+    width: "32%", // Allows for 3 items per row with some spacing
+    marginRight: "1%",
+    marginBottom: 15,
+    // Calculate left margin for every 3rd item to prevent extra space
+    marginLeft: (index) => (index % 3 === 0 ? 0 : "1%"),
+  },
+  mobilePropertyItem: {
+    width: "100%",
+    marginBottom: 15,
   },
   propertyListContainer: {
     paddingHorizontal: 15,
