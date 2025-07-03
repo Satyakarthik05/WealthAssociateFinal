@@ -34,36 +34,28 @@ export default function ViewCustomers() {
     District: "",
     Contituency: "",
     CallExecutiveCall: "",
+    CallExecutiveName: "",
+    assignedExecutive: "",
   });
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [referrerNames, setReferrerNames] = useState({});
-  const [agents, setAgents] = useState([]);
-  const [coreMembers, setCoreMembers] = useState([]);
 
   const fetchAllData = async () => {
     try {
       setRefreshing(true);
       setLoading(true);
 
-      const [customersRes, agentsRes, coreMembersRes, districtsRes] =
-        await Promise.all([
-          fetch(`${API_URL}/customer/allcustomers`),
-          fetch(`${API_URL}/agent/allagents`),
-          fetch(`${API_URL}/core/getallcoremembers`),
-          fetch(`${API_URL}/alldiscons/alldiscons`),
-        ]);
+      const [customersRes, districtsRes] = await Promise.all([
+        fetch(`${API_URL}/customer/allcustomers`),
+        fetch(`${API_URL}/alldiscons/alldiscons`),
+      ]);
 
       if (!customersRes.ok) throw new Error("Failed to fetch customers");
-      if (!agentsRes.ok) throw new Error("Failed to fetch agents");
-      if (!coreMembersRes.ok) throw new Error("Failed to fetch core members");
       if (!districtsRes.ok) throw new Error("Failed to fetch districts");
 
       const customersData = await customersRes.json();
-      const agentsData = await agentsRes.json();
-      const coreMembersData = await coreMembersRes.json();
       const districtsData = await districtsRes.json();
 
       const sortedCustomers = customersData.data.sort((a, b) => {
@@ -76,71 +68,13 @@ export default function ViewCustomers() {
 
       setCustomers(sortedCustomers);
       setFilteredCustomers(sortedCustomers);
-      setAgents(agentsData.data);
-      setCoreMembers(coreMembersData.data);
       setDistricts(Array.isArray(districtsData) ? districtsData : []);
-
-      loadReferrerNames(sortedCustomers, agentsData.data, coreMembersData.data);
     } catch (error) {
       console.error("Fetch error:", error);
       Alert.alert("Error", "Failed to load data");
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const loadReferrerNames = (customers, agents, coreMembers) => {
-    const names = {};
-
-    customers.forEach((customer) => {
-      if (customer.ReferredBy && !names[customer.ReferredBy]) {
-        names[customer.ReferredBy] = getReferrerName(
-          customer.ReferredBy,
-          customers,
-          agents,
-          coreMembers
-        );
-      }
-    });
-
-    setReferrerNames(names);
-  };
-
-  const getReferrerName = (
-    referredByCode,
-    customers = [],
-    agents = [],
-    coreMembers = []
-  ) => {
-    if (!referredByCode) return "N/A";
-
-    const safeCustomers = Array.isArray(customers) ? customers : [];
-    const safeAgents = Array.isArray(agents) ? agents : [];
-    const safeCoreMembers = Array.isArray(coreMembers) ? coreMembers : [];
-
-    try {
-      const customerReferrer = safeCustomers.find(
-        (c) => c?.MyRefferalCode === referredByCode
-      );
-      if (customerReferrer) return customerReferrer?.FullName || "Customer";
-
-      const agentReferrer = safeAgents.find(
-        (a) => a?.MyRefferalCode === referredByCode
-      );
-      if (agentReferrer) return agentReferrer?.FullName || "Agent";
-
-      const coreReferrer = safeCoreMembers.find(
-        (m) => m?.MyRefferalCode === referredByCode
-      );
-      if (coreReferrer) return coreReferrer?.FullName || "Core Member";
-
-      if (referredByCode === "WA0000000001") return "Wealth Associate";
-
-      return "Referrer not found";
-    } catch (error) {
-      console.error("Error in getReferrerName:", error);
-      return "Error loading referrer";
     }
   };
 
@@ -168,6 +102,14 @@ export default function ViewCustomers() {
             customer.MobileNumber.includes(searchQuery)) ||
           (customer.MyRefferalCode &&
             customer.MyRefferalCode.toLowerCase().includes(
+              searchQuery.toLowerCase()
+            )) ||
+          (customer.referrerDetails?.name &&
+            customer.referrerDetails.name
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (customer.CallExecutiveName &&
+            customer.CallExecutiveName.toLowerCase().includes(
               searchQuery.toLowerCase()
             ))
       );
@@ -240,6 +182,8 @@ export default function ViewCustomers() {
       District: customer.District || "",
       Contituency: customer.Contituency || "",
       CallExecutiveCall: customer.CallExecutiveCall || "",
+      CallExecutiveName: customer.CallExecutiveName || "",
+      assignedExecutive: customer.assignedExecutive || "",
     });
 
     if (customer.District && Array.isArray(districts)) {
@@ -380,7 +324,7 @@ export default function ViewCustomers() {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by name, mobile or referral code"
+            placeholder="Search by name, mobile, referral code or executive"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -464,9 +408,32 @@ export default function ViewCustomers() {
                   )}
                   {customer.ReferredBy && (
                     <View style={styles.row}>
+                      <Text style={styles.label}>Referred By Code</Text>
+                      <Text style={styles.value}>: {customer.ReferredBy}</Text>
+                    </View>
+                  )}
+                  {customer.referrerDetails && (
+                    <View style={styles.row}>
                       <Text style={styles.label}>Referred By</Text>
                       <Text style={styles.value}>
-                        : {referrerNames[customer.ReferredBy] || "Loading..."}
+                        : {customer.referrerDetails.name} (
+                        {customer.referrerDetails.phone})
+                      </Text>
+                    </View>
+                  )}
+                  {customer.CallExecutivename && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Executive</Text>
+                      <Text style={styles.value}>
+                        : {customer.CallExecutivename}
+                      </Text>
+                    </View>
+                  )}
+                  {customer.assignedExecutive && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Executive ID</Text>
+                      <Text style={styles.value}>
+                        : {customer.assignedExecutive}
                       </Text>
                     </View>
                   )}
@@ -611,6 +578,26 @@ export default function ViewCustomers() {
                   ))}
               </Picker>
             </View>
+
+            <Text style={styles.inputLabel}>Executive Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Executive Name"
+              value={editedCustomer.CallExecutiveName}
+              onChangeText={(text) =>
+                setEditedCustomer({ ...editedCustomer, CallExecutiveName: text })
+              }
+            />
+
+            <Text style={styles.inputLabel}>Executive ID</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Executive ID"
+              value={editedCustomer.assignedExecutive}
+              onChangeText={(text) =>
+                setEditedCustomer({ ...editedCustomer, assignedExecutive: text })
+              }
+            />
 
             <View style={styles.modalButtonContainer}>
               <TouchableOpacity

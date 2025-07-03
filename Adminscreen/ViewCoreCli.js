@@ -38,7 +38,7 @@ const Core_Clients = () => {
         {coreClients.map((client, index) => (
           <View key={index} style={styles.card}>
             <Image
-              source={{ uri: `${API_URL}${client.photo}` }}
+              source={{ uri: client.newImageUrl }}
               style={styles.logo}
               resizeMode="contain"
             />

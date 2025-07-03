@@ -32,31 +32,29 @@ export default function ViewAgents() {
     Contituency: "",
     MobileNumber: "",
     MyRefferalCode: "",
+    ReferredBy: "",
+    CallExecutiveName: "",
+    assignedExecutive: "",
   });
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [coreMembers, setCoreMembers] = useState([]);
-  const [referrerNames, setReferrerNames] = useState({});
 
   const fetchAllData = async () => {
     try {
       setRefreshing(true);
       setLoading(true);
 
-      const [agentsRes, coreMembersRes, districtsRes] = await Promise.all([
+      const [agentsRes, districtsRes] = await Promise.all([
         fetch(`${API_URL}/agent/allagents`),
-        fetch(`${API_URL}/core/getallcoremembers`),
         fetch(`${API_URL}/alldiscons/alldiscons`),
       ]);
 
       if (!agentsRes.ok) throw new Error("Failed to fetch agents");
-      if (!coreMembersRes.ok) throw new Error("Failed to fetch core members");
       if (!districtsRes.ok) throw new Error("Failed to fetch districts");
 
       const agentsData = await agentsRes.json();
-      const coreMembersData = await coreMembersRes.json();
       const districtsData = await districtsRes.json();
 
       const sortedAgents = agentsData.data.sort((a, b) => {
@@ -69,10 +67,7 @@ export default function ViewAgents() {
 
       setAgents(sortedAgents);
       setFilteredAgents(sortedAgents);
-      setCoreMembers(coreMembersData.data || []);
       setDistricts(districtsData || []);
-
-      loadReferrerNames(sortedAgents, coreMembersData.data || []);
     } catch (error) {
       console.error("Fetch error:", error);
       Alert.alert("Error", "Failed to load data");
@@ -82,52 +77,8 @@ export default function ViewAgents() {
     }
   };
 
-  const loadReferrerNames = (agents = [], coreMembers = []) => {
-    const names = {};
-
-    agents.forEach((agent) => {
-      if (agent?.ReferredBy && !names[agent.ReferredBy]) {
-        names[agent.ReferredBy] = getReferrerName(
-          agent.ReferredBy,
-          agents,
-          coreMembers
-        );
-      }
-    });
-
-    setReferrerNames(names);
-  };
-
-  const getReferrerName = (referredByCode, agents = [], coreMembers = []) => {
-    if (!referredByCode) return "N/A";
-
-    try {
-      // Check in agents first
-      const agentReferrer = agents.find(
-        (a) => a?.MyRefferalCode === referredByCode
-      );
-      if (agentReferrer) return agentReferrer?.FullName || "Agent";
-
-      // Then check in core members
-      const coreReferrer = coreMembers.find(
-        (m) => m?.MyRefferalCode === referredByCode
-      );
-      if (coreReferrer) return coreReferrer?.FullName || "Core Member";
-
-      // Special cases
-      if (referredByCode === "WA0000000001") return "Wealth Associate";
-
-      return "Referrer not found";
-    } catch (error) {
-      console.error("Error in getReferrerName:", error);
-      return "Error loading referrer";
-    }
-  };
-
   useEffect(() => {
     fetchAllData();
-    const interval = setInterval(fetchAllData, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   // Filter agents based on search query
@@ -146,6 +97,14 @@ export default function ViewAgents() {
           (agent.MobileNumber && agent.MobileNumber.includes(searchQuery)) ||
           (agent.MyRefferalCode &&
             agent.MyRefferalCode.toLowerCase().includes(
+              searchQuery.toLowerCase()
+            )) ||
+          (agent.referrerDetails?.name &&
+            agent.referrerDetails.name
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (agent.CallExecutiveName &&
+            agent.CallExecutiveName.toLowerCase().includes(
               searchQuery.toLowerCase()
             ))
       );
@@ -228,6 +187,8 @@ export default function ViewAgents() {
       MobileNumber: agent.MobileNumber,
       MyRefferalCode: agent.MyRefferalCode,
       ReferredBy: agent.ReferredBy,
+      CallExecutiveName: agent.CallExecutiveName || "",
+      assignedExecutive: agent.assignedExecutive || "",
     });
 
     if (agent.District) {
@@ -250,8 +211,7 @@ export default function ViewAgents() {
   const handleSaveEditedAgent = async () => {
     try {
       const response = await fetch(
-        `
-        ${API_URL}/agent/updateagent/${selectedAgent._id}`,
+        `${API_URL}/agent/updateagent/${selectedAgent._id}`,
         {
           method: "PUT",
           headers: {
@@ -347,7 +307,7 @@ export default function ViewAgents() {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by name, mobile or referral code"
+            placeholder="Search by name, mobile, referral code or executive"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -383,9 +343,14 @@ export default function ViewAgents() {
                 ]}
               >
                 <Image
-                  source={require("../assets/man.png")}
+                  source={
+                    agent.photo && agent.photo !== ""
+                      ? { uri: agent.photo }
+                      : require("../assets/man.png")
+                  }
                   style={styles.avatar}
                 />
+
                 <View style={styles.infoContainer}>
                   {agent.FullName && (
                     <View style={styles.row}>
@@ -419,15 +384,44 @@ export default function ViewAgents() {
                   )}
                   {agent.ReferredBy && (
                     <View style={styles.row}>
-                      <Text style={styles.label}>ReferredByCode</Text>
+                      <Text style={styles.label}>Referred By Code</Text>
                       <Text style={styles.value}>: {agent.ReferredBy}</Text>
                     </View>
                   )}
-                  {agent.ReferredBy && (
+                  {agent.referrerDetails && (
                     <View style={styles.row}>
                       <Text style={styles.label}>Referred By</Text>
                       <Text style={styles.value}>
-                        : {referrerNames[agent.ReferredBy] || "Loading..."}
+                        : {agent.referrerDetails.name} (
+                        {agent.referrerDetails.phone})
+                      </Text>
+                    </View>
+                  )}
+                  {agent.referralStats && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Referral Counts</Text>
+                      <Text style={styles.value}>
+                        : A: {agent.referralStats.referredAgents || 0}, C:{" "}
+                        {agent.referralStats.referredCustomers || 0}, I:{" "}
+                        {agent.referralStats.addedInvestors || 0}, S:{" "}
+                        {agent.referralStats.addedSkilled || 0}, N:{" "}
+                        {agent.referralStats.addedNRIs || 0}
+                      </Text>
+                    </View>
+                  )}
+                  {agent.CallExecutiveName && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Executive</Text>
+                      <Text style={styles.value}>
+                        : {agent.CallExecutiveName}
+                      </Text>
+                    </View>
+                  )}
+                  {agent.assignedExecutive && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Executive ID</Text>
+                      <Text style={styles.value}>
+                        : {agent.assignedExecutive}
                       </Text>
                     </View>
                   )}
@@ -564,13 +558,34 @@ export default function ViewAgents() {
                 setEditedAgent({ ...editedAgent, MyRefferalCode: text })
               }
             />
-            <Text style={styles.inputLabel}>ReferralBY Code</Text>
+
+            <Text style={styles.inputLabel}>Referred By Code</Text>
             <TextInput
               style={styles.input}
-              placeholder="ReferredBy referral Code"
+              placeholder="Referred By Code"
               value={editedAgent.ReferredBy}
               onChangeText={(text) =>
                 setEditedAgent({ ...editedAgent, ReferredBy: text })
+              }
+            />
+
+            <Text style={styles.inputLabel}>Executive Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Executive Name"
+              value={editedAgent.CallExecutiveName}
+              onChangeText={(text) =>
+                setEditedAgent({ ...editedAgent, CallExecutiveName: text })
+              }
+            />
+
+            <Text style={styles.inputLabel}>Executive ID</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Executive ID"
+              value={editedAgent.assignedExecutive}
+              onChangeText={(text) =>
+                setEditedAgent({ ...editedAgent, assignedExecutive: text })
               }
             />
 

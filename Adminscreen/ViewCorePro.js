@@ -45,7 +45,7 @@ const Core_Projects = () => {
           {coreProjects.map((project, index) => (
             <View key={index} style={styles.card}>
               <Image
-                source={{ uri: `${API_URL}${project.photo}` }}
+                source={{ uri: project.newImageUrl }}
                 style={styles.logo}
                 resizeMode="contain"
               />

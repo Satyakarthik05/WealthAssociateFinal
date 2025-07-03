@@ -106,7 +106,7 @@ router.post(
   "/getPropertyreffered",
   PostPropertyController.getReferredByDetails
 );
-// updateDynamicData;
+
 router.patch("/:id/dynamic", PostPropertyController.updateDynamicData);
 
 module.exports = router;

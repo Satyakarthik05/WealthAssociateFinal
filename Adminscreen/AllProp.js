@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  RefreshControl,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../data/ApiUrl";
@@ -27,6 +28,7 @@ const ViewAllProperties = () => {
   // State management
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("");
   const [selectedLocationFilter, setSelectedLocationFilter] = useState("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -42,7 +44,6 @@ const ViewAllProperties = () => {
   const [constituencies, setConstituencies] = useState([]);
   const [idSearch, setIdSearch] = useState("");
   const [currentUpdateModal, setCurrentUpdateModal] = useState(null);
-  // const [refreshInterval, setRefreshInterval] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -57,15 +58,22 @@ const ViewAllProperties = () => {
       const typesData = await typesRes.json();
       const constituenciesData = await constituenciesRes.json();
 
-      setProperties(propertiesData);
+      setProperties(Array.isArray(propertiesData) ? propertiesData : []);
       setPropertyTypes(typesData);
       setConstituencies(constituenciesData);
     } catch (error) {
       console.error("Error fetching data:", error);
+      Alert.alert("Error", "Failed to load properties");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [API_URL]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     let intervalId;
@@ -80,7 +88,7 @@ const ViewAllProperties = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [isEditModalVisible, isUpdateModalVisible]);
+  }, [isEditModalVisible, isUpdateModalVisible, fetchData]);
 
   // Initial data fetch
   useEffect(() => {
@@ -98,7 +106,7 @@ const ViewAllProperties = () => {
         : true
     )
     .filter((property) =>
-      selectedLocationFilter
+      selectedLocationFilter && property.location
         ? property.location
             .toLowerCase()
             .includes(selectedLocationFilter.toLowerCase())
@@ -106,23 +114,79 @@ const ViewAllProperties = () => {
     )
     .sort((a, b) => {
       if (selectedFilter === "highToLow") {
-        return parseInt(b.price) - parseInt(a.price);
+        return parseInt(b.price || 0) - parseInt(a.price || 0);
       } else if (selectedFilter === "lowToHigh") {
-        return parseInt(a.price) - parseInt(b.price);
+        return parseInt(a.price || 0) - parseInt(b.price || 0);
       }
       return 0;
     });
 
   // Get unique locations for filter dropdown
   const uniqueLocations = [
-    ...new Set(properties.map((p) => p.location)),
-  ].filter((l) => l);
+    ...new Set(properties.map((p) => p.location).filter(Boolean)),
+  ];
+
+  const renderPropertyImage = (property) => {
+    // If 'newImageUrls' is an array with more than one image
+    if (
+      Array.isArray(property.newImageUrls) &&
+      property.newImageUrls.length > 0
+    ) {
+      return (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.imageScroll}
+        >
+          {property.newImageUrls.map((imageUrl, index) => (
+            <Image
+              key={index}
+              source={{
+                uri: imageUrl, // Directly use the S3 URL
+              }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+      );
+    }
+
+    // Single image
+    else if (
+      property.newImageUrls &&
+      typeof property.newImageUrls === "string"
+    ) {
+      return (
+        <Image
+          source={{
+            uri: property.newImageUrls,
+          }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      );
+    }
+
+    // Fallback image
+    else {
+      return (
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.image}
+          resizeMode="contain"
+        />
+      );
+    }
+  };
 
   // Modal handlers
   const handleUpdate = (property) => {
     setSelectedProperty(property);
 
-    const type = property.propertyType.toLowerCase();
+    const type = property.propertyType
+      ? property.propertyType.toLowerCase()
+      : "";
 
     // Handle residential properties
     if (
@@ -131,7 +195,7 @@ const ViewAllProperties = () => {
       type.includes("individualhouse") ||
       type.includes("villa") ||
       type.includes("house") ||
-      type.includes("commercial")
+      type.includes("commercial property")
     ) {
       setCurrentUpdateModal("house");
     }
@@ -140,7 +204,11 @@ const ViewAllProperties = () => {
       setCurrentUpdateModal("land");
     }
     // Handle agricultural properties
-    else if (type.includes("land") || type.includes("agricultural")) {
+    else if (
+      type.includes("land") ||
+      type.includes("agricultural") ||
+      type.includes("commercial land")
+    ) {
       setCurrentUpdateModal("agriculture");
     }
 
@@ -160,10 +228,6 @@ const ViewAllProperties = () => {
 
       const result = await response.json();
       if (response.ok) {
-        // Clear and restart the refresh interval
-        if (refreshInterval) clearInterval(refreshInterval);
-        setRefreshInterval(setInterval(fetchData, 10000));
-
         setProperties(
           properties.map((p) =>
             p._id === selectedProperty._id ? { ...p, ...updatedData } : p
@@ -184,10 +248,10 @@ const ViewAllProperties = () => {
   const handleEdit = (property) => {
     setSelectedProperty(property);
     setEditedDetails({
-      propertyType: property.propertyType,
-      location: property.location,
-      price: property.price.toString(),
-      photo: property.photo,
+      propertyType: property.propertyType || "",
+      location: property.location || "",
+      price: property.price ? property.price.toString() : "",
+      photo: property.photo || "",
     });
     setIsEditModalVisible(true);
   };
@@ -204,10 +268,6 @@ const ViewAllProperties = () => {
       );
 
       if (response.ok) {
-        // Clear and restart the refresh interval
-        if (refreshInterval) clearInterval(refreshInterval);
-        setRefreshInterval(setInterval(fetchData, 10000));
-
         setProperties(
           properties.map((p) =>
             p._id === selectedProperty._id ? { ...p, ...editedDetails } : p
@@ -245,10 +305,6 @@ const ViewAllProperties = () => {
       });
 
       if (response.ok) {
-        // Clear and restart the refresh interval
-        if (refreshInterval) clearInterval(refreshInterval);
-        setRefreshInterval(setInterval(fetchData, 10000));
-
         setProperties(properties.filter((p) => p._id !== id));
         Alert.alert("Success", "Property deleted");
       } else {
@@ -283,10 +339,6 @@ const ViewAllProperties = () => {
       });
 
       if (response.ok) {
-        // Clear and restart the refresh interval
-        if (refreshInterval) clearInterval(refreshInterval);
-        setRefreshInterval(setInterval(fetchData, 10000));
-
         // Update the local state to reflect approval
         setProperties(
           properties.map((property) =>
@@ -339,7 +391,7 @@ const ViewAllProperties = () => {
     );
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#3498db" />
@@ -349,7 +401,12 @@ const ViewAllProperties = () => {
 
   return (
     <View style={styles.mainContainer}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.header}>
           <Text style={styles.heading}>All Properties</Text>
           <View style={styles.filterRow}>
@@ -404,25 +461,23 @@ const ViewAllProperties = () => {
           {filteredProperties.length > 0 ? (
             filteredProperties.map((item) => (
               <View key={item._id} style={styles.card}>
-                <Image
-                  source={
-                    item.photo
-                      ? { uri: `${API_URL}${item.photo}` }
-                      : require("../assets/logo.png")
-                  }
-                  style={styles.image}
-                />
+                {renderPropertyImage(item)}
                 <View style={styles.details}>
                   <View style={styles.idContainer}>
                     <Text style={styles.idText}>
                       ID: {getLastFourChars(item._id)}
                     </Text>
                   </View>
-                  <Text style={styles.title}>{item.propertyType}</Text>
-                  <Text style={styles.info}>Posted by: {item.PostedBy}</Text>
-                  <Text style={styles.info}>Location: {item.location}</Text>
+                  <Text style={styles.title}>{item.propertyType || "N/A"}</Text>
+                  <Text style={styles.info}>
+                    Posted by: {item.PostedBy || "N/A"}
+                  </Text>
+                  <Text style={styles.info}>
+                    Location: {item.location || "N/A"}
+                  </Text>
                   <Text style={styles.budget}>
-                    ₹ {parseInt(item.price).toLocaleString()}
+                    ₹{" "}
+                    {item.price ? parseInt(item.price).toLocaleString() : "N/A"}
                   </Text>
                   {item.approved && (
                     <Text style={styles.approvedText}>Approved</Text>
@@ -463,6 +518,12 @@ const ViewAllProperties = () => {
               <Text style={styles.noResultsText}>
                 No properties found matching your criteria
               </Text>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={fetchData}
+              >
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -583,6 +644,17 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: Platform.OS === "web" ? 0 : 10,
   },
+  imageScroll: {
+    flexDirection: "row",
+    maxHeight: 200,
+    marginBottom: 10,
+  },
+  image: {
+    width: 300,
+    height: 200,
+    borderRadius: 10,
+    marginRight: 10,
+  },
   filterContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -632,12 +704,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  image: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
-    marginBottom: 10,
   },
   details: {
     marginBottom: 10,
@@ -787,6 +853,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#555",
     textAlign: "center",
+  },
+  refreshButton: {
+    backgroundColor: "#3498db",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  refreshButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
 

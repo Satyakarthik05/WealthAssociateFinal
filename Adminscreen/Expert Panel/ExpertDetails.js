@@ -9,6 +9,9 @@ import {
   Image,
   Platform,
   Alert,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
@@ -20,6 +23,9 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
   const [error, setError] = useState(null);
   const [Details, setDetails] = useState({});
   const [PostedBy, setPostedBy] = useState("");
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [expertToEdit, setExpertToEdit] = useState(null);
+  const [editedExpert, setEditedExpert] = useState({});
 
   useEffect(() => {
     if (!expertType) return;
@@ -55,44 +61,45 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
     }
   };
 
-  const requestExpert = async (expert) => {
+  const editExpert = (expert) => {
+    setExpertToEdit(expert);
+    setEditedExpert({ ...expert });
+    setEditModalVisible(true);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditedExpert((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const submitEdit = async () => {
     try {
-      const response = await fetch(`${API_URL}/requestexpert/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          Name: Details.FullName ? Details.FullName : "name",
-          MobileNumber: Details.MobileNumber
-            ? Details.MobileNumber
-            : "MobileNumber",
-          ExpertType: expertType,
-          ExpertName: expert.name,
-          ExpertNo: expert.mobile,
-          RequestedBy: "WealthAssociate",
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/expert/update/${expertToEdit._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editedExpert),
+        }
+      );
 
       const result = await response.json();
       if (response.ok) {
-        if (Platform.OS === "web") {
-          window.alert("Expert Requested Successfully");
-        } else {
-          Alert.alert("Expert Requested");
-        }
-      } else {
-        Alert.alert(
-          "Request Failed",
-          result.message || "Something went wrong."
+        setExperts((prev) =>
+          prev.map((exp) => (exp._id === expertToEdit._id ? editedExpert : exp))
         );
+        setEditModalVisible(false);
+        Alert.alert("Success", "Expert details updated successfully");
+      } else {
+        Alert.alert("Update failed", result.message || "Something went wrong");
       }
     } catch (error) {
-      console.error("Request error:", error);
-      Alert.alert(
-        "Network error",
-        "Please check your internet connection and try again."
-      );
+      console.error("Update error:", error);
+      Alert.alert("Error", "Failed to update expert details");
     }
   };
 
@@ -280,6 +287,604 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
     }
   };
 
+  const renderEditExpertSpecificFields = () => {
+    switch (expertType) {
+      case "LEGAL":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Specialization"
+              value={editedExpert.specialization || ""}
+              onChangeText={(value) =>
+                handleEditChange("specialization", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Bar Council ID"
+              value={editedExpert.barCouncilId || ""}
+              onChangeText={(value) => handleEditChange("barCouncilId", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Court Affiliation"
+              value={editedExpert.courtAffiliation || ""}
+              onChangeText={(value) =>
+                handleEditChange("courtAffiliation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Law Firm/Organisation"
+              value={editedExpert.lawFirmOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("lawFirmOrganisation", value)
+              }
+            />
+          </>
+        );
+      case "REVENUE":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Land Type Expertise"
+              value={editedExpert.landTypeExpertise || ""}
+              onChangeText={(value) =>
+                handleEditChange("landTypeExpertise", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Revenue Specialisation"
+              value={editedExpert.revenueSpecialisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("revenueSpecialisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Approval"
+              value={editedExpert.govtApproval || ""}
+              onChangeText={(value) => handleEditChange("govtApproval", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Certification License Number"
+              value={editedExpert.certificationLicenseNumber || ""}
+              onChangeText={(value) =>
+                handleEditChange("certificationLicenseNumber", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Revenue Organisation"
+              value={editedExpert.revenueOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("revenueOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Key Services Provided"
+              value={editedExpert.keyServicesProvided || ""}
+              onChangeText={(value) =>
+                handleEditChange("keyServicesProvided", value)
+              }
+            />
+          </>
+        );
+      case "ENGINEERS":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Engineering Field"
+              value={editedExpert.engineeringField || ""}
+              onChangeText={(value) =>
+                handleEditChange("engineeringField", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Certifications"
+              value={editedExpert.certifications || ""}
+              onChangeText={(value) =>
+                handleEditChange("certifications", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Projects Handled"
+              value={editedExpert.projectsHandled || ""}
+              onChangeText={(value) =>
+                handleEditChange("projectsHandled", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Engineer Organisation"
+              value={editedExpert.engineerOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("engineerOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Specialized Skills/Technologies"
+              value={editedExpert.specializedSkillsTechnologies || ""}
+              onChangeText={(value) =>
+                handleEditChange("specializedSkillsTechnologies", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Major Projects Worked On"
+              value={editedExpert.majorProjectsWorkedOn || ""}
+              onChangeText={(value) =>
+                handleEditChange("majorProjectsWorkedOn", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Licensed"
+              value={editedExpert.govtLicensed || ""}
+              onChangeText={(value) => handleEditChange("govtLicensed", value)}
+            />
+          </>
+        );
+      case "ARCHITECTS":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Architecture Type"
+              value={editedExpert.architectureType || ""}
+              onChangeText={(value) =>
+                handleEditChange("architectureType", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Software Used"
+              value={editedExpert.softwareUsed || ""}
+              onChangeText={(value) => handleEditChange("softwareUsed", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Architect License Number"
+              value={editedExpert.architectLicenseNumber || ""}
+              onChangeText={(value) =>
+                handleEditChange("architectLicenseNumber", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Architect Firm"
+              value={editedExpert.architectFirm || ""}
+              onChangeText={(value) => handleEditChange("architectFirm", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Major Projects"
+              value={editedExpert.architectMajorProjects || ""}
+              onChangeText={(value) =>
+                handleEditChange("architectMajorProjects", value)
+              }
+            />
+          </>
+        );
+      case "PLANS & APPROVALS":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Approval Type"
+              value={editedExpert.approvalType || ""}
+              onChangeText={(value) => handleEditChange("approvalType", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Department"
+              value={editedExpert.govtDepartment || ""}
+              onChangeText={(value) =>
+                handleEditChange("govtDepartment", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Processing Time"
+              value={editedExpert.processingTime || ""}
+              onChangeText={(value) =>
+                handleEditChange("processingTime", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Approval Organisation"
+              value={editedExpert.approvalOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("approvalOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Services Provided"
+              value={editedExpert.servicesProvided || ""}
+              onChangeText={(value) =>
+                handleEditChange("servicesProvided", value)
+              }
+            />
+          </>
+        );
+      case "VAASTU PANDITS":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Vaastu Specialization"
+              value={editedExpert.vaastuSpecialization || ""}
+              onChangeText={(value) =>
+                handleEditChange("vaastuSpecialization", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Vaastu Organisation"
+              value={editedExpert.vaastuOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("vaastuOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Vaastu Certifications"
+              value={editedExpert.vaastuCertifications || ""}
+              onChangeText={(value) =>
+                handleEditChange("vaastuCertifications", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Remedies Provided"
+              value={editedExpert.remediesProvided || ""}
+              onChangeText={(value) =>
+                handleEditChange("remediesProvided", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Consultation Mode"
+              value={editedExpert.consultationMode || ""}
+              onChangeText={(value) =>
+                handleEditChange("consultationMode", value)
+              }
+            />
+          </>
+        );
+      case "LAND SURVEY & VALUERS":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Survey Type"
+              value={editedExpert.surveyType || ""}
+              onChangeText={(value) => handleEditChange("surveyType", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Valuation Type"
+              value={editedExpert.valuationType || ""}
+              onChangeText={(value) => handleEditChange("valuationType", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Approved"
+              value={editedExpert.govtApproved || ""}
+              onChangeText={(value) => handleEditChange("govtApproved", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Survey License Number"
+              value={editedExpert.surveyLicenseNumber || ""}
+              onChangeText={(value) =>
+                handleEditChange("surveyLicenseNumber", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Valuer License Number"
+              value={editedExpert.valuerLicenseNumber || ""}
+              onChangeText={(value) =>
+                handleEditChange("valuerLicenseNumber", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Survey Organisation"
+              value={editedExpert.surveyOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("surveyOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Valuer Organisation"
+              value={editedExpert.valuerOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("valuerOrganisation", value)
+              }
+            />
+          </>
+        );
+      case "BANKING":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Banking Specialisation"
+              value={editedExpert.bankingSpecialisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("bankingSpecialisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Banking Service"
+              value={editedExpert.bankingService || ""}
+              onChangeText={(value) =>
+                handleEditChange("bankingService", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Registered With"
+              value={editedExpert.registeredWith || ""}
+              onChangeText={(value) =>
+                handleEditChange("registeredWith", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Bank Name"
+              value={editedExpert.bankName || ""}
+              onChangeText={(value) => handleEditChange("bankName", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Approved"
+              value={editedExpert.bankingGovtApproved || ""}
+              onChangeText={(value) =>
+                handleEditChange("bankingGovtApproved", value)
+              }
+            />
+          </>
+        );
+      case "AGRICULTURE":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Agriculture Type"
+              value={editedExpert.agricultureType || ""}
+              onChangeText={(value) =>
+                handleEditChange("agricultureType", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Agriculture Certifications"
+              value={editedExpert.agricultureCertifications || ""}
+              onChangeText={(value) =>
+                handleEditChange("agricultureCertifications", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Agriculture Organisation"
+              value={editedExpert.agricultureOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("agricultureOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Services Provided"
+              value={editedExpert.servicesProvided || ""}
+              onChangeText={(value) =>
+                handleEditChange("servicesProvided", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Types of Crops"
+              value={editedExpert.typesOfCrops || ""}
+              onChangeText={(value) => handleEditChange("typesOfCrops", value)}
+            />
+          </>
+        );
+      case "REGISTRATION & DOCUMENTATION":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Registration Specialisation"
+              value={editedExpert.registrationSpecialisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("registrationSpecialisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Document Type"
+              value={editedExpert.documentType || ""}
+              onChangeText={(value) => handleEditChange("documentType", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Processing Time"
+              value={editedExpert.processingTime || ""}
+              onChangeText={(value) =>
+                handleEditChange("processingTime", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Certified"
+              value={editedExpert.registrationGovtCertified || ""}
+              onChangeText={(value) =>
+                handleEditChange("registrationGovtCertified", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Additional Services"
+              value={editedExpert.additionalServices || ""}
+              onChangeText={(value) =>
+                handleEditChange("additionalServices", value)
+              }
+            />
+          </>
+        );
+      case "AUDITING":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Auditing Specialisation"
+              value={editedExpert.auditingSpecialisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("auditingSpecialisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Audit Type"
+              value={editedExpert.auditType || ""}
+              onChangeText={(value) => handleEditChange("auditType", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Audit Certification Number"
+              value={editedExpert.auditCertificationNumber || ""}
+              onChangeText={(value) =>
+                handleEditChange("auditCertificationNumber", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Audit Organisation"
+              value={editedExpert.auditOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("auditOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Audit Services"
+              value={editedExpert.auditServices || ""}
+              onChangeText={(value) => handleEditChange("auditServices", value)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Certified"
+              value={editedExpert.auditGovtCertified || ""}
+              onChangeText={(value) =>
+                handleEditChange("auditGovtCertified", value)
+              }
+            />
+          </>
+        );
+      case "LIAISONING":
+        return (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Liaisoning Specialisations"
+              value={editedExpert.liaisoningSpecialisations || ""}
+              onChangeText={(value) =>
+                handleEditChange("liaisoningSpecialisations", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Government Departments"
+              value={editedExpert.govtDepartments || ""}
+              onChangeText={(value) =>
+                handleEditChange("govtDepartments", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Liaisoning Organisation"
+              value={editedExpert.liaisoningOrganisation || ""}
+              onChangeText={(value) =>
+                handleEditChange("liaisoningOrganisation", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Services Provided"
+              value={editedExpert.servicesProvided || ""}
+              onChangeText={(value) =>
+                handleEditChange("servicesProvided", value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Processing Time"
+              value={editedExpert.processingTime || ""}
+              onChangeText={(value) =>
+                handleEditChange("processingTime", value)
+              }
+            />
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const deleteExpert = async (id) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this expert?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/expert/delete/${id}`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+
+              if (response.ok) {
+                setExperts((prevExperts) =>
+                  prevExperts.filter((exp) => exp._id !== id)
+                );
+                Alert.alert("Success", "Expert deleted successfully");
+              } else {
+                const errorData = await response.json();
+                Alert.alert("Delete Failed", errorData.message);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Could not delete expert");
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     getDetails();
   }, []);
@@ -287,7 +892,7 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => onSwitch(null)}>
-        <Text style={styles.backButton}>Back</Text>
+        <Text style={styles.backButton}>{"< Back"}</Text>
       </TouchableOpacity>
       <Text style={styles.header}>{expertType} Experts</Text>
 
@@ -308,7 +913,6 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
 
               <Text style={styles.expertName}>{expert.name}</Text>
 
-              {/* Basic Information */}
               <View style={styles.detailsContainer}>
                 {renderField("Type", expert.expertType)}
                 {renderField("Qualification", expert.qualification)}
@@ -319,17 +923,25 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
                 {renderField("Call Executive Call", expert.CallExecutiveCall)}
               </View>
 
-              {/* Expert-specific fields */}
               <View style={styles.specializationContainer}>
                 {renderExpertSpecificFields(expert)}
               </View>
 
-              <TouchableOpacity
-                style={styles.requestButton}
-                onPress={() => requestExpert(expert)}
-              >
-                <Text style={styles.requestButtonText}>Request Expert</Text>
-              </TouchableOpacity>
+              <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => editExpert(expert)}
+                >
+                  <Text style={styles.buttonText}>Edit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => deleteExpert(expert._id)}
+                >
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -338,6 +950,92 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
           No experts found for this category.
         </Text>
       )}
+
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeader}>Edit Expert Details</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Name"
+                value={editedExpert.name || ""}
+                onChangeText={(value) => handleEditChange("name", value)}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Qualification"
+                value={editedExpert.qualification || ""}
+                onChangeText={(value) =>
+                  handleEditChange("qualification", value)
+                }
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Experience"
+                value={editedExpert.experience || ""}
+                onChangeText={(value) => handleEditChange("experience", value)}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Location"
+                value={editedExpert.location || ""}
+                onChangeText={(value) => handleEditChange("location", value)}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Mobile"
+                value={editedExpert.mobile || ""}
+                onChangeText={(value) => handleEditChange("mobile", value)}
+                keyboardType="phone-pad"
+              />
+
+              <TextInput
+                style={[styles.input, styles.multilineInput]}
+                placeholder="Office Address"
+                value={editedExpert.officeAddress || ""}
+                onChangeText={(value) =>
+                  handleEditChange("officeAddress", value)
+                }
+                multiline
+                numberOfLines={3}
+              />
+
+              {/* Render expert-specific fields for editing */}
+              {renderEditExpertSpecificFields()}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={submitEdit}
+                >
+                  <Text style={styles.buttonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -347,70 +1045,161 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     padding: 16,
-    marginBottom: "10%",
   },
-  backButton: { fontSize: 16, color: "blue", marginBottom: 10 },
+  backButton: {
+    fontSize: 16,
+    color: "#007AFF",
+    marginBottom: 10,
+    fontWeight: "500",
+  },
   header: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: "center",
+    color: "#333",
   },
   cardContainer: {
+    paddingBottom: 20,
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
+    flexWrap: "wrap", // allows wrapping to next line if needed
+    justifyContent: "space-between", // spacing between cards
+    paddingHorizontal: 8,
   },
   expertCard: {
-    width: Platform.OS === "web" ? "30%" : "90%",
     backgroundColor: "#fff",
-    padding: 16,
-    margin: 10,
     borderRadius: 12,
-    alignItems: "center",
+    padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 8, // spacing between cards
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 3,
+    width: "48%", // slightly less than 50% to accommodate margin
   },
-  profileImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 10 },
-  expertName: { fontSize: 18, fontWeight: "bold", marginBottom: 5 },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  expertName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+    color: "#333",
+  },
   detailsContainer: {
-    width: "100%",
-    marginBottom: 10,
-  },
-  specializationContainer: {
-    width: "100%",
-    marginBottom: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    marginBottom: 12,
   },
   expertDetails: {
     fontSize: 14,
     color: "#555",
-    marginBottom: 4,
-    textAlign: "left",
-    width: "100%",
+    marginBottom: 6,
+    lineHeight: 20,
   },
-  label: { fontWeight: "bold", color: "#333" },
+  label: {
+    fontWeight: "bold",
+    color: "#333",
+  },
+  specializationContainer: {
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 12,
+    marginTop: 12,
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  editButton: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 6,
+    flex: 1,
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#F44336",
+    padding: 12,
+    borderRadius: 6,
+    flex: 1,
+    marginLeft: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
   noExperts: {
     textAlign: "center",
     fontSize: 16,
     color: "#666",
-    marginTop: 20,
+    marginTop: 40,
   },
-  errorText: { textAlign: "center", fontSize: 16, color: "red", marginTop: 20 },
-  requestButton: {
-    backgroundColor: "#007bff",
+  errorText: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "red",
+    marginTop: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalScrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 6,
     padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-    width: "100%",
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
   },
-  requestButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  multilineInput: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  modalButton: {
+    padding: 14,
+    borderRadius: 6,
+    width: "48%",
+    alignItems: "center",
+  },
+  saveButton: {
+    backgroundColor: "#4CAF50",
+  },
+  cancelButton: {
+    backgroundColor: "#F44336",
+  },
 });
 
 export default ExpertDetails;
