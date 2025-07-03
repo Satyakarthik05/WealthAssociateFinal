@@ -92,10 +92,7 @@ const menuItems = [
     title: "Properties",
     icon: "home-outline",
     subItems: [
-      "Post Property",
-      "Request Property",
-      "View Posted Properties",
-      "View Requested Properties",
+     
       "View All Properties",
       "ViewApprovedProperties",
       "View SoldedPropertys",

@@ -412,6 +412,12 @@ export default function ViewCustomers() {
                       <Text style={styles.value}>: {customer.ReferredBy}</Text>
                     </View>
                   )}
+                  {customer.MyRefferalCode && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>My Referreral Code</Text>
+                      <Text style={styles.value}>: {customer.MyRefferalCode}</Text>
+                    </View>
+                  )}
                   {customer.referrerDetails && (
                     <View style={styles.row}>
                       <Text style={styles.label}>Referred By</Text>
