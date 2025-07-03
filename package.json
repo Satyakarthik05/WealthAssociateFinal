@@ -50,11 +50,7 @@
     "firebase": "^11.6.0",
     "install": "^0.13.0",
     "jquery": "^3.7.1",
-
-    "lottie-ios": "^3.4.0",
-
     "lottie-react": "^2.4.1",
-
     "lottie-react-native": "7.2.2",
     "metro": "^0.82.4",
     "metro-config": "^0.82.4",

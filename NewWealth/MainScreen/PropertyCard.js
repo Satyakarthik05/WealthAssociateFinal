@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
@@ -356,13 +357,15 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingBottom: "50%",
-    paddingTop:"10%"
+    paddingTop:"10%",
+    backgroundColor:"#D8E3E7",
   },
   container: {
     width: "90%",
     alignSelf: "center",
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#D8E3E7",
+    width: Platform.OS==="web" ? "60%" : "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -418,7 +421,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   header: {
-    backgroundColor: "#fff5f5",
+    backgroundColor: "#FDFDFD",
     paddingVertical: 10,
     paddingHorizontal: 15,
     alignItems: "center",
@@ -434,10 +437,10 @@ const styles = StyleSheet.create({
   forSaleText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "white",
+  
     textAlign: "center",
     textTransform: "uppercase",
-    backgroundColor: "#1a237e",
+    backgroundColor: "#FDFDFD",
     height: 50,
     width: "110%",
     lineHeight: 50,
@@ -455,8 +458,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   propertyImage: {
-    width: "100%",
-    height: 180,
+    width: Platform.OS==="web" ? "50%" : "100%",
+    height: Platform.OS==="web" ? 200 : 180,
     borderRadius: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -508,7 +511,7 @@ const styles = StyleSheet.create({
   agentInfo: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1a237e",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
     marginBottom: 15,
@@ -525,7 +528,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   agentName: {
-    color: "#fff",
+    color: "#white",
     fontWeight: "bold",
     fontSize: 14,
   },
@@ -534,7 +537,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   footer: {
-    backgroundColor: "#e8eaf6",
+    backgroundColor: "#FDFDFD",
     padding: 10,
     alignItems: "center",
   },
@@ -542,7 +545,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     marginBottom: 8,
-    color: "#1a237e",
+    color: "#3E5C76",
   },
   appButtons: {
     flexDirection: "row",
@@ -572,7 +575,7 @@ const styles = StyleSheet.create({
   callButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "red",
+    backgroundColor: "#3E5C76",
     padding: 12,
     borderRadius: 8,
     flex: 1,
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#25D366",
+    backgroundColor: "#3E5C76",
     padding: 12,
     borderRadius: 8,
     flex: 1,
@@ -592,7 +595,7 @@ const styles = StyleSheet.create({
   callAgentButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2196F3",
+    backgroundColor: "#3E5C76",
     padding: 12,
     borderRadius: 8,
     flex: 1,

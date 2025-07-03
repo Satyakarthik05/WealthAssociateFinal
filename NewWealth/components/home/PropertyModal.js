@@ -1,13 +1,20 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  StyleSheet,
+  Platform,
+  Linking,
+  Dimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import LazyImage from "./LazyImage";
 
-const PropertyModal = ({
-  visible,
-  onClose,
-  referredInfo,
-}) => {
+const PropertyModal = ({ visible, onClose, referredInfo }) => {
+  if (!referredInfo) return null;
+
   return (
     <Modal
       visible={visible}
@@ -15,94 +22,97 @@ const PropertyModal = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <>
-            <LazyImage
-              source={require("../../../assets/man.png")}
-              style={styles.agentLogo}
-            />
-            <Text style={styles.modalTitle}>Referred By</Text>
-            <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
-            <Text style={styles.modalText}>
-              Mobile: {referredInfo.mobileNumber}
-            </Text>
-            <TouchableOpacity
-              style={styles.callButton}
-              onPress={() =>
-                Linking.openURL(`tel:${referredInfo.mobileNumber}`)
-              }
-            >
-              <Ionicons name="call" size={20} color="white" />
-              <Text style={styles.callButtonText}>Call Now</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </>
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          <LazyImage
+            source={require("../../../assets/man.png")}
+            style={styles.agentLogo}
+          />
+          <Text style={styles.modalTitle}>Referred By</Text>
+          <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
+          <Text style={styles.modalText}>
+            Mobile: {referredInfo.mobileNumber}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => Linking.openURL(`tel:${referredInfo.mobileNumber}`)}
+          >
+            <Ionicons name="call" size={20} color="white" />
+            <Text style={styles.callButtonText}>Call Now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
 
+const windowWidth = Dimensions.get("window").width;
+
 const styles = StyleSheet.create({
-  modalContainer: {
+  overlay: {
     flex: 1,
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
   },
-  modalContent: {
-    margin: 20,
+  modalContainer: {
+    width:
+      Platform.OS === "web"
+        ? windowWidth < 450
+          ? "90%"
+          : "30%"
+        : "85%",
     backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
     elevation: 5,
   },
   agentLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: Platform.OS === "web" && windowWidth < 450 ? 60 : 80,
+    height: Platform.OS === "web" && windowWidth < 450 ? 60 : 80,
+    borderRadius: Platform.OS === "web" && windowWidth < 450 ? 30 : 40,
     alignSelf: "center",
-    marginBottom: 15,
+    marginBottom: Platform.OS === "web" && windowWidth < 450 ? 10 : 15,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: Platform.OS === "web" && windowWidth < 450 ? 18 : 20,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: Platform.OS === "web" && windowWidth < 450 ? 8 : 10,
   },
   modalText: {
-    fontSize: 16,
-    marginVertical: 4,
+    fontSize: Platform.OS === "web" && windowWidth < 450 ? 14 : 16,
+    marginVertical: Platform.OS === "web" && windowWidth < 450 ? 3 : 4,
+    textAlign: "center",
   },
   callButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#28a745",
-    padding: 10,
+    padding: Platform.OS === "web" && windowWidth < 450 ? 8 : 10,
     borderRadius: 8,
-    marginTop: 15,
+    marginTop: Platform.OS === "web" && windowWidth < 450 ? 12 : 15,
   },
   callButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: Platform.OS === "web" && windowWidth < 450 ? 14 : 16,
     marginLeft: 8,
   },
   closeButton: {
-    marginTop: 10,
-    padding: 10,
+    marginTop: Platform.OS === "web" && windowWidth < 450 ? 8 : 10,
+    padding: Platform.OS === "web" && windowWidth < 450 ? 8 : 10,
     borderRadius: 8,
     backgroundColor: "#dc3545",
     alignItems: "center",
   },
   closeButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: Platform.OS === "web" && windowWidth < 450 ? 14 : 16,
   },
 });
 

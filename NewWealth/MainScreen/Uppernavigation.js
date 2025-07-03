@@ -40,6 +40,7 @@ const Header = () => {
     loading: true,
   });
   const [activeTab, setActiveTab] = useState("newhome");
+  const [referralInfo, setReferralInfo] = useState(null);
 
   const tabs = [
     {
@@ -125,11 +126,10 @@ const Header = () => {
     }, [route.name, navigation, route.params])
   );
 
-  const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
+  const fetchAndStoreReferralInfo = useCallback(async (identifier, isReferredBy) => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const identifier = referredBy || addedBy;
-      if (!identifier) return;
+      if (!token || !identifier) return;
 
       const response = await fetch(
         `${API_URL}/properties/getPropertyreffered`,
@@ -140,7 +140,7 @@ const Header = () => {
             token: token || "",
           },
           body: JSON.stringify({
-            referredBy: referredBy || addedBy,
+            referredBy: identifier,
           }),
         }
       );
@@ -148,20 +148,70 @@ const Header = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.status === "success") {
-          const details = data.referredByDetails || data.addedByDetails;
+          const details = isReferredBy ? data.referredByDetails : data.addedByDetails;
           if (details) {
+            const infoToStore = {
+              name: details.name || details.Name || "Not Available",
+              mobileNumber: details.Number || "N/A",
+              identifier,
+              isReferredBy,
+              timestamp: Date.now(),
+            };
+            
             await AsyncStorage.setItem(
               "referredAddedByInfo",
-              JSON.stringify({
-                name: details.name || details.Name,
-                mobileNumber: details.Number,
-              })
+              JSON.stringify(infoToStore)
             );
+            setReferralInfo(infoToStore);
+            return infoToStore;
           }
         }
+      } else if (response.status === 404) {
+        // Store "Not Available" if referral not found
+        const infoToStore = {
+          name: "Not Available",
+          mobileNumber: "N/A",
+          identifier,
+          isReferredBy,
+          timestamp: Date.now(),
+        };
+        await AsyncStorage.setItem("referredAddedByInfo", JSON.stringify(infoToStore));
+        setReferralInfo(infoToStore);
+        return infoToStore;
       }
     } catch (error) {
-      console.error("Error fetching referred/added by info:", error);
+      console.error("Error fetching referral info:", error);
+      // Store error state
+      const infoToStore = {
+        name: "Error Loading",
+        mobileNumber: "N/A",
+        identifier,
+        isReferredBy,
+        timestamp: Date.now(),
+        error: true,
+      };
+      await AsyncStorage.setItem("referredAddedByInfo", JSON.stringify(infoToStore));
+      setReferralInfo(infoToStore);
+      return infoToStore;
+    }
+    return null;
+  }, []);
+
+  const getCachedReferralInfo = useCallback(async () => {
+    try {
+      const cachedInfo = await AsyncStorage.getItem("referralInfo");
+      if (cachedInfo) {
+        const parsedInfo = JSON.parse(cachedInfo);
+        // Check if cache is fresh (less than 1 hour old)
+        if (Date.now() - parsedInfo.timestamp < 3600000) {
+          setReferralInfo(parsedInfo);
+          return parsedInfo;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting cached referral info:", error);
+      return null;
     }
   }, []);
 
@@ -173,7 +223,7 @@ const Header = () => {
 
       const now = Date.now();
       
-      // Check AsyncStorage first
+      // Check AsyncStorage first for user data
       const cachedUserData = await AsyncStorage.getItem("userDetails");
       if (cachedUserData) {
         const parsedData = JSON.parse(cachedUserData);
@@ -182,12 +232,22 @@ const Header = () => {
           userType: parsedData.userType,
         };
         lastFetchTime = now;
-        
+
         setUserData({
           details: parsedData,
           userType: parsedData.userType,
           loading: false,
         });
+
+        // Check for referral info
+        const cachedReferral = await getCachedReferralInfo();
+        if (!cachedReferral) {
+          if (parsedData.ReferredBy) {
+            await fetchAndStoreReferralInfo(parsedData.ReferredBy, true);
+          } else if (parsedData.AddedBy) {
+            await fetchAndStoreReferralInfo(parsedData.AddedBy, false);
+          }
+        }
         return;
       }
 
@@ -235,7 +295,7 @@ const Header = () => {
       }
 
       const response = await fetch(endpoint, { headers: { token } });
-      
+
       if (response.status === 401) {
         // Token expired or invalid
         await AsyncStorage.removeItem("authToken");
@@ -247,11 +307,11 @@ const Header = () => {
         return;
       }
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
 
-   
       if (
         (userType === "WealthAssociate" || userType === "ReferralAssociate") &&
         details.AgentType === "ValueAssociate"
@@ -261,7 +321,8 @@ const Header = () => {
       }
 
       // Store user details in AsyncStorage
-      const mobileNumber = details.MobileNumber || details.MobileIN || details.Number;
+      const mobileNumber =
+        details.MobileNumber || details.MobileIN || details.Number;
       exportedFullName = details?.FullName || details?.Name || "User";
       exportedMobileNumber = mobileNumber || "";
 
@@ -271,17 +332,20 @@ const Header = () => {
         mobileNumber,
       };
 
-      await AsyncStorage.setItem("userDetails", JSON.stringify(userDataToStore));
+      await AsyncStorage.setItem(
+        "userDetails",
+        JSON.stringify(userDataToStore)
+      );
       userDataCache = { details: userDataToStore, userType: finalUserType };
       lastFetchTime = now;
 
-      setUserData({ 
-        details: userDataToStore, 
-        userType: finalUserType, 
-        loading: false 
+      setUserData({
+        details: userDataToStore,
+        userType: finalUserType,
+        loading: false,
       });
 
-
+      // Fetch and store referral info if applicable
       if (
         [
           "WealthAssociate",
@@ -291,9 +355,11 @@ const Header = () => {
           "ReferralAssociate",
         ].includes(finalUserType)
       ) {
-        if (details.ReferredBy) await fetchReferredDetails(details.ReferredBy, null);
+        if (details.ReferredBy) {
+          await fetchAndStoreReferralInfo(details.ReferredBy, true);
+        }
       } else if (details.AddedBy) {
-        await fetchReferredDetails(null, details.AddedBy);
+        await fetchAndStoreReferralInfo(details.AddedBy, false);
       }
     } catch (error) {
       console.error("Header data fetch failed:", error);
@@ -304,38 +370,57 @@ const Header = () => {
         routes: [{ name: "Main Screen" }],
       });
     }
-  }, [checkAuthAndNavigate, fetchReferredDetails, navigation]);
+  }, [checkAuthAndNavigate, navigation, getCachedReferralInfo, fetchAndStoreReferralInfo]);
 
   useEffect(() => {
-    fetchUserDetails();
-  }, [fetchUserDetails]);
-
-  const handleProfilePress = useCallback(() => {
-    if (!userData.userType) {
-      navigation.navigate("Main", {
-        screen: "DefaultProfile",
-      });
-      return;
-    }
-
-    const profileRoutes = {
-      WealthAssociate: "agentprofile",
-      ValueAssociate: "agentprofile",
-      ReferralAssociate: "agentprofile",
-      Customer: "CustomerProfile",
-      CoreMember: "CoreProfile",
-      Investor: "InvestorProfile",
-      NRI: "nriprofile",
-      SkilledResource: "SkilledProfile",
+    const initializeData = async () => {
+      // First try to get cached data
+      const cachedReferral = await getCachedReferralInfo();
+      if (!cachedReferral) {
+        // If no cached referral, fetch user details which will handle referral
+        await fetchUserDetails();
+      } else {
+        // If we have cached referral, just fetch user details
+        await fetchUserDetails();
+      }
     };
 
-    navigation.navigate("Main", {
-      screen: profileRoutes[userData.userType] || "DefaultProfile",
-      params: {
-        userId: userData.details?._id,
-        userType: userData.userType,
-      },
-    });
+    initializeData();
+  }, [fetchUserDetails, getCachedReferralInfo]);
+
+  const handleProfilePress = useCallback(() => {
+    const goToProfile = async () => {
+      const userTypee = await AsyncStorage.getItem("userType");
+      console.log(userTypee);
+
+      if (!userData.userType) {
+        navigation.navigate("Main", {
+          screen: "DefaultProfile",
+        });
+        return;
+      }
+
+      const profileRoutes = {
+        WealthAssociate: "agentprofile",
+        ValueAssociate: "agentprofile",
+        ReferralAssociate: "agentprofile",
+        Customer: "CustomerProfile",
+        CoreMember: "CoreProfile",
+        Investor: "InvestorProfile",
+        NRI: "nriprofile",
+        SkilledResource: "SkilledProfile",
+      };
+
+      navigation.navigate("Main", {
+        screen: profileRoutes[userTypee] || "DefaultProfile",
+        params: {
+          userId: userData.details?._id,
+          userType: userData.userType,
+        },
+      });
+    };
+
+    goToProfile();
   }, [userData.details?._id, userData.userType, navigation]);
 
   const getUserInitials = () => {
@@ -427,6 +512,7 @@ const Header = () => {
                 ellipsizeMode="tail"
               >
                 Ref: {userData.details?.MyRefferalCode || "N/A"}
+                
               </Text>
             )}
           </View>
@@ -482,7 +568,7 @@ const Header = () => {
       </View>
     </View>
   );
-      }
+};
 
 const styles = StyleSheet.create({
   headerWrapper: {

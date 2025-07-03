@@ -34,14 +34,19 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const [userType, setUserType] = useState("");
-  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"));
+  const [windowDimensions, setWindowDimensions] = useState(
+    Dimensions.get("window")
+  );
 
   useEffect(() => {
     const updateDimensions = ({ window }) => {
       setWindowDimensions(window);
     };
 
-    const subscription = Dimensions.addEventListener('change', updateDimensions);
+    const subscription = Dimensions.addEventListener(
+      "change",
+      updateDimensions
+    );
     return () => {
       subscription?.remove();
     };
@@ -379,7 +384,12 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         )}
       </View>
 
-      <View style={[styles.searchContainer, windowDimensions.width < 450 && styles.smallScreenSearchContainer]}>
+      <View
+        style={[
+          styles.searchContainer,
+          windowDimensions.width < 450 && styles.smallScreenSearchContainer,
+        ]}
+      >
         <View style={styles.searchInputContainer}>
           <Ionicons
             name="search"
@@ -394,7 +404,12 @@ const ViewAllRequestedProperties = ({ navigation }) => {
             onChangeText={handleSearch}
           />
         </View>
-        <View style={[styles.filterContainer, windowDimensions.width < 450 && styles.smallScreenFilterContainer]}>
+        <View
+          style={[
+            styles.filterContainer,
+            windowDimensions.width < 450 && styles.smallScreenFilterContainer,
+          ]}
+        >
           <Picker
             selectedValue={filterType}
             style={styles.filterPicker}
@@ -436,7 +451,12 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, windowDimensions.width < 450 && styles.smallScreenModalContainer]}>
+          <View
+            style={[
+              styles.modalContainer,
+              windowDimensions.width < 450 && styles.smallScreenModalContainer,
+            ]}
+          >
             {referredInfo ? (
               <>
                 <Image source={logo11} style={styles.agentLogo} />
@@ -517,7 +537,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#D8E3E7",
   },
   header: {
     backgroundColor: "#3E5C76",
@@ -628,7 +648,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   idContainer: {
-    backgroundColor: "green",
+    backgroundColor: "#2B2D42",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -687,7 +707,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   iHaveButton: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
     alignSelf: "center",

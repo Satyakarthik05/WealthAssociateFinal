@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useWindowDimensions } from "react-native";
 
 const { width } = Dimensions.get("window");
 import { API_URL } from "../../data/ApiUrl";
@@ -25,6 +26,9 @@ import logo5 from "../../assets/house.png";
 const numColumns = width > 800 ? 4 : 1;
 
 const RequestedProperties = () => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 450;
+
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -64,7 +68,7 @@ const RequestedProperties = () => {
         }
       );
       const data = await response.json();
-      
+
       // Check if data exists and is an array
       if (!data || !Array.isArray(data)) {
         setProperties([]);
@@ -72,16 +76,19 @@ const RequestedProperties = () => {
         return;
       }
 
-      const formattedProperties = data.length > 0 ? data.reverse().map((item) => ({
-        id: item._id,
-        title: item.propertyTitle,
-        type: item.propertyType,
-        ExactLocation: item.islocation,
-        location: item.location,
-        budget: `₹${item.Budget?.toLocaleString()}`,
-        image: getImageByPropertyType(item.propertyType),
-      })) : [];
-      
+      const formattedProperties =
+        data.length > 0
+          ? data.reverse().map((item) => ({
+              id: item._id,
+              title: item.propertyTitle,
+              type: item.propertyType,
+              ExactLocation: item.islocation,
+              location: item.location,
+              budget: `₹${item.Budget?.toLocaleString()}`,
+              image: getImageByPropertyType(item.propertyType),
+            }))
+          : [];
+
       setProperties(formattedProperties);
       setLoading(false);
     } catch (error) {
@@ -154,191 +161,223 @@ const RequestedProperties = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>Requested Properties</Text>
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3E5C76" />
-          <Text style={styles.loadingText}>Fetching properties...</Text>
-        </View>
-      ) : properties.length === 0 ? (
-        <View style={styles.noPropertiesContainer}>
-          <Text style={styles.noPropertiesText}>No properties requested yet</Text>
-        </View>
-      ) : (
-        <View style={styles.grid}>
-          {properties.map((item) => (
-            <View key={item.id} style={styles.card}>
-              <Image source={item.image} style={styles.image} />
-              <View style={styles.details}>
-                <View style={styles.idContainer}>
-                  <View style={styles.idBadge}>
-                    <Text style={styles.idText}>ID: {getLastFourChars(item.id)}</Text>
+    <View style={{ flex: 1, height: "100%" }}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+      >
+        <Text style={styles.heading}>Requested Properties</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3E5C76" />
+            <Text style={styles.loadingText}>Fetching properties...</Text>
+          </View>
+        ) : properties.length === 0 ? (
+          <View style={styles.noPropertiesContainer}>
+            <Text style={styles.noPropertiesText}>
+              No properties requested yet
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {properties.map((item) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.card,
+                  { width: isMobile ? "90%" : (width - 80) / 5 },
+                  // each card gets 30% of row
+                  // Adjusts dynamically for 3 card
+                ]}
+              >
+                <Image source={item.image} style={styles.image} />
+                <View style={styles.details}>
+                  <View style={styles.idContainer}>
+                    <View style={styles.idBadge}>
+                      <Text style={styles.idText}>
+                        ID: {getLastFourChars(item.id)}
+                      </Text>
+                    </View>
                   </View>
+                  <Text style={styles.title}>{item.title}</Text>
+                  <Text style={styles.text}>Type: {item.type}</Text>
+                  <Text style={styles.text}>Constituency: {item.location}</Text>
+                  <Text style={styles.text}>
+                    ExactLocation: {item.ExactLocation}
+                  </Text>
+                  <Text style={styles.text}>Budget: {item.budget}</Text>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => handleEditPress(item)}
+                  >
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.text}>Type: {item.type}</Text>
-                <Text style={styles.text}>Constituency: {item.location}</Text>
-                <Text style={styles.text}>ExactLocation: {item.ExactLocation}</Text>
-                <Text style={styles.text}>Budget: {item.budget}</Text>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => handleEditPress(item)}
-                >
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Edit Property Modal */}
+        <Modal visible={editModalVisible} animationType="slide" transparent>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Property</Text>
+              <TextInput
+                style={styles.input}
+                value={editedData.propertyTitle}
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, propertyTitle: text })
+                }
+                placeholder="Property Title"
+              />
+              <TextInput
+                style={styles.input}
+                value={editedData.propertyType}
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, propertyType: text })
+                }
+                placeholder="Property Type"
+              />
+              <TextInput
+                style={styles.input}
+                value={editedData.location}
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, location: text })
+                }
+                placeholder="Location"
+              />
+              <TextInput
+                style={styles.input}
+                value={editedData.Budget}
+                keyboardType="numeric"
+                onChangeText={(text) =>
+                  setEditedData({ ...editedData, Budget: text })
+                }
+                placeholder="Budget"
+              />
+              <View style={styles.modalButtonsContainer}>
+                <Button
+                  title="Save Changes"
+                  color="green"
+                  onPress={handleSaveEdit}
+                />
+                <Button
+                  title="Cancel"
+                  color="red"
+                  onPress={() => setEditModalVisible(false)}
+                />
               </View>
             </View>
-          ))}
-        </View>
-      )}
-
-      {/* Edit Property Modal */}
-      <Modal visible={editModalVisible} animationType="slide" transparent>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Property</Text>
-            <TextInput
-              style={styles.input}
-              value={editedData.propertyTitle}
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, propertyTitle: text })
-              }
-              placeholder="Property Title"
-            />
-            <TextInput
-              style={styles.input}
-              value={editedData.propertyType}
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, propertyType: text })
-              }
-              placeholder="Property Type"
-            />
-            <TextInput
-              style={styles.input}
-              value={editedData.location}
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, location: text })
-              }
-              placeholder="Location"
-            />
-            <TextInput
-              style={styles.input}
-              value={editedData.Budget}
-              keyboardType="numeric"
-              onChangeText={(text) =>
-                setEditedData({ ...editedData, Budget: text })
-              }
-              placeholder="Budget"
-            />
-            <View style={styles.modalButtonsContainer}>
-              <Button title="Save Changes" color="green" onPress={handleSaveEdit} />
-              <Button
-                title="Cancel"
-                color="red"
-                onPress={() => setEditModalVisible(false)}
-              />
-            </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: 20,
-    backgroundColor: "#f8f8f8",
-    alignItems: "center",
+    // padding: 20,
+    backgroundColor: "#D8E3E7",
+    alignItems: "stretch",
+    paddingBottom: "29%",
   },
-  heading: { 
-    fontSize: 20, 
-    fontWeight: "bold", 
-    marginBottom: 15, 
-    color:"#3E5C76"
+  heading: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#3E5C76",
+    textAlign: "center",
   },
-  grid: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
-    justifyContent: "center" 
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 16, // works in React Native Web for consistent spacing
+    paddingHorizontal: 20,
+    maxWidth: 1200,
+    alignSelf: "center",
   },
+
   card: {
     backgroundColor: "white",
     borderRadius: 10,
     margin: 8,
-    width: 250,
     padding: 10,
     elevation: 3,
     position: "relative",
+    flexGrow: 1,
+    alignSelf: "flex-start",
   },
-  image: { 
-    width: "100%", 
-    height: 120, 
+  image: {
+    width: "100%",
+    height: 120,
     resizeMode: "cover",
     borderRadius: 5,
   },
-  details: { 
-    padding: 10 
+  details: {
+    padding: 10,
   },
   idContainer: {
     alignItems: "flex-end",
     marginBottom: 5,
   },
   idBadge: {
-    backgroundColor: "green",
+    backgroundColor: "#A9BCD0",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   idText: {
-    color: "#fff",
+    color: "white",
     fontWeight: "600",
     fontSize: 12,
   },
-  title: { 
-    fontSize: 14, 
-    fontWeight: "bold", 
-    marginBottom: 5 
+  title: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 5,
   },
-  text: { 
-    fontSize: 12, 
+  text: {
+    fontSize: 12,
     color: "#666",
     marginBottom: 3,
   },
   editButton: {
     marginTop: 10,
-    backgroundColor: "#007bff",
+    backgroundColor: "#3E5C76",
     padding: 8,
     borderRadius: 5,
     alignItems: "center",
   },
-  editButtonText: { 
-    color: "white", 
-    fontSize: 14 
+  editButtonText: {
+    color: "white",
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "#D8E3E7",
   },
   modalContent: {
-    backgroundColor: "white",
+    backgroundColor: "#D8E3E7",
     padding: 20,
     borderRadius: 10,
     width: 300,
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "bold", 
-    marginBottom: 10 
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
-  input: { 
-    borderWidth: 1, 
-    padding: 8, 
-    marginBottom: 10, 
+  input: {
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 10,
     borderRadius: 5,
     borderColor: "#ccc",
   },
@@ -358,13 +397,13 @@ const styles = StyleSheet.create({
   },
   noPropertiesContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 50,
   },
   noPropertiesText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
 });
 

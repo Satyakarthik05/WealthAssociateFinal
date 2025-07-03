@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import LazyImage, { preload } from "../components/home/LazyImage";
+import LazyImage from "../components/home/LazyImage";
 
 // Cache expiration time (1 day in milliseconds)
 const CACHE_EXPIRATION_TIME = 24 * 60 * 60 * 1000;
@@ -35,9 +35,9 @@ const fetchPropertiesFromAPI = async () => {
       // Preload images safely
       data.forEach((property) => {
         const images = normalizeImageSources(property);
-        images.forEach((uri) => {
+        images.forEach(async (uri) => {
           try {
-            LazyImage.preload(uri);
+            await LazyImage.preload(uri);
           } catch (error) {
             console.error(`Error preloading image ${uri}:`, error);
           }
