@@ -137,7 +137,7 @@ export default function PropertiesScreen() {
     <View style={styles.container}>
       {/* Top Navigation Bar */}
       <View style={styles.topNav}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false}>
           <View style={styles.navItems}>
             <NavButton
               icon="home"
@@ -169,7 +169,7 @@ export default function PropertiesScreen() {
 
       {/* Main Content */}
       <View style={styles.mainContent}>
-        <ScrollView style={styles.contentScroll}>
+        <ScrollView style={styles.contentScroll} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false}>
           {activeTab === "all" ? (
             <ViewAllProperties />
           ) : activeTab === "requested" ? (
@@ -246,19 +246,16 @@ const NavButton = React.memo(({ icon, label, active, onPress }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#D8E3E7",
     top:20
   },
   topNav: {
-    backgroundColor: "white",
+    backgroundColor: Platform.OS === 'web' ? "#D8E3E7" : "#FDFDFD",
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
     ...Platform.select({
       web: {
         position: "sticky",
@@ -270,6 +267,7 @@ const styles = StyleSheet.create({
   navItems: {
     flexDirection: "row",
     paddingHorizontal: 10,
+    
   },
   navButton: {
     flexDirection: "row",

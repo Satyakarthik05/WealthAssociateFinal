@@ -50,13 +50,14 @@ export default function Add_Member() {
   const actionButtonsScrollRef = useRef(null);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      setWindowWidth(Dimensions.get("window").width);
-    };
+  const updateDimensions = ({ window }) => {
+    setWindowWidth(window.width);
+  };
 
-    Dimensions.addEventListener("change", updateDimensions);
-    return () => Dimensions.removeEventListener("change", updateDimensions);
-  }, []);
+  const subscription = Dimensions.addEventListener("change", updateDimensions);
+  return () => subscription?.remove(); // ✅ Proper cleanup
+}, []);
+
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -475,8 +476,8 @@ export default function Add_Member() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    paddingTop: 15,
+    backgroundColor: Platform.OS === 'web' ? "#D8E3E7" : "#FDFDFD",    
+    paddingTop: 30,
   },
   loadingContainer: {
     flex: 1,
@@ -514,13 +515,14 @@ const styles = StyleSheet.create({
   circleIcon: {
     width: 50,
     height: 50,
+    top:-2,
     borderRadius: 25,
     backgroundColor: "#3E5C76",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "white",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   actionText: {
     fontSize: 12,
@@ -529,7 +531,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   tabsContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: Platform.OS === 'web' ? "#D8E3E7" : "#FDFDFD",
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     maxHeight: 50,
@@ -610,6 +612,7 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 16,
+    paddingBottom:"10%",
     color: "#333",
     flex: 1,
   },

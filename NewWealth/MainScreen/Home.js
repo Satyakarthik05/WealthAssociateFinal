@@ -571,6 +571,7 @@ const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
+              style={styles.horizontalScrollView} 
             >
               {propertyCategories.regularProperties
                 .slice(0, 10)
@@ -805,7 +806,7 @@ const styles = StyleSheet.create({
   flex: 1,
   backgroundColor: "#D8E3E7",
   paddingHorizontal: 15,
-  top:10
+  top:20
 },
   loadingContainer: {
     flex: 1,

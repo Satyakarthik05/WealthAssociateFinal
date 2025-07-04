@@ -517,6 +517,7 @@ const ViewAllProperties = ({ route }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.pageNumbersContainer}
         >
           {Array.from(
@@ -650,6 +651,7 @@ const ViewAllProperties = ({ route }) => {
             ref={tabScrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.tabContainer}
             onScroll={handleTabScroll}
             scrollEventThrottle={16}
@@ -973,6 +975,8 @@ const ViewAllProperties = ({ route }) => {
           ref={scrollViewRef}
           style={styles.propertyScrollView}
           contentContainerStyle={styles.propertyGridContainer}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
         >
           {renderHeader()}
           {renderPagination()}
@@ -1051,10 +1055,10 @@ const pickerSelectStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+ 
   container: {
     flex: 1,
-    backgroundColor: "#D8E3E7",
-    paddingBottom: Platform.OS === "web" ? "45%" : "20%",
+    
   },
   contentContainer: {
     flex: 1,
@@ -1064,7 +1068,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#D8E3E7",
+   
   },
   searchFilterContainer: {
     flexDirection: "row",
@@ -1104,10 +1108,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 10,
     paddingHorizontal: 15,
+    left: Platform.OS === "web" ? "28%" : "undefined",
+    
   },
   tabContainer: {
     flexGrow: 1,
     paddingRight: 30,
+    
+    
   },
   tabButton: {
     paddingVertical: 8,
@@ -1119,6 +1127,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#3E5C76",
   },
   tabButtonText: {
+    
     color: "#666",
     fontWeight: "bold",
   },
@@ -1140,6 +1149,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
+    
   },
   webPropertyItem: {
     width: "32%", // Allows for 3 items per row with some spacing
@@ -1150,6 +1160,7 @@ const styles = StyleSheet.create({
   },
   mobilePropertyItem: {
     width: "100%",
+    
     marginBottom: 15,
   },
   propertyListContainer: {
@@ -1293,13 +1304,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 10,
-    backgroundColor: "#fff",
+    backgroundColor:  "#D8E3E7",
     marginBottom: 10,
+    
   },
   pageNumbersContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 5,
+    
   },
   pageButton: {
     paddingHorizontal: 15,
@@ -1309,7 +1322,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#3E5C76",
   },
   disabledButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: "#B0BCC2",
+    opacity: 1,
   },
   pageButtonText: {
     color: "#fff",
@@ -1335,6 +1349,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   propertyScrollView: {
+   
     width: "100%",
   },
   propertyGridContainer: {
