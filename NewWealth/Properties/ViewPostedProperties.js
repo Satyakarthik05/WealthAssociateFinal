@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deleteButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     padding: 8,
     borderRadius: 5,
     width: "48%",

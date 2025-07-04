@@ -23,11 +23,15 @@ import logo3 from "../../assets/commercial.jpg";
 import logo4 from "../../assets/villa.jpg";
 import logo5 from "../../assets/house.png";
 
-const numColumns = width > 800 ? 4 : 1;
-
 const RequestedProperties = () => {
   const { width } = useWindowDimensions();
   const isMobile = width < 450;
+  // MODIFIED: Calculate cards per row and card width
+  const cardsPerRow = isMobile ? 1 : 3;
+  const cardMargin = isMobile ? 8 : 6;
+  const cardWidth = isMobile
+    ? "90%"
+    : (Math.min(width, 1200) - 40 - cardsPerRow * cardMargin * 2) / cardsPerRow;
 
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,6 @@ const RequestedProperties = () => {
     Budget: "",
   });
 
-  // Function to get last 4 characters of ID
   const getLastFourChars = (id) => {
     return id ? id.slice(-4) : "N/A";
   };
@@ -69,7 +72,6 @@ const RequestedProperties = () => {
       );
       const data = await response.json();
 
-      // Check if data exists and is an array
       if (!data || !Array.isArray(data)) {
         setProperties([]);
         setLoading(false);
@@ -119,7 +121,7 @@ const RequestedProperties = () => {
       propertyTitle: property.title,
       propertyType: property.type,
       location: property.location,
-      Budget: property.budget.replace("₹", "").replace(/,/g, ""), // Remove ₹ and commas
+      Budget: property.budget.replace("₹", "").replace(/,/g, ""),
     });
     setEditModalVisible(true);
   };
@@ -151,13 +153,66 @@ const RequestedProperties = () => {
       if (response.ok) {
         console.log("Updated successfully:", result);
         setEditModalVisible(false);
-        fetchProperties(); // Refresh the list
+        fetchProperties();
       } else {
         console.error("Failed to update:", result.message);
       }
     } catch (error) {
       console.error("Error updating property:", error);
     }
+  };
+
+  // MODIFIED: New function to render card rows
+  const renderCardRows = () => {
+    const rows = [];
+    for (let i = 0; i < properties.length; i += cardsPerRow) {
+      const rowCards = properties.slice(i, i + cardsPerRow);
+      rows.push(
+        <View key={i} style={styles.cardRow}>
+          {rowCards.map((item) => (
+            <View
+              key={item.id}
+              style={[styles.card, { width: cardWidth, margin: cardMargin }]}
+            >
+              <Image source={item.image} style={styles.image} />
+              <View style={styles.details}>
+                <View style={styles.idContainer}>
+                  <View style={styles.idBadge}>
+                    <Text style={styles.idText}>
+                      ID: {getLastFourChars(item.id)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.text}>Type: {item.type}</Text>
+                <Text style={styles.text}>Constituency: {item.location}</Text>
+                <Text style={styles.text}>
+                  ExactLocation: {item.ExactLocation}
+                </Text>
+                <Text style={styles.text}>Budget: {item.budget}</Text>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => handleEditPress(item)}
+                >
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+          {/* Add empty views to fill the row */}
+          {rowCards.length < cardsPerRow &&
+            Array(cardsPerRow - rowCards.length)
+              .fill()
+              .map((_, index) => (
+                <View
+                  key={`empty-${index}`}
+                  style={[styles.emptyCard, { width: cardWidth }]}
+                />
+              ))}
+        </View>
+      );
+    }
+    return rows;
   };
 
   return (
@@ -180,46 +235,10 @@ const RequestedProperties = () => {
             </Text>
           </View>
         ) : (
-          <View style={styles.grid}>
-            {properties.map((item) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.card,
-                  { width: isMobile ? "90%" : (width - 80) / 5 },
-                  // each card gets 30% of row
-                  // Adjusts dynamically for 3 card
-                ]}
-              >
-                <Image source={item.image} style={styles.image} />
-                <View style={styles.details}>
-                  <View style={styles.idContainer}>
-                    <View style={styles.idBadge}>
-                      <Text style={styles.idText}>
-                        ID: {getLastFourChars(item.id)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.text}>Type: {item.type}</Text>
-                  <Text style={styles.text}>Constituency: {item.location}</Text>
-                  <Text style={styles.text}>
-                    ExactLocation: {item.ExactLocation}
-                  </Text>
-                  <Text style={styles.text}>Budget: {item.budget}</Text>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditPress(item)}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
+          // MODIFIED: Changed grid to gridContainer and use renderCardRows
+          <View style={styles.gridContainer}>{renderCardRows()}</View>
         )}
 
-        {/* Edit Property Modal */}
         <Modal visible={editModalVisible} animationType="slide" transparent>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -277,12 +296,12 @@ const RequestedProperties = () => {
   );
 };
 
+// MODIFIED: Updated styles
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    // padding: 20,
     backgroundColor: "#D8E3E7",
-    alignItems: "stretch",
+    alignItems: "center",
     paddingBottom: "29%",
   },
   heading: {
@@ -292,25 +311,30 @@ const styles = StyleSheet.create({
     color: "#3E5C76",
     textAlign: "center",
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 16, // works in React Native Web for consistent spacing
-    paddingHorizontal: 20,
+  // MODIFIED: New grid container style
+  gridContainer: {
+    width: "100%",
     maxWidth: 1200,
+    paddingHorizontal: 8,
     alignSelf: "center",
   },
-
+  // MODIFIED: New card row style
+  cardRow: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    marginBottom: 16,
+  },
   card: {
     backgroundColor: "white",
     borderRadius: 10,
-    margin: 8,
     padding: 10,
     elevation: 3,
     position: "relative",
-    flexGrow: 1,
-    alignSelf: "flex-start",
+  
+  },
+  // MODIFIED: New empty card style
+  emptyCard: {
+    padding: 10,
   },
   image: {
     width: "100%",
@@ -326,7 +350,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   idBadge: {
-    backgroundColor: "#A9BCD0",
+    backgroundColor: "#2B2D42",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -361,7 +385,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#D8E3E7",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: "#D8E3E7",
