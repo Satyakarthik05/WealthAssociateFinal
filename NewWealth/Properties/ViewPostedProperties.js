@@ -38,6 +38,11 @@ const IS_WEB = Platform.OS === "web";
 const IS_SMALL_SCREEN = width < 450;
 
 const ViewPostedProperties = () => {
+  // In your component constants (near the top):
+  const cardMargin = IS_SMALL_SCREEN ? 8 : 10;
+  const cardWidth = IS_SMALL_SCREEN
+    ? "100%"
+    : (Math.min(width, 1200) - 3 * cardMargin * 2 - 40) / 3; // 40 for container padding
   const navigation = useNavigation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -915,6 +920,7 @@ const ViewPostedProperties = () => {
           )}
 
           {renderPagination()}
+          <View style={{ height: Platform.OS === "ios" ? 80 : 60 }} />
         </ScrollView>
 
         {renderFilterModal()}
@@ -1026,6 +1032,7 @@ const pickerSelectStyles = StyleSheet.create({
     paddingRight: 30,
     backgroundColor: "#D8E3E7",
     marginBottom: 10,
+    paddingBottom: 70,
   },
   inputAndroid: {
     fontSize: 16,
@@ -1065,9 +1072,11 @@ const styles = StyleSheet.create({
   },
   propertyScrollView: {
     flex: 1,
+    paddingBottom:30
   },
   propertyGridContainer: {
     flexGrow: 1,
+    paddingBottom: 80,
   },
   // Web view styles
   webPropertyGrid: {
@@ -1075,6 +1084,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "flex-start",
     paddingHorizontal: IS_SMALL_SCREEN ? 5 : 10,
+    paddingBottom: 80,
   },
   webCardContainer: {
     width: IS_SMALL_SCREEN ? "100%" : "31%",

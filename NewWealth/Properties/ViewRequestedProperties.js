@@ -330,7 +330,6 @@ const styles = StyleSheet.create({
     padding: 10,
     elevation: 3,
     position: "relative",
-  
   },
   // MODIFIED: New empty card style
   emptyCard: {

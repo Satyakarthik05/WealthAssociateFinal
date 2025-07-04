@@ -22,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import logo11 from "../../assets/logo.png";
 
 const isWeb = Platform.OS === "web";
+const isIOS = Platform.OS === "ios";
 
 const ViewAllRequestedProperties = ({ navigation }) => {
   const [propertiess, setPropertiess] = useState([]);
@@ -356,6 +357,8 @@ const ViewAllRequestedProperties = ({ navigation }) => {
           <TouchableOpacity
             style={styles.callButton}
             onPress={() => Linking.openURL(`tel:${item.contactNumber}`)}
+            activeOpacity={0.6}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
             <Ionicons name="call" size={16} color="white" />
             <Text style={styles.callButtonText}>Call Client</Text>
@@ -368,9 +371,35 @@ const ViewAllRequestedProperties = ({ navigation }) => {
           setSelectedProperty(item);
           setIsModalVisible(true);
         }}
+        activeOpacity={0.6}
       >
         <Text style={styles.buttonText}>I Have</Text>
       </TouchableOpacity>
+    </View>
+  );
+
+  const renderFilterPicker = () => (
+    <View
+      style={[
+        styles.filterContainer,
+        windowDimensions.width < 450 && styles.smallScreenFilterContainer,
+        isIOS && styles.iosPickerContainer,
+      ]}
+    >
+      <Picker
+        selectedValue={filterType}
+        style={styles.filterPicker}
+        onValueChange={handleFilterChange}
+        mode="dropdown"
+        itemStyle={isIOS ? styles.iosPickerItem : {}}
+      >
+        <Picker.Item label="All Types" value="all" />
+        <Picker.Item label="Land" value="land" />
+        <Picker.Item label="Residential" value="residential" />
+        <Picker.Item label="Commercial" value="commercial" />
+        <Picker.Item label="Villa" value="villa" />
+        <Picker.Item label="Apartment" value="apartment" />
+      </Picker>
     </View>
   );
 
@@ -404,25 +433,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
             onChangeText={handleSearch}
           />
         </View>
-        <View
-          style={[
-            styles.filterContainer,
-            windowDimensions.width < 450 && styles.smallScreenFilterContainer,
-          ]}
-        >
-          <Picker
-            selectedValue={filterType}
-            style={styles.filterPicker}
-            onValueChange={handleFilterChange}
-          >
-            <Picker.Item label="All Types" value="all" />
-            <Picker.Item label="Land" value="land" />
-            <Picker.Item label="Residential" value="residential" />
-            <Picker.Item label="Commercial" value="commercial" />
-            <Picker.Item label="Villa" value="villa" />
-            <Picker.Item label="Apartment" value="apartment" />
-          </Picker>
-        </View>
+        {renderFilterPicker()}
       </View>
 
       {loading ? (
@@ -470,6 +481,8 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                   onPress={() =>
                     Linking.openURL(`tel:${referredInfo.mobileNumber}`)
                   }
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 >
                   <Ionicons name="call" size={20} color="white" />
                   <Text style={styles.callButtonText}>Call Now</Text>
@@ -490,6 +503,8 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                     onPress={() =>
                       Linking.openURL(`tel:${selectedProperty.contactNumber}`)
                     }
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                   >
                     <Ionicons name="call" size={20} color="white" />
                     <Text style={styles.callButtonText}>Contact Client</Text>
@@ -501,6 +516,8 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                     onPress={() =>
                       Linking.openURL(`mailto:${selectedProperty.email}`)
                     }
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                   >
                     <Ionicons name="mail" size={20} color="white" />
                     <Text style={styles.callButtonText}>Email Client</Text>
@@ -512,6 +529,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setIsModalVisible(false)}
+                activeOpacity={0.6}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -523,6 +541,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                   }
                   setIsModalVisible(false);
                 }}
+                activeOpacity={0.6}
               >
                 <Text style={styles.modalButtonText}>Confirm</Text>
               </TouchableOpacity>
@@ -573,14 +592,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginRight: isWeb ? 15 : 0,
     marginBottom: isWeb ? 0 : 15,
+    height: isIOS ? 44 : 50,
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: isIOS ? 40 : 50,
     fontSize: 16,
+    paddingVertical: isIOS ? 8 : 0,
   },
   filterContainer: {
     width: isWeb ? 200 : "100%",
@@ -588,9 +609,21 @@ const styles = StyleSheet.create({
   smallScreenFilterContainer: {
     width: "100%",
   },
+  iosPickerContainer: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    overflow: "hidden",
+    marginTop: isWeb ? 0 : 10,
+  },
+  iosPickerItem: {
+    fontSize: 16,
+    height: 120,
+  },
   filterPicker: {
-    height: 60,
+    height: isIOS ? 44 : 60,
     width: "100%",
+    color: isIOS ? "#000" : undefined,
   },
   loadingContainer: {
     flex: 1,
@@ -736,6 +769,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    maxHeight: isIOS ? "80%" : undefined,
   },
   smallScreenModalContainer: {
     width: "90%",
@@ -775,6 +809,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     width: "40%",
     alignItems: "center",
+    marginHorizontal: isIOS ? 5 : 0,
   },
   cancelButton: {
     backgroundColor: "#f44336",
