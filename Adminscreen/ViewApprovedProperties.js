@@ -13,7 +13,6 @@ import {
   Modal,
   TextInput,
   Linking,
-  Share,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../data/ApiUrl";
@@ -39,6 +38,7 @@ const ViewAllProperties = () => {
   const [propertyTypeSearch, setPropertyTypeSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [idSearch, setIdSearch] = useState("");
+  const [dynamicFields, setDynamicFields] = useState({});
 
   const fetchPropertyTypes = async () => {
     try {
@@ -106,9 +106,14 @@ const ViewAllProperties = () => {
     return matchesId;
   });
 
-  // Improved image handling function
   const renderPropertyImage = (property) => {
-    // If 'newImageUrls' is an array with images
+    const imageStyle = {
+      width: 300,
+      height: 200,
+      borderRadius: 8,
+      marginRight: 10,
+    };
+
     if (
       Array.isArray(property.newImageUrls) &&
       property.newImageUrls.length > 0
@@ -122,41 +127,45 @@ const ViewAllProperties = () => {
           {property.newImageUrls.map((imageUrl, index) => (
             <Image
               key={index}
-              source={{
-                uri: imageUrl, // Directly using S3 URLs
-              }}
-              style={styles.image}
+              source={{ uri: imageUrl }}
+              style={imageStyle}
               resizeMode="cover"
             />
           ))}
         </ScrollView>
       );
     }
-
-    // Single image (string)
     else if (
       property.newImageUrls &&
       typeof property.newImageUrls === "string"
     ) {
       return (
-        <Image
-          source={{
-            uri: property.newImageUrls,
-          }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.imageScroll}
+        >
+          <Image
+            source={{ uri: property.newImageUrls }}
+            style={imageStyle}
+            resizeMode="cover"
+          />
+        </ScrollView>
       );
     }
-
-    // Fallback image
     else {
       return (
-        <Image
-          source={require("../assets/logo.png")}
-          style={styles.image}
-          resizeMode="contain"
-        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.imageScroll}
+        >
+          <Image
+            source={require("../assets/logo.png")}
+            style={imageStyle}
+            resizeMode="contain"
+          />
+        </ScrollView>
       );
     }
   };
@@ -217,6 +226,18 @@ const ViewAllProperties = () => {
       price: property.price.toString(),
       photo: property.photo,
     });
+    
+    const dynamicData = {};
+    Object.entries(property).forEach(([key, value]) => {
+      if (
+        !["_id", "propertyType", "location", "price", "photo", "propertyDetails", 
+           "PostedBy", "PostedUserType", "Constituency", "newImageUrls"].includes(key)
+      ) {
+        dynamicData[key] = value;
+      }
+    });
+    setDynamicFields(dynamicData);
+    
     setIsModalVisible(true);
   };
 
@@ -227,6 +248,11 @@ const ViewAllProperties = () => {
 
   const handleSave = async () => {
     try {
+      const allFields = {
+        ...editedDetails,
+        ...dynamicFields
+      };
+
       const response = await fetch(
         `${API_URL}/properties/approveupdate/${selectedProperty._id}`,
         {
@@ -234,7 +260,7 @@ const ViewAllProperties = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(editedDetails),
+          body: JSON.stringify(allFields),
         }
       );
 
@@ -242,7 +268,7 @@ const ViewAllProperties = () => {
       if (response.ok) {
         const updatedProperties = properties.map((item) =>
           item._id === selectedProperty._id
-            ? { ...item, ...editedDetails }
+            ? { ...item, ...allFields }
             : item
         );
         setProperties(updatedProperties);
@@ -254,6 +280,34 @@ const ViewAllProperties = () => {
     } catch (error) {
       console.error("Error updating property:", error);
       Alert.alert("Error", "An error occurred while updating the property.");
+    }
+  };
+
+  const handleDynamicFieldChange = (key, value, nestedKey = null, deepKey = null) => {
+    if (nestedKey && deepKey) {
+      setDynamicFields(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [nestedKey]: {
+            ...prev[key]?.[nestedKey],
+            [deepKey]: value
+          }
+        }
+      }));
+    } else if (nestedKey) {
+      setDynamicFields(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [nestedKey]: value
+        }
+      }));
+    } else {
+      setDynamicFields(prev => ({
+        ...prev,
+        [key]: value
+      }));
     }
   };
 
@@ -307,7 +361,6 @@ const ViewAllProperties = () => {
     details += `*Posted By:* ${property.PostedBy || "N/A"}\n`;
     details += `*User Type:* ${property.PostedUserType || "N/A"}\n\n`;
 
-    // Add dynamic data
     details += `*Specifications:*\n`;
     Object.entries(property).forEach(([key, value]) => {
       if (
@@ -321,6 +374,7 @@ const ViewAllProperties = () => {
           "PostedBy",
           "PostedUserType",
           "Constituency",
+          "newImageUrls"
         ].includes(key)
       ) {
         return;
@@ -376,25 +430,8 @@ const ViewAllProperties = () => {
     }
   };
 
-  const renderDynamicData = (data) => {
+  const renderEditableDynamicData = (data) => {
     if (!data) return null;
-
-    if (Array.isArray(data)) {
-      return (
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Items:</Text>
-          <View style={styles.arrayContainer}>
-            {data.map((item, index) => (
-              <Text key={index} style={styles.detailValue}>
-                {typeof item === "object"
-                  ? JSON.stringify(item)
-                  : item.toString()}
-              </Text>
-            ))}
-          </View>
-        </View>
-      );
-    }
 
     return Object.entries(data).map(([key, value]) => {
       if (value === null || value === undefined || value === "") return null;
@@ -410,6 +447,7 @@ const ViewAllProperties = () => {
           "PostedBy",
           "PostedUserType",
           "Constituency",
+          "newImageUrls"
         ].includes(key)
       ) {
         return null;
@@ -424,7 +462,154 @@ const ViewAllProperties = () => {
         return (
           <View key={key} style={styles.nestedSection}>
             <Text style={styles.nestedTitle}>{formattedKey}:</Text>
-            {renderDynamicData(value)}
+            {Object.entries(value).map(([nestedKey, nestedValue]) => {
+              if (nestedValue === null || nestedValue === undefined || nestedValue === "") return null;
+              
+              const formattedNestedKey = nestedKey
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase());
+
+              if (typeof nestedValue === "object" && !Array.isArray(nestedValue)) {
+                return (
+                  <View key={nestedKey} style={styles.nestedSection}>
+                    <Text style={styles.nestedTitle}>{formattedNestedKey}:</Text>
+                    {Object.entries(nestedValue).map(([deepKey, deepValue]) => (
+                      <View key={deepKey} style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>
+                          {deepKey.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}:
+                        </Text>
+                        <TextInput
+                          style={styles.detailInput}
+                          value={deepValue?.toString()}
+                          onChangeText={(text) => handleDynamicFieldChange(key, { ...value, [nestedKey]: { ...value[nestedKey], [deepKey]: text } })}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                );
+              }
+
+              return (
+                <View key={nestedKey} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{formattedNestedKey}:</Text>
+                  <TextInput
+                    style={styles.detailInput}
+                    value={nestedValue?.toString()}
+                    onChangeText={(text) => handleDynamicFieldChange(key, { ...value, [nestedKey]: text })}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        );
+      }
+
+      if (Array.isArray(value)) {
+        return (
+          <View key={key} style={styles.detailRow}>
+            <Text style={styles.detailLabel}>{formattedKey}:</Text>
+            <TextInput
+              style={[styles.detailInput, { height: 60 }]}
+              value={JSON.stringify(value)}
+              onChangeText={(text) => {
+                try {
+                  const parsed = JSON.parse(text);
+                  if (Array.isArray(parsed)) {
+                    handleDynamicFieldChange(key, parsed);
+                  }
+                } catch (e) {
+                  console.error("Invalid JSON array");
+                }
+              }}
+              multiline
+            />
+          </View>
+        );
+      }
+
+      return (
+        <View key={key} style={styles.detailRow}>
+          <Text style={styles.detailLabel}>{formattedKey}:</Text>
+          <TextInput
+            style={styles.detailInput}
+            value={value?.toString()}
+            onChangeText={(text) => handleDynamicFieldChange(key, text)}
+          />
+        </View>
+      );
+    });
+  };
+
+  const renderDynamicData = (data) => {
+    if (!data) return null;
+
+    return Object.entries(data).map(([key, value]) => {
+      if (value === null || value === undefined || value === "") return null;
+
+      if (
+        [
+          "_id",
+          "propertyType",
+          "location",
+          "price",
+          "photo",
+          "propertyDetails",
+          "PostedBy",
+          "PostedUserType",
+          "Constituency",
+          "newImageUrls"
+        ].includes(key)
+      ) {
+        return null;
+      }
+
+      const formattedKey = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (str) => str.toUpperCase())
+        .replace(/([a-z])([A-Z])/g, "$1 $2");
+
+      if (typeof value === "object" && !Array.isArray(value)) {
+        return (
+          <View key={key} style={styles.nestedSection}>
+            <Text style={styles.nestedTitle}>{formattedKey}:</Text>
+            {Object.entries(value).map(([nestedKey, nestedValue]) => {
+              if (nestedValue === null || nestedValue === undefined || nestedValue === "") return null;
+              
+              const formattedNestedKey = nestedKey
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase());
+
+              if (typeof nestedValue === "object" && !Array.isArray(nestedValue)) {
+                return (
+                  <View key={nestedKey} style={styles.nestedSection}>
+                    <Text style={styles.nestedTitle}>{formattedNestedKey}:</Text>
+                    {Object.entries(nestedValue).map(([deepKey, deepValue]) => (
+                      <View key={deepKey} style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>
+                          {deepKey.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}:
+                        </Text>
+                        <Text style={styles.detailValue}>
+                          {typeof deepValue === "boolean"
+                            ? deepValue ? "Yes" : "No"
+                            : deepValue?.toString()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              }
+
+              return (
+                <View key={nestedKey} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{formattedNestedKey}:</Text>
+                  <Text style={styles.detailValue}>
+                    {typeof nestedValue === "boolean"
+                      ? nestedValue ? "Yes" : "No"
+                      : nestedValue?.toString()}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         );
       }
@@ -437,7 +622,7 @@ const ViewAllProperties = () => {
               {value.map((item, index) => (
                 <Text key={index} style={styles.detailValue}>
                   {typeof item === "object"
-                    ? JSON.stringify(item)
+                    ? JSON.stringify(item, null, 2)
                     : item.toString()}
                 </Text>
               ))}
@@ -450,10 +635,8 @@ const ViewAllProperties = () => {
         <View key={key} style={styles.detailRow}>
           <Text style={styles.detailLabel}>{formattedKey}:</Text>
           <Text style={styles.detailValue}>
-            {value.toString() === "true"
-              ? "Yes"
-              : value.toString() === "false"
-              ? "No"
+            {typeof value === "boolean"
+              ? value ? "Yes" : "No"
               : value.toString()}
           </Text>
         </View>
@@ -501,7 +684,6 @@ const ViewAllProperties = () => {
 
               return (
                 <View key={item._id} style={styles.card}>
-                  {/* Updated image rendering */}
                   {renderPropertyImage(item)}
 
                   <View style={styles.details}>
@@ -555,81 +737,89 @@ const ViewAllProperties = () => {
             onRequestClose={() => setIsModalVisible(false)}
           >
             <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Edit Property</Text>
+              <ScrollView 
+                contentContainerStyle={styles.modalContentScroll}
+                style={styles.modalScrollView}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Edit Property</Text>
 
-                <View style={styles.dropdownContainer}>
-                  <Text style={styles.dropdownLabel}>Property Type:</Text>
-                  <View style={styles.dropdown}>
-                    <Picker
-                      selectedValue={editedDetails.propertyType}
-                      onValueChange={(value) =>
-                        setEditedDetails({
-                          ...editedDetails,
-                          propertyType: value,
-                        })
-                      }
-                      style={styles.picker}
+                  <View style={styles.dropdownContainer}>
+                    <Text style={styles.dropdownLabel}>Property Type:</Text>
+                    <View style={styles.dropdown}>
+                      <Picker
+                        selectedValue={editedDetails.propertyType}
+                        onValueChange={(value) =>
+                          setEditedDetails({
+                            ...editedDetails,
+                            propertyType: value,
+                          })
+                        }
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="Select Property Type" value="" />
+                        {filteredPropertyTypes.map((type) => (
+                          <Picker.Item
+                            key={type._id}
+                            label={type.name}
+                            value={type.name}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={styles.dropdownContainer}>
+                    <Text style={styles.dropdownLabel}>Location:</Text>
+                    <View style={styles.dropdown}>
+                      <Picker
+                        selectedValue={editedDetails.location}
+                        onValueChange={(value) =>
+                          setEditedDetails({ ...editedDetails, location: value })
+                        }
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="Select Location" value="" />
+                        {filteredConstituencies.map((assembly, index) => (
+                          <Picker.Item
+                            key={`${assembly._id}-${index}`}
+                            label={assembly.name}
+                            value={assembly.name}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Price"
+                    value={editedDetails.price}
+                    onChangeText={(text) =>
+                      setEditedDetails({ ...editedDetails, price: text })
+                    }
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={styles.sectionTitle}>Property Specifications</Text>
+                  {renderEditableDynamicData(dynamicFields)}
+
+                  <View style={styles.modalButtonContainer}>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.cancelButton]}
+                      onPress={() => setIsModalVisible(false)}
                     >
-                      <Picker.Item label="Select Property Type" value="" />
-                      {filteredPropertyTypes.map((type) => (
-                        <Picker.Item
-                          key={type._id}
-                          label={type.name}
-                          value={type.name}
-                        />
-                      ))}
-                    </Picker>
+                      <Text style={styles.modalButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.saveButton]}
+                      onPress={handleSave}
+                    >
+                      <Text style={styles.modalButtonText}>Save</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                <View style={styles.dropdownContainer}>
-                  <Text style={styles.dropdownLabel}>Location:</Text>
-                  <View style={styles.dropdown}>
-                    <Picker
-                      selectedValue={editedDetails.location}
-                      onValueChange={(value) =>
-                        setEditedDetails({ ...editedDetails, location: value })
-                      }
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select Location" value="" />
-                      {filteredConstituencies.map((assembly, index) => (
-                        <Picker.Item
-                          key={`${assembly._id}-${index}`}
-                          label={assembly.name}
-                          value={assembly.name}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Price"
-                  value={editedDetails.price}
-                  onChangeText={(text) =>
-                    setEditedDetails({ ...editedDetails, price: text })
-                  }
-                  keyboardType="numeric"
-                />
-
-                <View style={styles.modalButtonContainer}>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.cancelButton]}
-                    onPress={() => setIsModalVisible(false)}
-                  >
-                    <Text style={styles.modalButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.saveButton]}
-                    onPress={handleSave}
-                  >
-                    <Text style={styles.modalButtonText}>Save</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </ScrollView>
             </View>
           </Modal>
 
@@ -647,7 +837,6 @@ const ViewAllProperties = () => {
                 {selectedPropertyDetails && (
                   <>
                     <View style={styles.detailImageContainer}>
-                      {/* Updated image rendering in details modal */}
                       {renderPropertyImage(selectedPropertyDetails)}
                     </View>
 
@@ -851,11 +1040,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
+  modalScrollView: {
+    width: Platform.OS === "web" ? "50%" : "90%",
+    maxHeight: "80%",
+  },
+  modalContentScroll: {
+    paddingBottom: 20,
+  },
   modalContent: {
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
-    width: Platform.OS === "web" ? "50%" : "90%",
   },
   detailsModalContent: {
     backgroundColor: "#fff",
@@ -937,11 +1132,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
-  detailImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-  },
   detailsScrollView: {
     maxHeight: Platform.OS === "web" ? 400 : 300,
   },
@@ -973,6 +1163,14 @@ const styles = StyleSheet.create({
     width: "60%",
     textAlign: "right",
   },
+  detailInput: {
+    width: "60%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 4,
+    padding: 5,
+    backgroundColor: "#fff",
+  },
   nestedSection: {
     marginLeft: 10,
     marginTop: 5,
@@ -992,6 +1190,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 15,
+    marginBottom: 10,
+    color: "#3498db",
   },
 });
 
