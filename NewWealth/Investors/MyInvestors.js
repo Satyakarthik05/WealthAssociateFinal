@@ -366,6 +366,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
     paddingBottom: 90,
+    borderRadius: 30
   },
   scrollContainer: {
     width: "100%",
