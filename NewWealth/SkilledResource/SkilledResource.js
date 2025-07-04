@@ -85,7 +85,9 @@ export default function SkilledLaboursScreen() {
   const handleDelete = async (id) => {
     const confirmDelete = async () => {
       if (Platform.OS === "web") {
-        return window.confirm("Are you sure you want to delete this skilled labour?");
+        return window.confirm(
+          "Are you sure you want to delete this skilled labour?"
+        );
       } else {
         return new Promise((resolve) => {
           Alert.alert(
@@ -151,9 +153,9 @@ export default function SkilledLaboursScreen() {
       return (
         <View style={styles.webGrid}>
           {labours.map((labour) => (
-            <LabourCard 
-              key={labour._id} 
-              labour={labour} 
+            <LabourCard
+              key={labour._id}
+              labour={labour}
               onPress={handleLabourPress}
               onDelete={handleDelete}
               userType={userType}
@@ -164,9 +166,9 @@ export default function SkilledLaboursScreen() {
       );
     } else {
       return labours.map((labour) => (
-        <LabourCard 
-          key={labour._id} 
-          labour={labour} 
+        <LabourCard
+          key={labour._id}
+          labour={labour}
           onPress={handleLabourPress}
           onDelete={handleDelete}
           userType={userType}
@@ -190,9 +192,7 @@ export default function SkilledLaboursScreen() {
             style={styles.loader}
           />
         ) : labours.length > 0 ? (
-          <View style={styles.gridContainer}>
-            {renderLabourCards()}
-          </View>
+          <View style={styles.gridContainer}>{renderLabourCards()}</View>
         ) : (
           <Text style={styles.noLaboursText}>
             {userType === "CoreMember" ||
@@ -311,20 +311,28 @@ const LabourCard = ({ labour, onPress, onDelete, userType, deletingId }) => {
           <>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>District:</Text>
-              <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+              <Text
+                style={styles.infoValue}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {labour.District || "N/A"}
               </Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Constituency:</Text>
-              <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">
+              <Text
+                style={styles.infoValue}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {labour.Contituency || "N/A"}
               </Text>
             </View>
           </>
         )}
       </View>
-      
+
       <TouchableOpacity
         style={styles.deleteButton}
         onPress={() => onDelete(labour._id)}
@@ -351,7 +359,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     width: "100%",
-    paddingHorizontal: isSmallWeb ? 5 : (isWeb ? 20 : 10),
+    paddingHorizontal: isSmallWeb ? 5 : isWeb ? 20 : 10,
   },
   loader: {
     marginTop: 40,
@@ -446,7 +454,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    width: "100%"
+    width: "100%",
   },
   deleteButtonText: {
     color: "#fff",

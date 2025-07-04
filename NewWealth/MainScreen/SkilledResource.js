@@ -192,7 +192,7 @@ const SkilledResources = () => {
       image: drainage,
       category: "Civil",
     },
-    
+
     {
       id: 29,
       name: "Tunnel Workers",
@@ -230,8 +230,8 @@ const SkilledResources = () => {
       onPress={() => handleCategoryPress(item)}
     >
       <View style={styles.imageContainer}>
-        <Image 
-          source={item.image} 
+        <Image
+          source={item.image}
           style={styles.categoryImage}
           resizeMode="cover"
         />
@@ -248,9 +248,12 @@ const SkilledResources = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <TouchableOpacity onPress={() => navigation.goBack() }style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color="#3E5C76" />
-                </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#3E5C76" />
+          </TouchableOpacity>
           <Text style={styles.title}>Skilled Resources</Text>
           <TouchableOpacity
             style={styles.addButton}
@@ -289,7 +292,7 @@ const SkilledResources = () => {
         data={filteredCategories}
         renderItem={renderCategoryCard}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={Platform.OS === 'web' ? 3 : 2}
+        numColumns={Platform.OS === "web" ? 3 : 2}
         contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -309,8 +312,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D8E3E7",
-    padding: Platform.OS === 'web' ? 20 : 15,
-    paddingBottom: Platform.OS === 'web' ? "4%" : "20%",
+    padding: Platform.OS === "web" ? 20 : 15,
+    paddingBottom: Platform.OS === "web" ? "4%" : "20%",
     width: Platform.OS === "web" ? "100%" : "100%",
     alignSelf: "center",
   },
@@ -327,7 +330,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     color: "#2c3e50",
-    // 
+    //
   },
   addButton: {
     backgroundColor: "#3E5C76",
@@ -339,16 +342,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-     marginTop:"15",
-     marginLeft:"5",
-
+    marginTop: "15",
+    marginLeft: "5",
   },
   addButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "600",
-    textAlign:"center"
-   
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
@@ -395,20 +396,20 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     height: 120,
-    width: '100%',
-    position: 'relative',
+    width: "100%",
+    position: "relative",
   },
   categoryImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imageOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
   textContainer: {
     padding: 15,

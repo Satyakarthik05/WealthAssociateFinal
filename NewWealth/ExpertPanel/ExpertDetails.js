@@ -136,7 +136,7 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
           <Text style={styles.header}>{expertType} Experts</Text>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#0000ff" />
+            <ActivityIndicator size="large" color="#3E5C76" />
           ) : error ? (
             <Text style={styles.errorText}>{error}</Text>
           ) : experts.length > 0 ? (

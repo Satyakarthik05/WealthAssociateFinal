@@ -644,7 +644,7 @@ const RegularPropertiesScreen = () => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#E91E63"
+                          color="#3E5C76"
                         />
                       )}
                     />
@@ -671,7 +671,7 @@ const RegularPropertiesScreen = () => {
                         <Ionicons
                           name="chevron-down"
                           size={20}
-                          color="#E91E63"
+                          color="#3E5C76"
                         />
                       )}
                     />
@@ -749,7 +749,7 @@ const RegularPropertiesScreen = () => {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#E91E63" />
+        <ActivityIndicator size="large" color="#3E5C76" />
       </View>
     );
   }
@@ -1021,7 +1021,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   resetFilterButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#3E5C76",
     flex: 1,
     marginRight: 10,
     padding: 12,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   applyFilterButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     flex: 1,
     padding: 12,
     borderRadius: 8,
@@ -1042,7 +1042,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetFilterButtonText: {
-    color: "#666",
+    color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,

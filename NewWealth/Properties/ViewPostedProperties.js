@@ -1415,7 +1415,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   resetFilterButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     padding: 15,
     borderRadius: 10,
     flex: 1,

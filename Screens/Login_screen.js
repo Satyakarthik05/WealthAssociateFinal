@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
- 
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -434,7 +433,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#D8E3E7",
   },
   container: {
     flex: 1,
@@ -467,7 +466,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingRight: 24,
     borderRightWidth: 1,
-    borderRightColor: "#E5E7EB",
+    borderRightColor: "#D8E3E7",
   },
   logoContainer: {
     width: "100%",
@@ -535,7 +534,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
     borderWidth: 1,
     borderColor: "#E5E7EB",
     borderRadius: 12,
@@ -599,7 +598,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   offlineContainer: {
-    backgroundColor: "#FFEBEE",
+    backgroundColor: "#D8E3E7",
     padding: 10,
     borderRadius: 8,
     marginBottom: 16,
