@@ -52,8 +52,7 @@ const ViewAssignedProperties = ({ route }) => {
   const [executiveId,setExecutiveId]=useState(null);
   const [ExecutiveName,setExecutiveName]=useState(null)
 
-  // Get the executive ID from route params
-  // const executiveId = route.params?.id;
+
 
     useEffect(() => {
     const getExecutiveInfo = async () => {
@@ -76,7 +75,6 @@ const ViewAssignedProperties = ({ route }) => {
     // fetchAllAgents();
   }, []);
 
-  // Get auth token
   const getAuthToken = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -620,11 +618,15 @@ const ViewAssignedProperties = ({ route }) => {
                 <Text style={styles.sectionTitle}>Other Properties ({otherProperties.length})</Text>
               </View>
               
-              {filteredProperties
-                .filter(prop => prop.assignedExecutive !== executiveId)
-                .map((property) => (
-                  <View key={property._id} style={styles.card}>
-                    {renderPropertyImage(property)}
+             {filteredProperties.map((property) => (
+  <View 
+    key={property._id} 
+    style={[
+      styles.card, 
+      property.assignedExecutive === executiveId && styles.assignedCard
+    ]}
+  >
+    {renderPropertyImage(property)}
 
                     <View style={styles.details}>
                       <View style={styles.idContainer}>
@@ -653,21 +655,40 @@ const ViewAssignedProperties = ({ route }) => {
                         </Text>
                       )}
                     </View>
-                    <View style={styles.buttonContainer}>
-                      <TouchableOpacity
-                        style={[styles.button, styles.editButton]}
-                        onPress={() => handleEdit(property)}
-                      >
-                        <Text style={styles.buttonText}>Edit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.button, styles.updateButton]}
-                        onPress={() => handleUpdate(property)}
-                      >
-                        <Text style={styles.buttonText}>Update</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                   <View style={styles.buttonContainer}>
+      {/* Edit Button */}
+      <TouchableOpacity
+        style={[styles.button, styles.editButton]}
+        onPress={() => handleEdit(property)}
+      >
+        <Text style={styles.buttonText}>Edit</Text>
+      </TouchableOpacity>
+
+      {/* Update Button */}
+      <TouchableOpacity
+        style={[styles.button, styles.updateButton]}
+        onPress={() => handleUpdate(property)}
+      >
+        <Text style={styles.buttonText}>Update</Text>
+      </TouchableOpacity>
+
+      {/* Delete Button (Visible to All) */}
+      <TouchableOpacity
+        style={[styles.button, styles.deleteButton]}
+        onPress={() => handleDelete(property._id)}
+      >
+        <Text style={styles.buttonText}>Delete</Text>
+      </TouchableOpacity>
+
+      {/* Approve Button (Visible to All) */}
+      <TouchableOpacity
+        style={[styles.button, styles.approveButton]}
+        onPress={() => handleApprove(property._id)}
+      >
+        <Text style={styles.buttonText}>Approve</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
                 ))}
             </>
           ) : (

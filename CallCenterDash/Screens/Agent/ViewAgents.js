@@ -675,13 +675,9 @@ export default function ViewAgents() {
               agent.assignedExecutive !== executiveId && styles.disabledButton,
             ]}
             onPress={() => {
-              if (agent.assignedExecutive === executiveId) {
                 handleMarkAsDone(agent._id);
-              } else {
-                alert("You are not assigned to this agent.");
-              }
-            }}
-            // disabled={agent.assignedExecutive !== executiveId}
+              }}
+            
           >
             <Text style={styles.buttonText}>Done</Text>
           </TouchableOpacity>
