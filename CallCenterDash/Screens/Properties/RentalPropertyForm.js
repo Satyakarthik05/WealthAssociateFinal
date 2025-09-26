@@ -16,7 +16,7 @@ import { API_URL } from "../../../data/ApiUrl";
 
 const { width } = Dimensions.get("window");
 
-// Web-compatible checkbox component
+// Updated PlatformCheckbox component
 const PlatformCheckbox = ({ label, status, onPress }) => {
   if (Platform.OS === "web") {
     return (
@@ -31,7 +31,16 @@ const PlatformCheckbox = ({ label, status, onPress }) => {
       </View>
     );
   }
-  return <Checkbox.Item label={label} status={status} onPress={onPress} />;
+  return (
+    <View style={styles.checkboxItem}>
+      <Checkbox
+        status={status}
+        onPress={onPress}
+        color="#0D47A1"
+      />
+      <Text style={styles.checkboxLabel}>{label}</Text>
+    </View>
+  );
 };
 
 const RentalPropertyForm = ({ closeModal, propertyId, initialData }) => {
@@ -438,6 +447,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#64B5F6",
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  checkboxLabel: {
+    marginLeft: 8,
+    fontSize: 16,
   },
   buttonContainer: {
     flexDirection: "row",

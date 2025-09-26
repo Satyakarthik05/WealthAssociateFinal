@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Text,
   Animated,
+  Easing,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
@@ -24,7 +25,7 @@ import RequestedPropertyCard from "../components/home/RequestedPropertyCard";
 import SectionHeader from "../components/home/SectionHeader";
 import PropertyModal from "../components/home/PropertyModal";
 import LazyImage from "../components/home/LazyImage";
-import Icon from 'react-native-vector-icons/FontAwesome';
+import Icon from "react-native-vector-icons/FontAwesome";
 
 const { width } = Dimensions.get("window");
 
@@ -38,6 +39,8 @@ const HomeScreen = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [likedProperties, setLikedProperties] = useState([]);
+  const [layoutReady, setLayoutReady] = useState(false);
+
   const [referralCount, setReferralCount] = useState(0);
   const [referredInfo, setReferredInfo] = useState({
     name: "",
@@ -55,6 +58,13 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
+  const [counts, setCounts] = useState({
+    agents: 0,
+    customers: 0,
+    skilledResources: 0,
+    investors: 0,
+    nris: 0,
+  });
 
   // Animation effect
   useEffect(() => {
@@ -73,6 +83,40 @@ const HomeScreen = () => {
       ]).start();
     }
   }, [loading]);
+
+  const fetchCounts = async () => {
+    try {
+      const endpoints = [
+        { key: "agents", url: `${API_URL}/agentscountrandom` },
+        { key: "customers", url: `${API_URL}/customerscountrandom` },
+        { key: "skilledResources", url: `${API_URL}/skilledcountrandom` },
+        { key: "investors", url: `${API_URL}/investorscountrandom` },
+        { key: "nris", url: `${API_URL}/nriscountrandom` },
+      ];
+
+      const results = await Promise.all(
+        endpoints.map(async (item) => {
+          const response = await fetch(item.url);
+          const data = await response.json();
+          return { key: item.key, value: Object.values(data)[0] || 0 };
+        })
+      );
+
+      const newCounts = {};
+      results.forEach((item) => {
+        newCounts[item.key] = item.value;
+      });
+
+      setCounts(newCounts);
+    } catch (error) {
+      console.error("Error fetching counts:", error);
+    }
+  };
+  useEffect(() => {
+    fetchCounts(); // initial fetch
+    const interval = setInterval(fetchCounts, 30 * 60 * 1000); // refresh every 30 min
+    return () => clearInterval(interval);
+  }, []);
 
   // Data fetching functions
   const getDetails = async () => {
@@ -435,6 +479,38 @@ const HomeScreen = () => {
     }
   }, [isPropertyModalVisible]);
 
+  const scrollAnim = useRef(new Animated.Value(0)).current;
+  const contentWidth = useRef(0);
+  // const [layoutReady, setLayoutReady] = useState(false);
+
+  const items = [
+    { label: "Agents", value: counts.agents },
+    { label: "Customers", value: counts.customers },
+    { label: "Skilled", value: counts.skilledResources },
+    { label: "Investors", value: counts.investors },
+    { label: "NRIs", value: counts.nris },
+  ];
+
+  // Duplicate items for seamless scrolling
+  const scrollItems = [...items, ...items];
+
+  useEffect(() => {
+    if (!layoutReady || contentWidth.current === 0) return;
+
+    const animate = Animated.loop(
+      Animated.timing(scrollAnim, {
+        toValue: -contentWidth.current / 2, // scroll one set
+        duration: 20000, // adjust speed
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    animate.start();
+
+    return () => animate.stop();
+  }, [layoutReady]);
+
   const RenderPropertyCard = ({ property }) => {
     const [isLiked, setIsLiked] = useState(
       likedProperties.includes(property._id)
@@ -560,7 +636,43 @@ const HomeScreen = () => {
             </Animated.View>
           )}
         <ActionButtons navigation={navigation} />
-       
+        <View style={{ height: 60, overflow: "hidden", marginVertical: 10 }}>
+          <Animated.View
+            style={{
+              flexDirection: "row",
+              transform: [{ translateX: scrollAnim }],
+            }}
+            onLayout={(e) => {
+              contentWidth.current = e.nativeEvent.layout.width;
+              setLayoutReady(true);
+            }}
+          >
+            {scrollItems.map((item, index) => (
+              <View
+                key={index}
+                style={{
+                  backgroundColor: "#fff",
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  marginRight: 15,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600" }}>
+                  {item.label}
+                </Text>
+                <Text
+                  style={{ fontSize: 18, fontWeight: "bold", color: "#D81B60" }}
+                >
+                  {item.value}
+                </Text>
+              </View>
+            ))}
+          </Animated.View>
+        </View>
+
         {propertyCategories.regularProperties.length > 0 && (
           <>
             <SectionHeader
@@ -571,7 +683,7 @@ const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
-              style={styles.horizontalScrollView} 
+              style={styles.horizontalScrollView}
             >
               {propertyCategories.regularProperties
                 .slice(0, 10)
@@ -704,31 +816,7 @@ const HomeScreen = () => {
             ))}
           </ScrollView>
         )}
-        {coreClients.length > 0 && (
-          <>
-            <SectionHeader title="Core Clients" />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {coreClients.map((client, index) => (
-                <TouchableOpacity
-                  key={`client-${client._id || index}`}
-                  style={styles.clientCard}
-                  onPress={() => handleOpenLink(client.website)}
-                >
-                  <LazyImage
-                    source={getImageSource(client)}
-                    style={styles.clientImage}
-                    cacheKey={`client_${client._id}`}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </>
-        )}
+
         {coreProjects.length > 0 && (
           <>
             <SectionHeader title="Core Projects" />
@@ -781,16 +869,41 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
+        {coreClients.length > 0 && (
+          <>
+            <SectionHeader title="Promotional Projects" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {coreClients.map((client, index) => (
+                <TouchableOpacity
+                  key={`client-${client._id || index}`}
+                  style={styles.clientCard}
+                  onPress={() => handleOpenLink(client.website)}
+                >
+                  <LazyImage
+                    source={getImageSource(client)}
+                    style={styles.clientImage}
+                    cacheKey={`client_${client._id}`}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
       </Animated.ScrollView>
-       {propertyCategories.rentalProperties.length > 0 && (
-      <TouchableOpacity 
-        style={styles.floatingButton}
-        onPress={() => navigation.navigate("rentalprop")}
-      >
-        <Icon name="home" size={20} color="white" />
-        <Text style={styles.floatingButtonText}>Rental</Text>
-      </TouchableOpacity>
-    )}
+      {propertyCategories.rentalProperties.length > 0 && (
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => navigation.navigate("rentalprop")}
+        >
+          <Icon name="home" size={20} color="white" />
+          <Text style={styles.floatingButtonText}>Rental</Text>
+        </TouchableOpacity>
+      )}
 
       <PropertyModal
         visible={isPropertyModalVisible}
@@ -802,12 +915,12 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
- container: {
-  flex: 1,
-  backgroundColor: "#D8E3E7",
-  paddingHorizontal: 15,
-  top:20
-},
+  container: {
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    paddingHorizontal: 15,
+    // top:20
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -899,28 +1012,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-floatingButton: {
-  position: 'absolute',
-  bottom: Platform.OS === 'ios' ? 100 : 100, // Increased these values
-  right: 20,
-  backgroundColor: '#3E5C76',
-  width: 70,
-  height: 70,
-  borderRadius: 30,
-  justifyContent: 'center',
-  alignItems: 'center',
-  elevation: 10, // Increased elevation
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.3,
-  shadowRadius: 3,
-  zIndex: 100, // Increased zIndex
-},
+  floatingButton: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 100 : 100, // Increased these values
+    right: 20,
+    backgroundColor: "#3E5C76",
+    width: 70,
+    height: 70,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 10, // Increased elevation
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 100, // Increased zIndex
+  },
   floatingButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 

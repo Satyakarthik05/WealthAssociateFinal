@@ -25,12 +25,7 @@ const ClientsAndProjectsScreen = () => {
       showsVerticalScrollIndicator={false}
     >
       {/* Core Clients Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, isMobile && styles.mobileTitle]}>
-          Core Clients
-        </Text>
-        <CoreClients />
-      </View>
+      
 
       {/* Core Projects Section */}
       <View style={styles.section}>
@@ -42,6 +37,12 @@ const ClientsAndProjectsScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Value Projects</Text>
         <ValueProjects />
+      </View>
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, isMobile && styles.mobileTitle]}>
+          Promotional Projects
+        </Text>
+        <CoreClients />
       </View>
     </ScrollView>
   );

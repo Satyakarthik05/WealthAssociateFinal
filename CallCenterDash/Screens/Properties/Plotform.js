@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  CheckBox,
+  StyleSheet,
   Alert,
   ScrollView,
-  StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { Checkbox } from "react-native-paper";
 import { API_URL } from "../../../data/ApiUrl";
 
 const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
@@ -184,36 +184,36 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
 
       <Text style={styles.label}>Approval Status</Text>
       <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.approvalStatus === "NonApproved"}
-          onValueChange={() =>
-            handleCheckboxChange("approvalStatus", "NonApproved")
-          }
+        <Checkbox
+          status={formData.approvalStatus === "NonApproved" ? "checked" : "unchecked"}
+          onPress={() => handleCheckboxChange("approvalStatus", "NonApproved")}
+          color="#0D47A1"
         />
         <Text style={styles.label}>Non Approved</Text>
       </View>
       <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.approvalStatus === "Approved"}
-          onValueChange={() =>
-            handleCheckboxChange("approvalStatus", "Approved")
-          }
+        <Checkbox
+          status={formData.approvalStatus === "Approved" ? "checked" : "unchecked"}
+          onPress={() => handleCheckboxChange("approvalStatus", "Approved")}
+          color="#0D47A1"
         />
         <Text style={styles.label}>Approved</Text>
       </View>
 
       <Text style={styles.label}>Bank Loan Facility</Text>
       <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.bankLoanFacility === "Yes"}
-          onValueChange={() => handleCheckboxChange("bankLoanFacility", "Yes")}
+        <Checkbox
+          status={formData.bankLoanFacility === "Yes" ? "checked" : "unchecked"}
+          onPress={() => handleCheckboxChange("bankLoanFacility", "Yes")}
+          color="#0D47A1"
         />
         <Text style={styles.label}>Yes</Text>
       </View>
       <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.bankLoanFacility === "No"}
-          onValueChange={() => handleCheckboxChange("bankLoanFacility", "No")}
+        <Checkbox
+          status={formData.bankLoanFacility === "No" ? "checked" : "unchecked"}
+          onPress={() => handleCheckboxChange("bankLoanFacility", "No")}
+          color="#0D47A1"
         />
         <Text style={styles.label}>No</Text>
       </View>
@@ -236,16 +236,18 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
           <Text style={styles.label}>{label}</Text>
           <View style={styles.check}>
             <View style={styles.checkboxContainer}>
-              <CheckBox
-                value={formData[field] === "Yes"}
-                onValueChange={() => handleCheckboxChange(field, "Yes")}
+              <Checkbox
+                status={formData[field] === "Yes" ? "checked" : "unchecked"}
+                onPress={() => handleCheckboxChange(field, "Yes")}
+                color="#0D47A1"
               />
               <Text style={styles.label}>YES</Text>
             </View>
             <View style={styles.checkboxContainer}>
-              <CheckBox
-                value={formData[field] === "No"}
-                onValueChange={() => handleCheckboxChange(field, "No")}
+              <Checkbox
+                status={formData[field] === "No" ? "checked" : "unchecked"}
+                onPress={() => handleCheckboxChange(field, "No")}
+                color="#0D47A1"
               />
               <Text style={styles.label}>NO</Text>
             </View>
@@ -281,9 +283,9 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     width: "100%",
-    maxWidth: 500, // increased from 400
+    maxWidth: 500,
     backgroundColor: "#E3F2FD",
-    alignSelf: "center", // centers the form if width < screen width
+    alignSelf: "center",
     borderRadius: 10,
   },
   heading: {

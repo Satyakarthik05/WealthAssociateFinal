@@ -425,14 +425,14 @@ const fetchAssignedSkilledLabours = async () => {
 
         <View style={styles.buttonContainer}>
           {item.CallStatus !== "Done" &&
-            item.assignedExecutive === executiveId && (
+           
               <TouchableOpacity
                 style={[styles.button, styles.doneButton]}
                 onPress={() => handleMarkAsDone(item._id)}
               >
                 <Text style={styles.buttonText}>Call Done</Text>
               </TouchableOpacity>
-            )}
+            }
           <TouchableOpacity
             style={[styles.button, styles.editButton]}
             onPress={() => handleEdit(item)}

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { Checkbox } from "react-native-paper";
 import { API_URL } from "../../../data/ApiUrl";
 
 const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
@@ -129,37 +130,23 @@ const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
                 : "Pass Book"}
             </Text>
 
-            <TouchableOpacity
-              style={styles.checkOption}
-              onPress={() => handleOption(item, "Yes")}
-              disabled={isSubmitting}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  formData[item] === "Yes" && styles.checked,
-                ]}
-              >
-                {formData[item] === "Yes" && <Text style={styles.tick}>✓</Text>}
-              </View>
+            <View style={styles.checkOption}>
+              <Checkbox
+                status={formData[item] === "Yes" ? "checked" : "unchecked"}
+                onPress={() => handleOption(item, "Yes")}
+                color="#4CAF50"
+              />
               <Text>Yes</Text>
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.checkOption}
-              onPress={() => handleOption(item, "No")}
-              disabled={isSubmitting}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  formData[item] === "No" && styles.checked,
-                ]}
-              >
-                {formData[item] === "No" && <Text style={styles.tick}>✓</Text>}
-              </View>
+            <View style={styles.checkOption}>
+              <Checkbox
+                status={formData[item] === "No" ? "checked" : "unchecked"}
+                onPress={() => handleOption(item, "No")}
+                color="#4CAF50"
+              />
               <Text>No</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         ))}
 
@@ -293,24 +280,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginLeft: 10,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: "#555",
-    marginRight: 5,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 4,
-  },
-  checked: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-  tick: {
-    color: "#fff",
-    fontSize: 16,
   },
   input: {
     borderWidth: 1,

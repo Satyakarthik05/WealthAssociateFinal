@@ -28,12 +28,19 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to allow image selection and upload."
+,
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["wealthassociates"]
+            "CFBundleURLSchemes": [
+              "wealthassociates"
+            ]
           }
         ],
-        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -63,7 +70,9 @@
           "data": {
             "mimeType": "image/*"
           },
-          "category": ["android.intent.category.DEFAULT"]
+          "category": [
+            "android.intent.category.DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -73,7 +82,10 @@
               "host": "*"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "notification": {
@@ -92,6 +104,7 @@
       [
         "expo-notifications",
         {
+
           "icon": "./assets/logo.png",
           "color": "#FF231F7C",
           "androidMode": "default",
@@ -112,7 +125,11 @@
           }
         }
       ]
-    ]
-    
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "38b6a11f-476f-46f4-8263-95fe96a6d8ca"
+      }
+    }
   }
 }

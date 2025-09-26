@@ -54,7 +54,7 @@ const CoreClients = () => {
   return (
     <View style={styles.container}>
       {coreClients.length === 0 ? (
-        <Text style={styles.emptyText}>No core clients available</Text>
+        <Text style={styles.emptyText}>No Promotions projects available</Text>
       ) : (
         <View style={styles.clientsWrapper}>
           {coreClients.map((item) => (

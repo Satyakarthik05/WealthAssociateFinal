@@ -37,12 +37,12 @@ const getDistrictData = (totalAgents) => [
 }));
 
 const initialData = {
-  agents: 1000,
-  customers: 2500,
-  properties: 800,
-  skilledResources: 150,
-  investors: 300,
-  expertPanel: 60,
+  agents: 9275,
+  customers: 21030,
+  properties: 2500,
+  skilledResources: 1350,
+  investors: 350,
+  expertPanel: 960,
 };
 
 const monthlyTrendData = {

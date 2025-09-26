@@ -1,0 +1,26 @@
+# Node modules and cache
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+android
+ios
+dist
+build
+
+# Local environment files
+.env
+.env.local
+
+# Large assets not needed for build
+
+Backend/uploads
+
+# Git files
+.git
+.gitignore
+
+# IDE files
+.vscode
+.idea

@@ -54,7 +54,7 @@ const BottomNavigation = () => {
       iconActive: "people",
     },
     {
-      label: "Core Client",
+      label: "Core Projects",
       icon: "star-outline",
       screenName: "coreclipro",
       iconActive: "star",
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 8,
     marginTop: 4,
     fontWeight: "500",
     textAlign: "center",

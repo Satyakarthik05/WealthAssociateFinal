@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     overflow: "hidden",
     backgroundColor: "#D8E3E7",
-    top: 20,
+    // top: 20,
     padding: 0,
     margin: 0,
     overflow: "hidden",
