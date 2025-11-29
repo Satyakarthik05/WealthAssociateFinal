@@ -87,8 +87,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-
-
 const getAuthToken = async () => {
   try {
     const token = await AsyncStorage.getItem("authToken");
@@ -266,6 +264,58 @@ const CallCenterDashboard = () => {
     };
   }, [isActive, notificationSettings]);
 
+useEffect(() => {
+  const sendPushToken = async () => {
+    try {
+      // Ask notification permission
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission not granted");
+        return;
+      }
+
+      // Get Expo token
+      const tokenData = await Notifications.getExpoPushTokenAsync();
+      const pushToken = tokenData.data;
+
+      // Store Push Token locally
+      await AsyncStorage.setItem("expoPushToken", pushToken);
+
+      // Get Executive ID
+      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
+      if (!callexecutiveId) {
+        console.error("Executive ID not found");
+        return;
+      }
+
+      // API endpoint
+      const endpoint = `${API_URL}/callexe/${callexecutiveId}/pushtoken`;
+
+      console.log("Sending push token to:", endpoint);
+
+      // Send token to backend
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          expoPushToken: pushToken,
+        }),
+      });
+
+      const result = await response.json();
+      console.log("Push token update result:", result);
+
+    } catch (error) {
+      console.error("Error sending push token:", error);
+    }
+  };
+
+  // Call the function
+  sendPushToken();
+}, []);
+
   const registerBackgroundFetch = async () => {
     try {
       await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
@@ -328,27 +378,6 @@ const CallCenterDashboard = () => {
     }
   };
 
-  const trackLogout = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const callexecutiveId = await AsyncStorage.getItem("callexecutiveId");
-
-      if (callexecutiveId) {
-        await fetch(
-          `${API_URL}/callexe/${callexecutiveId}/update-logout-time`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              token: `${token}` || "",
-            },
-          }
-        );
-      }
-    } catch (error) {
-      console.error("Error tracking logout:", error);
-    }
-  };
 
   const loadSound = async () => {
     try {

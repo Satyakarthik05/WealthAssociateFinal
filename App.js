@@ -86,11 +86,16 @@ const EXPO_PROJECT_ID = "38b6a11f-476f-46f4-8263-95fe96a6d8ca";
 export const navigationRef = createNavigationContainerRef();
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const notificationType = notification.request.content.data?.type;
+    
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      sound: notificationType === "NEW_AGENT" ? "siren.mp3" : "default",
+    };
+  },
 });
 
 const linking = {
@@ -156,6 +161,7 @@ export default function App() {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
         importance: Notifications.AndroidImportance.MAX,
+        sound: "siren.mp3", 
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#FF231F7C",
       });
